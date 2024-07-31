@@ -24,6 +24,6 @@ app.use(cookieParser());
 app.use("/api/v1/user/",userRoutes)
 
 // api Route for package setup
-app.use("/api/v1/package",packageRoutes)
+app.use("/api/v1/package/",packageRoutes)
 
 export default app;

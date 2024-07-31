@@ -14,4 +14,4 @@ const packageSchema = new Schema({
     },
 });
 
-export default new model("Package", packageSchema);
+export default new model("package", packageSchema);

@@ -69,6 +69,6 @@ const userSchema = new Schema({
         type: Boolean,
         default: true
     },
-},{timestamps:true});
+}, { timestamps: true });
 
-export default new model("User", userSchema);
+export default new model("user", userSchema);
