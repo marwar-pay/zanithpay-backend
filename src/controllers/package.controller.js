@@ -1,4 +1,6 @@
 import packageModel from "../models/package.model.js";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getPackage = async (req, res) => {
     let pack = await packageModel.find();
@@ -27,13 +29,17 @@ export const updatePackage = async (req, res) => {
 }
 
 export const deletePackage = async (req, res) => {
-    let query = req.params.id;
-    let quaryFind = await packageModel.findByIdAndDelete(query).catch((error) => { res.json({ message: "Faild", data: error.message }) })
-    if (!quaryFind) {
-        res.status(404).json({ message: "Faild", data: "Package not found !" })
+    try {
+        let query = req.params.id;
+        let quaryFind = await packageModel.findByIdAndDelete(query)
+        if (!quaryFind) {
+            res.status(404).json({ message: "Faild", data: "Package not found !" })
+        }
+        res.status(200).json({
+            message: "Sucess",
+            quaryFind
+        })
+    } catch (error) {
+        res.status(404).json({ message: "Faild", data: error.message })
     }
-    res.status(200).json({
-        message: "Sucess",
-        quaryFind
-    })
 }
