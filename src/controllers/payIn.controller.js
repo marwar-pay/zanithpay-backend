@@ -16,7 +16,7 @@ export const generatePayment = async (req, res) => {
             payment
         })
     } catch (error) {
-        res.status(500).json({success:false,message:"some issue"})
+        res.status(400).json({success:false,message:"some issue",error:error.message})
     }
 
 }
