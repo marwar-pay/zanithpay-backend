@@ -12,6 +12,6 @@ const packageSchema = new Schema({
         type: Boolean,
         default: true
     },
-});
+}, { timestamps: true });
 
 export default new model("package", packageSchema);
