@@ -1,6 +1,4 @@
 import packageModel from "../models/package.model.js";
-import { ApiError } from "../utils/ApiError.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getPackage = async (req, res) => {
     let pack = await packageModel.find();

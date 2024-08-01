@@ -1,8 +1,9 @@
 import express from "express";
 const app = express();
 import cookieParser from "cookie-parser";
-import userRoutes from "./routes/user.routes.js"
-import packageRoutes from "./routes/package.routes.js"
+import userRoutes from "./routes/user.routes.js";
+import packageRoutes from "./routes/package.routes.js";
+import payinRoutes from "./routes/payIn.routes.js";
 
 // for use body data
 app.use(
@@ -21,9 +22,12 @@ app.use(express.static("public"));
 app.use(cookieParser());
 
 // api Route for user Setup
-app.use("/api/v1/user/",userRoutes)
+app.use("/api/v1/user/",userRoutes);
 
 // api Route for package setup
-app.use("/api/v1/package/",packageRoutes)
+app.use("/api/v1/package/",packageRoutes);
+
+// api Route for Payin routes setup
+app.use("/api/v1/payin/",payinRoutes);
 
 export default app;
