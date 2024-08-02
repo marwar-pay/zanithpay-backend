@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose";
 const qrGenerationSchema = new Schema({
     memberId: {
         type: Schema.Types.ObjectId,
-        ref: "user",
+        ref: "users",
         required: [true, "Please Select Member Id !"]
     },
     trxId: {
@@ -14,19 +14,22 @@ const qrGenerationSchema = new Schema({
         type: String,
     },
     amount: {
-        type: String,
+        type: Number,
         required: [true, "Required Amount !"]
+    },
+    name: {
+        type: String,
+        required: [true, "Required Name !"]
     },
     ip: {
         type: String,
     },
     qrData: {
         type: String,
-        required: [true, "Required Qr Data !"]
     },
     callBackStatus: {
         type: Boolean,
-        required: [true, "Callback status required !"]
+        default: false
     },
 }, { timestamps: true });
 
