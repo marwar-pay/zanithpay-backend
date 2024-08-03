@@ -8,6 +8,7 @@ const qrGenerationSchema = new Schema({
     },
     trxId: {
         type: String,
+        unique:[true,"Trx Id should be Unique"],
         required: [true, "Required TrxId !"]
     },
     refId: {
