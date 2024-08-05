@@ -6,6 +6,10 @@ const payInSchema = new Schema({
         ref: "user",
         required: [true, "Please Select Member Id !"]
     },
+    payerName: {
+        type: String,
+        required: [true, "Required Payber Name !"]
+    },
     trxId: {
         type: String,
         required: [true, "Required TrxId !"]
