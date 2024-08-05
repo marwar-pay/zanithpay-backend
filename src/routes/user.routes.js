@@ -1,5 +1,5 @@
 import express from "express";
-import { getUser, addUser } from "../controllers/user.controller.js";
+import { getUser, addUser,registerUser,loginUser } from "../controllers/user.controller.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 const router = express.Router();
 
@@ -7,5 +7,8 @@ const router = express.Router();
 
 router.get("/getUsers", asyncHandler(getUser))
 router.post("/addUser", asyncHandler(addUser))
+
+router.post("/login", asyncHandler(loginUser))
+router.post("/register", asyncHandler(registerUser))
 
 export default router;

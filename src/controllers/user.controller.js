@@ -32,3 +32,31 @@ export const addUser = async (req, res) => {
     }
 
 }
+
+export const loginUser = async (req, res) => {
+    try {
+        let user = await userDB.create(req.body).then((data) => {
+            res.status(200).json({
+                message: "Sucess",
+                data
+            })
+        })
+    } catch (error) {
+        res.status(400).json({ success: false, message: "some issue", error: error.message })
+    }
+
+}
+
+export const registerUser = async (req, res) => {
+    try {
+        let user = await userDB.create(req.body).then((data) => {
+            res.status(200).json({
+                message: "Sucess",
+                data
+            })
+        })
+    } catch (error) {
+        res.status(400).json({ success: false, message: "some issue", error: error.message })
+    }
+
+}

@@ -3,6 +3,7 @@ const app = express();
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/user.routes.js";
 import packageRoutes from "./routes/package.routes.js";
+import cookieParser from "cookie-parser";
 import payinRoutes from "./routes/payIn.routes.js";
 
 // for use body data
