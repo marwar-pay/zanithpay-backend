@@ -29,8 +29,9 @@ const qrGenerationSchema = new Schema({
         type: String,
     },
     callBackStatus: {
-        type: Boolean,
-        default: false
+        type: String,
+        enum:["Pending","Failed","Success"],
+        default: "Pending"
     },
 }, { timestamps: true });
 

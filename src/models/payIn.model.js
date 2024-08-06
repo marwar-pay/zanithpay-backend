@@ -39,7 +39,8 @@ const payInSchema = new Schema({
         required: [true, "Required Description !"]
     },
     isSuccess: {
-        type: Boolean,
+        type: String,
+        enum:["Pending","Failed","Success"],
         required: [true, "Required Status Success or Faild !"]
     },
 }, { timestamps: true });
