@@ -18,21 +18,22 @@ router.post("/addUser", celebrate({
     body: Joi.object({
         userName: Joi.string().required(),
         memberId: Joi.string().required(),
-        memberType: Joi.string().required(),
+        memberType: Joi.string().valid("Admin", "SuperAdmin", "ApiUser", "MasterDistributor", "Distributor", "Retailer", "Users").required(),
         fullName: Joi.string().required(),
         email: Joi.string().required(),
         mobileNumber: Joi.string().required(),
         password: Joi.string().required(),
         trxPassword: Joi.string().required(),
-        addresh: Joi.string().required(),
-        package: Joi.object({
+        package: Joi.string().required(),
+        addresh: Joi.object({
             country: Joi.string().required(),
             state: Joi.string().required(),
             city: Joi.string().required(),
-            addresh: Joi.string().required()
+            addresh: Joi.string().required(),
+            pincode: Joi.number().required()
         }),
-        minWalletBalance: Joi.string().required(),
-        walletBalance: Joi.string().required(),
+        minWalletBalance: Joi.number().required(),
+        walletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
 }), asyncHandler(addUser))
@@ -41,7 +42,7 @@ router.post("/updateUser/:id", celebrate({
     body: Joi.object({
         userName: Joi.string().optional(),
         memberId: Joi.string().optional(),
-        memberType: Joi.string().optional(),
+        memberType: Joi.string().valid("Admin", "SuperAdmin", "ApiUser", "MasterDistributor", "Distributor", "Retailer", "Users").optional(),
         fullName: Joi.string().optional(),
         email: Joi.string().optional(),
         mobileNumber: Joi.string().optional(),

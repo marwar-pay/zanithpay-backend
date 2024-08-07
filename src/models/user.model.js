@@ -52,6 +52,10 @@ const userSchema = new Schema({
             type: String,
             required: [true, "Please Enter Addresh !"]
         },
+        pincode: {
+            type: Number,
+            required: [true, "Please Enter Pincode !"]
+        },
     },
     package: {
         type: Schema.Types.ObjectId,

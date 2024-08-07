@@ -4,7 +4,7 @@ export const getPackage = async (req, res) => {
     let pack = await packageModel.find();
     res.status(200).json({
         message: "Sucess",
-        pack
+        data:pack
     })
 }
 
@@ -12,7 +12,7 @@ export const addPackage = async (req, res) => {
     let pack = await packageModel.create(req.body);
     res.status(200).json({
         message: "Sucess",
-        pack
+        data:pack
     })
 }
 
@@ -23,7 +23,7 @@ export const updatePackage = async (req, res) => {
         res.status(404).json({ message: "Faild" })
     }
     let update = await packageModel.findByIdAndUpdate(query, { ...req.body })
-    res.status(200).json({ message: "Sucess", data: "update success", update })
+    res.status(200).json({ message: "Sucess", data:update })
 }
 
 export const deletePackage = async (req, res) => {
@@ -35,7 +35,7 @@ export const deletePackage = async (req, res) => {
         }
         res.status(200).json({
             message: "Sucess",
-            quaryFind
+            data:quaryFind
         })
     } catch (error) {
         res.status(404).json({ message: "Faild", data: error.message })

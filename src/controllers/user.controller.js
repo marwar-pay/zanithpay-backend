@@ -24,7 +24,11 @@ export const getUser = async (req, res) => {
 export const getSingleUser = async (req, res) => {
     try {
         let data = req.params.id
-        res.status(200).json({ message: "Success", data: data })
+        let user = await userDB.findById(data);
+        if (!user) {
+            return res.status(400).json({ message: "Failed", data: "User Not Avabile" })
+        }
+        res.status(200).json({ message: "Success", data: user })
     } catch (error) {
         res.status(400).json({ success: false, message: "some issue", error: error.message })
     }
@@ -46,7 +50,8 @@ export const addUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
     try {
-        let user = await userDB.create(req.body).then((data) => {
+        let id = req.params.id
+        let user = await userDB.findByIdAndUpdate(id, req.body).then((data) => {
             res.status(200).json({
                 message: "Sucess",
                 data
