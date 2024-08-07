@@ -4,7 +4,16 @@ import payInModel from "../models/payIn.model.js";
 
 export const allGeneratedPayment = async (req, res) => {
     try {
-        let payment = await qrGenerationModel.find().then((result) => {
+        let payment = await qrGenerationModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+        {
+            $unwind: {
+                path: "$userInfo",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, {
+            $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+        }
+        ]).then((result) => {
             res.status(200).json({ message: "Success", result })
         })
     } catch (error) {
@@ -22,7 +31,7 @@ export const generatePayment = async (req, res) => {
             let name = "Test Api Other"
             let amount = 50
             let trxId = "958782902443"
-            let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${txnpwd}&name=${name}&amount=${amount}&txnid=${trxId}`
+            // let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${txnpwd}&name=${name}&amount=${amount}&txnid=${trxId}`
 
             let bank = await axios.get("https://jsonplaceholder.typicode.com/todos/1");
             // let bank = await axios.get(API_URL);
@@ -48,15 +57,22 @@ export const generatePayment = async (req, res) => {
 }
 
 export const paymentStatusCheck = async (req, res) => {
-    let trxIdGet = req.params.trxId;
-    console.log(trxIdGet)
     try {
-        let pack = await qrGenerationModel.find({ trxId: trxIdGet });
+        let trxIdGet = req.params.trxId;
+        let pack = await qrGenerationModel.aggregate([{ $match: { trxId: trxIdGet } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+        {
+            $unwind: {
+                path: "$userInfo",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, {
+            $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+        }]);
         if (!pack.length) {
-            res.status(200).json({ message: "Faild", data: "No Transaction !" })
+            res.status(400).json({ message: "Faild", data: "No Transaction !" })
         }
         res.status(200).json({
-            message: "Sucess",
+            message: "Success",
             data: pack
         })
     } catch (error) {
@@ -66,11 +82,23 @@ export const paymentStatusCheck = async (req, res) => {
 }
 
 export const paymentStatusUpdate = async (req, res) => {
-    let pack = await qrGenerationModel.find();
-    res.status(200).json({
-        message: "Sucess",
-        pack
-    })
+    try {
+        let trxIdGet = req.params.trxId;
+        let pack = await qrGenerationModel.findOne({ trxId: trxIdGet }).then(async (data) => {
+            if (!data) {
+                res.status(400).json({ message: "Failed", data: "No Transaction !" })
+            }
+            if (data.callBackStatus === "Success" || data.callBackStatus === "Failed") {
+                res.status(400).json({ message: "Failed", data: `Transaction Status Can't Update : ${data.callBackResponse}` })
+            }
+            data.callBackStatus = "hello";
+            // await data.save()
+            console.log(data)
+            res.status(200).json({ message: "Success", data: data })
+        })
+    } catch (error) {
+        res.status(400).json({ success: false, message: "some issue", error: error.message })
+    }
 }
 
 export const callBackResponse = async (req, res) => {

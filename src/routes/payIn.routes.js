@@ -17,7 +17,7 @@ router.post("/generatePayment", celebrate({
     })
 }), asyncHandler(generatePayment));
 
-router.post("/paymentStatusCheck/:trxId", celebrate({
+router.get("/paymentStatusCheck/:trxId", celebrate({
     params: Joi.object({
         trxId: Joi.string().trim().required(),
     })
@@ -25,7 +25,7 @@ router.post("/paymentStatusCheck/:trxId", celebrate({
 
 router.post("/paymentStatusUpdate/:trxId", celebrate({
     body: Joi.object({
-        callBackStatus: Joi.string().valid("Pending", "Failed", "Success").optional(),
+        callBackStatus: Joi.string().valid("Pending", "Failed", "Success").required(),
     }),
     params: Joi.object({
         trxId: Joi.string().trim().required(),
