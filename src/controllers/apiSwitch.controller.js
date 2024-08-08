@@ -1,35 +1,35 @@
-import packageModel from "../models/package.model.js";
+import apiPayInModel from "../models/apiPayInSwitch.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-export const getPackage = asyncHandler(async (req, res) => {
-    let pack = await packageModel.find();
+export const getAllApiPayIn = asyncHandler(async (req, res) => {
+    let pack = await apiPayInModel.find();
     res.status(200).json({
         message: "Sucess",
         data: pack
     })
 })
 
-export const addPackage = asyncHandler(async (req, res) => {
-    let pack = await packageModel.create(req.body);
+export const addApiPayIn = asyncHandler(async (req, res) => {
+    let pack = await apiPayInModel.create(req.body);
     res.status(200).json({
         message: "Sucess",
         data: pack
     })
 })
 
-export const updatePackage = asyncHandler(async (req, res) => {
+export const updateApiPayIn = asyncHandler(async (req, res) => {
     let query = req.params.id;
-    let queryFind = await packageModel.findById(query)
+    let queryFind = await apiPayInModel.findById(query)
     if (!queryFind) {
         res.status(404).json({ message: "Faild" })
     }
-    let update = await packageModel.findByIdAndUpdate(query, { ...req.body })
+    let update = await apiPayInModel.findByIdAndUpdate(query, { ...req.body })
     res.status(200).json({ message: "Sucess", data: update })
 })
 
-export const deletePackage = asyncHandler(async (req, res) => {
+export const deleteApiPayIn = asyncHandler(async (req, res) => {
         let query = req.params.id;
-        let quaryFind = await packageModel.findByIdAndDelete(query)
+        let quaryFind = await apiPayInModel.findByIdAndDelete(query)
         if (!quaryFind) {
             res.status(404).json({ message: "Faild", data: "Package not found !" })
         }

@@ -1,9 +1,13 @@
 import { Schema, model } from "mongoose";
+import jwt from "jsonwebtoken";
 
 const userSchema = new Schema({
     userName: {
         type: String,
         unique: true,
+        lowercase: true,
+        trim: true,
+        index: true,
         required: [true, "Please Enter username !"]
     },
     memberId: {
@@ -17,10 +21,14 @@ const userSchema = new Schema({
     },
     fullName: {
         type: String,
+        trim: true,
+        index: true,
         required: [true, "Please Enter your Full Name !"]
     },
     email: {
         type: String,
+        lowecase: true,
+        trim: true,
         required: [true, "Please Enter your email id !"]
     },
     mobileNumber: {
@@ -34,6 +42,19 @@ const userSchema = new Schema({
     trxPassword: {
         type: String,
         required: [true, "Please Enter your Transaction Password !"]
+    },
+    payInApi: {
+        type: Schema.Types.ObjectId,
+        ref: "payinswitchs",
+        required: [true, "Please Select Payin API!"]
+    },
+    payOutApi: {
+        type: Schema.Types.ObjectId,
+        ref: "payinswitchs",
+        required: [true, "Please Select Payout API !"]
+    },
+    refreshToken: {
+        type: String
     },
     addresh: {
         country: {
@@ -74,5 +95,33 @@ const userSchema = new Schema({
         default: true
     },
 }, { timestamps: true });
+
+userSchema.methods.generateAccessToken = function () {
+    return jwt.sign(
+        {
+            _id: this._id,
+            userName: this.userName,
+            memberId: this.memberId,
+            memberType: this.memberType
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY
+        }
+    )
+}
+
+userSchema.methods.generateRefreshToken = function () {
+    return jwt.sign(
+        {
+            _id: this._id,
+
+        },
+        process.env.REFRESH_TOKEN_SECRET,
+        {
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+        }
+    )
+}
 
 export default new model("user", userSchema);

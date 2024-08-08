@@ -1,10 +1,9 @@
 import express from "express";
-import { asyncHandler } from "../utils/asyncHandler.js";
 import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse } from "../controllers/payIn.controller.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 
-router.get("/allPaymentGenerated", asyncHandler(allGeneratedPayment));
+router.get("/allPaymentGenerated", allGeneratedPayment);
 
 router.post("/generatePayment", celebrate({
     body: Joi.object({
@@ -15,13 +14,13 @@ router.post("/generatePayment", celebrate({
         amount: Joi.number().required(),
         name: Joi.string().required(),
     })
-}), asyncHandler(generatePayment));
+}), generatePayment);
 
 router.get("/paymentStatusCheck/:trxId", celebrate({
     params: Joi.object({
         trxId: Joi.string().trim().required(),
     })
-}), asyncHandler(paymentStatusCheck));
+}), paymentStatusCheck);
 
 router.post("/paymentStatusUpdate/:trxId", celebrate({
     body: Joi.object({
@@ -30,8 +29,8 @@ router.post("/paymentStatusUpdate/:trxId", celebrate({
     params: Joi.object({
         trxId: Joi.string().trim().required(),
     })
-}), asyncHandler(paymentStatusUpdate));
+}), paymentStatusUpdate);
 
-router.post("/callBackResponse", asyncHandler(callBackResponse));
+router.post("/callBackResponse", callBackResponse);
 
 export default router;

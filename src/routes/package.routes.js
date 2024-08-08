@@ -1,11 +1,10 @@
 import express from "express";
 import { addPackage, deletePackage, getPackage, updatePackage } from "../controllers/package.controller.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { userAuth } from "../middlewares/userAuth.js";
+import { userVerify} from "../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 
-router.get("/allPackage", userAuth, asyncHandler(getPackage));
+router.get("/allPackage", userVerify, getPackage);
 
 router.post("/addPackage", celebrate({
     body: Joi.object({
@@ -13,7 +12,7 @@ router.post("/addPackage", celebrate({
         packageInfo: Joi.string().optional(),
         isActive: Joi.boolean().optional(),
     })
-}), asyncHandler(addPackage));
+}), addPackage);
 
 router.post("/updatePackage/:id", celebrate({
     body: Joi.object({
@@ -24,12 +23,12 @@ router.post("/updatePackage/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), asyncHandler(updatePackage));
+}), updatePackage);
 
 router.delete("/deletePackage/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), asyncHandler(deletePackage));
+}), deletePackage);
 
 export default router;

@@ -1,18 +1,15 @@
 import express from "express";
 import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser } from "../controllers/user.controller.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
 import { celebrate, Joi } from "celebrate";
 const router = express.Router();
 
-// router.get("/users", asyncHandler(getUser)).post(("/users"),asyncHandler(addUser));
-
-router.get("/getUsers", asyncHandler(getUser));
+router.get("/getUsers", getUser);
 
 router.get("/userProfile/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), asyncHandler(getSingleUser));
+}), getSingleUser);
 
 router.post("/addUser", celebrate({
     body: Joi.object({
@@ -23,6 +20,8 @@ router.post("/addUser", celebrate({
         email: Joi.string().required(),
         mobileNumber: Joi.string().required(),
         password: Joi.string().required(),
+        payInApi: Joi.string().required(),
+        payOutApi: Joi.string().required(),
         trxPassword: Joi.string().required(),
         package: Joi.string().required(),
         addresh: Joi.object({
@@ -36,7 +35,7 @@ router.post("/addUser", celebrate({
         walletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
-}), asyncHandler(addUser))
+}), addUser)
 
 router.post("/updateUser/:id", celebrate({
     body: Joi.object({
@@ -47,6 +46,8 @@ router.post("/updateUser/:id", celebrate({
         email: Joi.string().optional(),
         mobileNumber: Joi.string().optional(),
         password: Joi.string().optional(),
+        payInApi: Joi.string().optional(),
+        payOutApi: Joi.string().optional(),
         trxPassword: Joi.string().optional(),
         addresh: Joi.string().optional(),
         package: Joi.object({
@@ -62,14 +63,14 @@ router.post("/updateUser/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), asyncHandler(updateUser))
+}), updateUser)
 
 router.post("/login", celebrate({
     body: Joi.object({
         username: Joi.string().required(),
         password: Joi.string().required(),
     })
-}), asyncHandler(loginUser))
+}), loginUser)
 
 router.post("/register", celebrate({
     body: Joi.object({
@@ -92,8 +93,8 @@ router.post("/register", celebrate({
         walletBalance: Joi.string().required(),
         isActive: Joi.string().required(),
     })
-}), asyncHandler(registerUser))
+}), registerUser)
 
-router.get("/logout", asyncHandler(logOut))
+router.get("/logout", logOut)
 
 export default router;

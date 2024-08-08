@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import userRoutes from "./routes/user.routes.js";
 import packageRoutes from "./routes/package.routes.js";
 import payinRoutes from "./routes/payIn.routes.js";
+import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
 import { errors } from "celebrate";
 
 // for use body data
@@ -30,6 +31,9 @@ app.use("/api/v1/package/", packageRoutes);
 
 // api Route for Payin routes setup
 app.use("/api/v1/payin/", payinRoutes);
+
+// api Switch Route for setup
+app.use("/api/v1/apiswitch/", apiSwitchRoutes);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());
