@@ -20,36 +20,41 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 });
 
 export const generatePayment = asyncHandler(async (req, res) => {
-    const { memberId, txnpwd, name, amount, trxId } = req.body
-    // let memberId = "MPAPI836702"
-    // let txnpwd = "000000"
-    // let name = "Test Api Other"
-    // let amount = 50
-    // let trxId = "1111111111111111"
-    let user = await userDB.findOne([{ memberId: memberId },{$project:{}}])
-    console.log(user, "user Data")
-    let payment = await qrGenerationModel.create({ memberId: "66b4942200797c8f64fd8f9c", name, amount, trxId }).then(async (data) => {
-        // calling banking API SuccessFully Generated Data QR
-        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${txnpwd}&name=${name}&amount=${amount}&txnid=${trxId}`
+    const { memberId, trxPassword, name, amount, trxId } = req.body
 
-        // let bank = await axios.get("https://jsonplaceholder.typicode.com/todos/1");
-        // let bank = await axios.get(API_URL);
+    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, { $project: { "_id": 1, "memberId": 1, "trxPassword": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.apiURL": 1, "payInApi.isActive": 1 } }, {
+        $unwind: {
+            path: "$payInApi",
+            preserveNullAndEmptyArrays: true,
+        }
+    }])
 
-        // data.qrData = bank.data.intent;
-        // data.refId = bank.data.refId;
-        // await data.save();
-        // console.log(bank.data)
+    if (user.length === 0) {
+        return res.status(400).json({ message: "Failed", data: "Invalid User Please change again !" })
+    }
+
+    await qrGenerationModel.create({ memberId: "66b4942200797c8f64fd8f9c", name, amount, trxId }).then(async (data) => {
+        // Banking Api
+        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${trxPassword}&name=${name}&amount=${amount}&txnid=${trxId}`
+
+        let bank = await axios.get(API_URL);
+
+        data.qrData = bank.data.intent;
+        data.refId = bank.data.refId;
+        await data.save();
+
         // Send response
         res.status(200).json({
             message: "Sucess",
             data: {
-                status_msg: "QR Generated Successfully",
-                status: "Success",
-                qr: data.qrData,
-                trxID: data.trxId
+                status_msg: bank.data.status_msg,
+                status: bank.data.status_code,
+                qr: bank.data.intent,
+                trxID: data.trxId,
             },
         })
-
+    }).catch((error) => {
+        res.status(400).json({ message: "Failed", data: error.message })
     })
 });
 

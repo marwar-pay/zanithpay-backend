@@ -2,8 +2,9 @@ import express from "express";
 import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse } from "../controllers/payIn.controller.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
+import { userVerify } from "../middlewares/userAuth.js";
 
-router.get("/allPaymentGenerated", allGeneratedPayment);
+router.get("/allPaymentGenerated",userVerify, allGeneratedPayment);
 
 router.post("/generatePayment", celebrate({
     body: Joi.object({
@@ -29,7 +30,7 @@ router.post("/paymentStatusUpdate/:trxId", celebrate({
     params: Joi.object({
         trxId: Joi.string().trim().required(),
     })
-}), paymentStatusUpdate);
+}), userVerify, paymentStatusUpdate);
 
 router.post("/callBackResponse", callBackResponse);
 

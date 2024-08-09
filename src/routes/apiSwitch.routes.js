@@ -1,9 +1,10 @@
 import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
+import { userVerify } from "../middlewares/userAuth.js";
 import { addApiPayIn, deleteApiPayIn, getAllApiPayIn, updateApiPayIn } from "../controllers/apiSwitch.controller.js";
 
-router.get("/allPayInSwitch", getAllApiPayIn);
+router.get("/allPayInSwitch",userVerify, getAllApiPayIn);
 
 router.post("/addPayInSwitch", celebrate({
     body: Joi.object({
@@ -12,7 +13,7 @@ router.post("/addPayInSwitch", celebrate({
         apiInfo: Joi.string().optional(),
         isActive: Joi.boolean().optional(),
     })
-}), addApiPayIn);
+}), userVerify, addApiPayIn);
 
 router.post("/updatePayInSwitch/:id", celebrate({
     body: Joi.object({
@@ -24,12 +25,12 @@ router.post("/updatePayInSwitch/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), updateApiPayIn);
+}), userVerify,updateApiPayIn);
 
 router.delete("/deletePayInSwitch/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), deleteApiPayIn);
+}),userVerify, deleteApiPayIn);
 
 export default router;

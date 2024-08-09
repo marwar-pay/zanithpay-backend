@@ -1,15 +1,16 @@
 import express from "express";
 import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser } from "../controllers/user.controller.js";
 import { celebrate, Joi } from "celebrate";
+import { userVerify } from "../middlewares/userAuth.js";
 const router = express.Router();
 
-router.get("/getUsers", getUser);
+router.get("/getUsers",userVerify, getUser);
 
 router.get("/userProfile/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), getSingleUser);
+}),userVerify, getSingleUser);
 
 router.post("/addUser", celebrate({
     body: Joi.object({
@@ -35,7 +36,7 @@ router.post("/addUser", celebrate({
         walletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
-}), addUser)
+}),userVerify, addUser)
 
 router.post("/updateUser/:id", celebrate({
     body: Joi.object({
@@ -63,7 +64,7 @@ router.post("/updateUser/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), updateUser)
+}), userVerify,updateUser)
 
 router.post("/login", celebrate({
     body: Joi.object({

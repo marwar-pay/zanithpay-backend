@@ -1,6 +1,6 @@
 import express from "express";
 import { addPackage, deletePackage, getPackage, updatePackage } from "../controllers/package.controller.js";
-import { userVerify} from "../middlewares/userAuth.js";
+import { userVerify } from "../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 
@@ -12,7 +12,7 @@ router.post("/addPackage", celebrate({
         packageInfo: Joi.string().optional(),
         isActive: Joi.boolean().optional(),
     })
-}), addPackage);
+}), userVerify, addPackage);
 
 router.post("/updatePackage/:id", celebrate({
     body: Joi.object({
@@ -23,12 +23,12 @@ router.post("/updatePackage/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), updatePackage);
+}), userVerify, updatePackage);
 
 router.delete("/deletePackage/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), deletePackage);
+}), userVerify, deletePackage);
 
 export default router;
