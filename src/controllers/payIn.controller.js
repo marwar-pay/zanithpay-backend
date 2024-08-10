@@ -33,10 +33,25 @@ export const generatePayment = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "Invalid User Please change again !" })
     }
 
+    // Api Switch Database and added 
+    let ApiSwitch = `${user[0].payInApi.apiURL}`
+    let stringReplace = [
+        { placeholderName: "${memberId}", value: memberId },
+        { placeholderName: "${trxPassword}", value: trxPassword },
+        { placeholderName: "${name}", value: name },
+        { placeholderName: "${amount}", value: amount },
+        { placeholderName: "${trxId}", value: trxId }
+    ]
+
+    for (const str of stringReplace) {
+        ApiSwitch = ApiSwitch.replaceAll(str.placeholderName, str.value)
+    }
+    // Api Switch Database and added  end
+
+    // store database
     await qrGenerationModel.create({ memberId: "66b4942200797c8f64fd8f9c", name, amount, trxId }).then(async (data) => {
         // Banking Api
-        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${trxPassword}&name=${name}&amount=${amount}&txnid=${trxId}`
-
+        let API_URL = ApiSwitch
         let bank = await axios.get(API_URL);
 
         data.qrData = bank.data.intent;
@@ -55,7 +70,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
         })
     }).catch((error) => {
         res.status(400).json({ message: "Failed", data: error.message })
-    })
+        })
 });
 
 export const paymentStatusCheck = asyncHandler(async (req, res) => {
