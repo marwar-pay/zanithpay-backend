@@ -4,7 +4,7 @@ export class ApiError extends Error {
         this.statusCode = statusCode,
             this.message = message,
             this.data = null,
-            this.success = false,
+            this.success = false
             this.error = errors
     }
 }

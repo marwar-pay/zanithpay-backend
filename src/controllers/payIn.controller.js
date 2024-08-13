@@ -3,6 +3,7 @@ import qrGenerationModel from "../models/qrGeneration.model.js";
 import payInModel from "../models/payIn.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiFeatures } from "../utils/ApiFeatures.js";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let payment = await qrGenerationModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
@@ -70,7 +71,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
         })
     }).catch((error) => {
         res.status(400).json({ message: "Failed", data: error.message })
-        })
+    })
 });
 
 export const paymentStatusCheck = asyncHandler(async (req, res) => {
