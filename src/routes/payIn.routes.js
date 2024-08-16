@@ -9,7 +9,7 @@ router.get("/allPaymentGenerated",userVerify, allGeneratedPayment);
 router.post("/generatePayment", celebrate({
     body: Joi.object({
         memberId: Joi.string().required(),
-        trxId: Joi.string().required(),
+        trxId: Joi.string().min(10).max(15).required(),
         trxPassword: Joi.string().required(),
         refId: Joi.string().optional(),
         amount: Joi.number().required(),
@@ -19,7 +19,7 @@ router.post("/generatePayment", celebrate({
 
 router.get("/paymentStatusCheck/:trxId", celebrate({
     params: Joi.object({
-        trxId: Joi.string().trim().required(),
+        trxId: Joi.string().trim().min(10).max(15).required(),
     })
 }), paymentStatusCheck);
 
@@ -28,7 +28,7 @@ router.post("/paymentStatusUpdate/:trxId", celebrate({
         callBackStatus: Joi.string().valid("Pending", "Failed", "Success").required(),
     }),
     params: Joi.object({
-        trxId: Joi.string().trim().required(),
+        trxId: Joi.string().trim().min(10).max(15).required(),
     })
 }), userVerify,userAuthAdmin, paymentStatusUpdate);
 

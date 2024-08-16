@@ -12,6 +12,9 @@ const payInSchema = new Schema({
     },
     trxId: {
         type: String,
+        trim: true,
+        unique: true,
+        index: true,
         required: [true, "Required TrxId !"]
     },
     amount: {
@@ -40,7 +43,7 @@ const payInSchema = new Schema({
     },
     isSuccess: {
         type: String,
-        enum:["Pending","Failed","Success"],
+        enum: ["Pending", "Failed", "Success"],
         required: [true, "Required Status Success or Failed !"]
     },
 }, { timestamps: true });

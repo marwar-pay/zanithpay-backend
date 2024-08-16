@@ -28,27 +28,27 @@ const payOutSchema = new Schema({
     },
     chargeAmount: {
         type: String,
-        required: [true, "Required payment gatway charge !"]
     },
     finalAmount: {
         type: String,
-        required: [true, "Required Credit amount !"]
     },
     trxId: {
         type: String,
+        trim: true,
+        unique: true,
+        index: true,
         required: [true, "Required Trx ID !"]
     },
     optxId: {
         type: String,
-        required: [true, "Required Optx ID !"]
     },
     bankRRN: {
         type: String,
-        required: [true, "Required bank RRN !"]
     },
     isSuccess: {
-        type: Boolean,
-        required: [true, "Required Status Success or Faild !"]
+        type: String,
+        enum: ["Pending", "Failed", "Success"],
+        default: "Pending",
     },
 }, { timestamps: true });
 

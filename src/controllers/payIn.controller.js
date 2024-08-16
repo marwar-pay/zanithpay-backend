@@ -86,7 +86,7 @@ export const paymentStatusCheck = asyncHandler(async (req, res) => {
         $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
     }]);
     if (!pack.length) {
-        res.status(400).json({ message: "Faild", data: "No Transaction !" })
+       return res.status(400).json({ message: "Faild", data: "No Transaction !" })
     }
     res.status(200).json({
         message: "Success",

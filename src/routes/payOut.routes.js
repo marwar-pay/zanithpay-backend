@@ -10,27 +10,27 @@ router.post("/generatePayOut", celebrate({
     body: Joi.object({
         memberId: Joi.string().required(),
         trxPassword: Joi.string().required(),
-        mobileNumber:Joi.string().required(),
-        accountHolderName:Joi.string().required(),
-        accountNumber:Joi.string().required(),
-        ifscCode:Joi.string().required(),
-        trxId: Joi.string().required(),
+        mobileNumber: Joi.string().required(),
+        accountHolderName: Joi.string().required(),
+        accountNumber: Joi.number().required(),
+        ifscCode: Joi.string().required(),
+        trxId: Joi.string().min(10).max(15).required(),
         amount: Joi.number().required(),
     })
 }), generatePayOut);
 
 router.get("/payoutStatusCheck/:trxId", celebrate({
     params: Joi.object({
-        trxId: Joi.string().trim().required(),
+        trxId: Joi.string().trim().min(10).max(15).required(),
     })
 }), payoutStatusCheck);
 
 router.post("/payoutStatusUpdate/:trxId", celebrate({
     body: Joi.object({
-        callBackStatus: Joi.string().valid("Pending", "Failed", "Success").required(),
+        isSuccess: Joi.string().valid("Pending", "Failed", "Success").required(),
     }),
     params: Joi.object({
-        trxId: Joi.string().trim().required(),
+        trxId: Joi.string().trim().min(10).max(15).required(),
     })
 }), userVerify, userAuthAdmin, payoutStatusUpdate);
 
