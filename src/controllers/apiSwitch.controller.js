@@ -28,13 +28,13 @@ export const updateApiPayIn = asyncHandler(async (req, res) => {
 })
 
 export const deleteApiPayIn = asyncHandler(async (req, res) => {
-        let query = req.params.id;
-        let quaryFind = await apiPayInModel.findByIdAndDelete(query)
-        if (!quaryFind) {
-            res.status(404).json({ message: "Faild", data: "Package not found !" })
-        }
-        res.status(200).json({
-            message: "Sucess",
-            data: quaryFind
-        })
+    let query = req.params.id;
+    let quaryFind = await apiPayInModel.findByIdAndDelete(query)
+    if (!quaryFind) {
+        res.status(404).json({ message: "Faild", data: "Package not found !" })
+    }
+    res.status(200).json({
+        message: "Sucess",
+        data: quaryFind
+    })
 })

@@ -4,7 +4,7 @@ import { celebrate, Joi } from "celebrate";
 import { userVerify } from "../middlewares/userAuth.js";
 import { addApiPayIn, deleteApiPayIn, getAllApiPayIn, updateApiPayIn } from "../controllers/apiSwitch.controller.js";
 
-router.get("/allPayInSwitch",userVerify, getAllApiPayIn);
+router.get("/allPayInSwitch", userVerify, getAllApiPayIn);
 
 router.post("/addPayInSwitch", celebrate({
     body: Joi.object({
@@ -25,12 +25,12 @@ router.post("/updatePayInSwitch/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), userVerify,updateApiPayIn);
+}), userVerify, updateApiPayIn);
 
 router.delete("/deletePayInSwitch/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}),userVerify, deleteApiPayIn);
+}), userVerify, deleteApiPayIn);
 
 export default router;

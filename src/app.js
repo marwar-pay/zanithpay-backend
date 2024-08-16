@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import userRoutes from "./routes/user.routes.js";
 import packageRoutes from "./routes/package.routes.js";
 import payinRoutes from "./routes/payIn.routes.js";
+import payOutRoutes from "./routes/payOut.routes.js";
 import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
 import { errors } from "celebrate";
 
@@ -31,6 +32,9 @@ app.use("/api/v1/package/", packageRoutes);
 
 // api Route for Payin routes setup
 app.use("/api/v1/payin/", payinRoutes);
+
+// api Route for PayOut routes setup
+app.use("/api/v1/payout/", payOutRoutes);
 
 // api Switch Route for setup
 app.use("/api/v1/apiswitch/", apiSwitchRoutes);
