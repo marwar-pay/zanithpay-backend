@@ -24,10 +24,14 @@ export const userVerify = asyncHandler(async (req, res, next) => {
 });
 
 export const userAuthAdmin = asyncHandler((req, res, next) => {
-    const data = req.cookies.accessToken
-    if (!data) {
-        res.status(401).json({ message: "Invalid Token" });
-        next();
+    const isAdmin = req.user?.memberType
+    try {    
+        if (isAdmin === "SuperAdmin" || isAdmin === "Admin") {
+            next();
+        } else {
+            return res.status(401).json({ message: "User have not Right to Access the Resource" });
+        }
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid Access to Resource");
     }
-    next();
 });

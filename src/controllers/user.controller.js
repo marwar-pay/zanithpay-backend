@@ -100,6 +100,9 @@ export const registerUser = asyncHandler(async (req, res) => {
 })
 
 export const logOut = asyncHandler(async (req, res) => {
+    let userInfo = await userDB.findById(req.user._id);
+    userInfo.refreshToken = undefined;
+    await userInfo.save();
     res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({
         message: "Sucess",
     })

@@ -1,16 +1,16 @@
 import express from "express";
 import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser } from "../controllers/user.controller.js";
 import { celebrate, Joi } from "celebrate";
-import { userVerify } from "../middlewares/userAuth.js";
+import { userVerify, userAuthAdmin } from "../middlewares/userAuth.js";
 const router = express.Router();
 
-router.get("/getUsers",userVerify, getUser);
+router.get("/getUsers", userVerify, getUser);
 
 router.get("/userProfile/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}),userVerify, getSingleUser);
+}), userVerify, getSingleUser);
 
 router.post("/addUser", celebrate({
     body: Joi.object({
@@ -36,7 +36,7 @@ router.post("/addUser", celebrate({
         walletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
-}),userVerify, addUser)
+}), userVerify, userAuthAdmin, addUser)
 
 router.post("/updateUser/:id", celebrate({
     body: Joi.object({
@@ -64,7 +64,7 @@ router.post("/updateUser/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().required(),
     })
-}), userVerify,updateUser)
+}), userVerify,userAuthAdmin, updateUser)
 
 router.post("/login", celebrate({
     body: Joi.object({
@@ -96,6 +96,6 @@ router.post("/register", celebrate({
     })
 }), registerUser)
 
-router.get("/logout", logOut)
+router.get("/logout", userVerify, logOut)
 
 export default router;
