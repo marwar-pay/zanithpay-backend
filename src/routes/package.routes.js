@@ -10,6 +10,8 @@ router.post("/addPackage", celebrate({
     body: Joi.object({
         packageName: Joi.string().required(),
         packageInfo: Joi.string().optional(),
+        packagePayOutCharge: Joi.number().required(),
+        packagePayInCharge: Joi.number().required(),
         isActive: Joi.boolean().optional(),
     })
 }), userVerify, addPackage);
@@ -18,6 +20,8 @@ router.post("/updatePackage/:id", celebrate({
     body: Joi.object({
         packageName: Joi.string().optional(),
         packageInfo: Joi.string().optional(),
+        packagePayOutCharge: Joi.number().optional(),
+        packagePayInCharge: Joi.number().optional(),
         isActive: Joi.boolean().optional(),
     }),
     params: Joi.object({

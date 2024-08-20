@@ -8,6 +8,14 @@ const packageSchema = new Schema({
     packageInfo: {
         type: String,
     },
+    packagePayOutCharge: {
+        type: Number,
+        required: [true, "Required Payout Charges!"]
+    },
+    packagePayInCharge: {
+        type: Number,
+        required: [true, "Required Payout Charges!"]
+    },
     isActive: {
         type: Boolean,
         default: true

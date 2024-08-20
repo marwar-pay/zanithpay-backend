@@ -23,14 +23,14 @@ const payOutSchema = new Schema({
         required: [true, "Required IFSC Code!"]
     },
     amount: {
-        type: String,
+        type: Number,
         required: [true, "Required Amount !"]
     },
     chargeAmount: {
-        type: String,
+        type: Number,
     },
     finalAmount: {
-        type: String,
+        type: Number,
     },
     trxId: {
         type: String,

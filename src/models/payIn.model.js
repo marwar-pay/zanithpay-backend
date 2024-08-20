@@ -18,15 +18,15 @@ const payInSchema = new Schema({
         required: [true, "Required TrxId !"]
     },
     amount: {
-        type: String,
+        type: Number,
         required: [true, "Required Amount !"]
     },
     chargeAmount: {
-        type: String,
+        type: Number,
         required: [true, "Required payment gatway charge !"]
     },
     finalAmount: {
-        type: String,
+        type: Number,
         required: [true, "Required Credit amount !"]
     },
     vpaId: {
@@ -40,6 +40,16 @@ const payInSchema = new Schema({
     description: {
         type: String,
         required: [true, "Required Description !"]
+    },
+    description: {
+        type: String,
+        required: [true, "Required Description !"]
+    },
+    trxInItDate: {
+        type: String,
+    },
+    trxCompletionDate: {
+        type: String,
     },
     isSuccess: {
         type: String,

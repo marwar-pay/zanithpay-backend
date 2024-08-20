@@ -86,7 +86,7 @@ export const paymentStatusCheck = asyncHandler(async (req, res) => {
         $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
     }]);
     if (!pack.length) {
-       return res.status(400).json({ message: "Faild", data: "No Transaction !" })
+        return res.status(400).json({ message: "Faild", data: "No Transaction !" })
     }
     res.status(200).json({
         message: "Success",
@@ -98,40 +98,60 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
     let trxIdGet = req.params.trxId;
     let pack = await qrGenerationModel.findOne({ trxId: trxIdGet }).then(async (data) => {
         if (!data) {
-            res.status(400).json({ message: "Failed", data: "No Transaction !" })
+           return res.status(400).json({ message: "Failed", data: "No Transaction !" })
         }
         if (data.callBackStatus === "Success" || data.callBackStatus === "Failed") {
-            res.status(400).json({ message: "Failed", data: `Transaction Status Can't Update : ${data.callBackResponse}` })
+           return res.status(400).json({ message: "Failed", data: `Transaction Status Can't Update Already : ${data.callBackStatus}` })
         }
-        data.callBackStatus = "hello";
-        // await data.save()
-        console.log(data)
+        data.callBackStatus = req.body.callBackStatus;
+        await data.save()
         res.status(200).json({ message: "Success", data: data })
     })
 })
 
 export const callBackResponse = asyncHandler(async (req, res) => {
     // let data = req.body.data;
-    let data = { status: "200", payerAmount: "200", payerName: "Test", txnID: "12345667875799", BankRRN: "123564654564", payerVA: "0000000000@ybl", TxnInitDate: "20220608131419", TxnCompletionDate: "20220608131422" }
+    let trxIdGet = "45e3543564534";
+    let data = { status: "200", payerAmount: "200", payerName: "Test", txnID: trxIdGet, BankRRN: "123564654564", payerVA: "0000000000@ybl", TxnInitDate: "20220608131419", TxnCompletionDate: "20220608131422" }
     let pack = await qrGenerationModel.findOne({ trxId: data.txnID });
-    if (pack) {
-        pack.callBackStatus = true
+
+    if (data.status != 200) {
+        return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
+    }
+
+    if (pack && data.BankRRN) {
+        pack.callBackStatus = "Success"
         pack.save();
 
-        let gatwarCharge = (1.5 / 100) * data.payerAmount
+        let userInfo = await userDB.aggregate([{ $match: { memberId: "MPAPI836702" } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+            $unwind: {
+                path: "$package",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
+            $unwind: {
+                path: "$payInApi",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, {
+            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayInCharge": 1, "package.isActive": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.apiURL": 1, "payInApi.isActive": 1 }
+        }])
+
+        let gatwarCharge = (userInfo[0]?.package?.packagePayInCharge / 100) * data.payerAmount;
         let finalCredit = data.payerAmount - gatwarCharge
 
-        let payinDataStore = { memberId: pack.memberId, payerName: data.payerName, trxId: data.txnID, amount: data.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data.payerVA, bankRRN: data.BankRRN, description: `Qr Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`, isSuccess: (200) ? true : false }
+        let payinDataStore = { memberId: pack.memberId, payerName: data.payerName, trxId: data.txnID, amount: data.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data.payerVA, bankRRN: data.BankRRN, description: `Qr Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`, trxCompletionDate: data.TxnCompletionDate, trxInItDate: data.TxnInitDate, isSuccess: data.status == 200 ? "Success" : "Failed" }
 
         let payInSuccessStore = await payInModel.create(payinDataStore);
         // callback send to the user url
 
         // callback end to the user url
 
-        res.status(200).json({
+        return res.status(200).json({
             message: "Success",
-            data: data
+            data: payInSuccessStore
         })
     }
-    res.status(400).json({ succes: "Faild", message: "Txn Id Not Avabile !" })
+
+    res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
 })
