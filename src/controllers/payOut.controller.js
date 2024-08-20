@@ -1,5 +1,5 @@
 import axios from "axios";
-import payOutModel from "../models/payOut.model.js";
+import payOutModel from "../models/payOutGenerate.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -26,6 +26,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     if (user.memberId !== memberId || user.trxPassword !== trxPassword) {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
     }
+
     let userStoreData = {
         memberId: user._id,
         mobileNumber: mobileNumber,
@@ -42,7 +43,15 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
     //  banking side api call end 
 
-    res.status(200).json({ message: "Success", data: data })
+    let userResponse = {
+        status_code: 200,
+        status_msg: "Success",
+        status: "Success",
+        txnid: "43543",
+        optxid: "4543"
+    }
+
+    res.status(200).json({ message: "Success", data: userResponse })
 });
 
 export const payoutStatusCheck = asyncHandler(async (req, res) => {
@@ -72,7 +81,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "No Transaction !" })
     }
     if (pack.isSuccess === "Success" || pack.isSuccess === "Failed") {
-        return res.status(400).json({ message: "Failed", data: `Transaction Status Can't Update : ${pack?.isSuccess}` })
+        return res.status(400).json({ message: "Failed", data: `Transaction Status Can't Update Already: ${pack?.isSuccess}` })
     }
     pack.isSuccess = req.body.isSuccess;
     await pack.save()
@@ -80,5 +89,16 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    res.status(200).json({ message: "Success" })
+
+
+    let userResponse = {
+        status_code: 200,
+        status_msg: "Ok",
+        status: "SUCCESS",
+        amount: 500,
+        txnid: 100,
+        rrn: "4545",
+        opt_msg: "Transaction Fetch Successfully"
+    }
+    res.status(200).json({ message: "Success", data: userResponse });
 });

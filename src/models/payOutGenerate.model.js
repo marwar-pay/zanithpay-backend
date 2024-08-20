@@ -26,24 +26,12 @@ const payOutSchema = new Schema({
         type: Number,
         required: [true, "Required Amount !"]
     },
-    chargeAmount: {
-        type: Number,
-    },
-    finalAmount: {
-        type: Number,
-    },
     trxId: {
         type: String,
         trim: true,
         unique: true,
         index: true,
         required: [true, "Required Trx ID !"]
-    },
-    optxId: {
-        type: String,
-    },
-    bankRRN: {
-        type: String,
     },
     isSuccess: {
         type: String,
