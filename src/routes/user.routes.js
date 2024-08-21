@@ -8,7 +8,7 @@ router.get("/getUsers", userVerify, getUser);
 
 router.get("/userProfile/:id", celebrate({
     params: Joi.object({
-        id: Joi.string().trim().required(),
+        id: Joi.string().trim().length(24).required(),
     })
 }), userVerify, getSingleUser);
 
@@ -62,7 +62,7 @@ router.post("/updateUser/:id", celebrate({
         isActive: Joi.boolean().optional(),
     }),
     params: Joi.object({
-        id: Joi.string().trim().required(),
+        id: Joi.string().trim().length(24).required(),
     })
 }), userVerify,userAuthAdmin, updateUser)
 

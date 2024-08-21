@@ -75,7 +75,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user[0]._id)
     let options = { httpOnly: true, secure: true }
-    res.cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).status(200).json({
+    return res.cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).status(200).json({
         message: "Sucess",
         data: user[0], accessToken, refreshToken,
         Info: "User logged In Successfully"

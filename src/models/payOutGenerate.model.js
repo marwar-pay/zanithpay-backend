@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 
-const payOutSchema = new Schema({
+const payOutSchemaGen = new Schema({
     memberId: {
         type: Schema.Types.ObjectId,
         ref: "user",
@@ -26,6 +26,14 @@ const payOutSchema = new Schema({
         type: Number,
         required: [true, "Required Amount !"]
     },
+    chargeAmount: {
+        type: Number,
+        required: [true, "Required payment gatway charge !"]
+    },
+    finalAmount: {
+        type: Number,
+        required: [true, "Required Credit amount !"]
+    },
     trxId: {
         type: String,
         trim: true,
@@ -40,4 +48,4 @@ const payOutSchema = new Schema({
     },
 }, { timestamps: true });
 
-export default new model("payOutRecode", payOutSchema);
+export default new model("payOutGenerated", payOutSchemaGen);

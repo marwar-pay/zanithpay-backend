@@ -25,13 +25,13 @@ router.post("/updatePackage/:id", celebrate({
         isActive: Joi.boolean().optional(),
     }),
     params: Joi.object({
-        id: Joi.string().trim().required(),
+        id: Joi.string().trim().length(24).required(),
     })
 }), userVerify, updatePackage);
 
 router.delete("/deletePackage/:id", celebrate({
     params: Joi.object({
-        id: Joi.string().trim().required(),
+        id: Joi.string().trim().length(24).required(),
     })
 }), userVerify, deletePackage);
 

@@ -6,6 +6,7 @@ import packageRoutes from "./routes/package.routes.js";
 import payinRoutes from "./routes/payIn.routes.js";
 import payOutRoutes from "./routes/payOut.routes.js";
 import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
+import callBackRoutes from "./routes/callBack.routes.js";
 import { errors } from "celebrate";
 
 // for use body data
@@ -38,6 +39,9 @@ app.use("/api/v1/payout/", payOutRoutes);
 
 // api Switch Route for setup
 app.use("/api/v1/apiswitch/", apiSwitchRoutes);
+
+// api Switch Route for setup
+app.use("/api/v1/callBack/", callBackRoutes);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());
