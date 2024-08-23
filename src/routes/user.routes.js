@@ -33,7 +33,6 @@ router.post("/addUser", celebrate({
             pincode: Joi.number().required()
         }),
         minWalletBalance: Joi.number().required(),
-        walletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
 }), userVerify, userAuthAdmin, addUser)
@@ -57,8 +56,9 @@ router.post("/updateUser/:id", celebrate({
             city: Joi.string().optional(),
             addresh: Joi.string().optional()
         }),
-        minWalletBalance: Joi.string().optional(),
-        walletBalance: Joi.string().optional(),
+        minWalletBalance: Joi.number().optional(),
+        upiWalletBalance: Joi.number().optional(),
+        EwalletBalance: Joi.number().optional(),
         isActive: Joi.boolean().optional(),
     }),
     params: Joi.object({
@@ -90,9 +90,10 @@ router.post("/register", celebrate({
             city: Joi.string().required(),
             addresh: Joi.string().required()
         }),
-        minWalletBalance: Joi.string().required(),
-        walletBalance: Joi.string().required(),
-        isActive: Joi.string().required(),
+        minWalletBalance: Joi.number().required(),
+        upiWalletBalance: Joi.number().required(),
+        EwalletBalance: Joi.number().required(),
+        isActive: Joi.boolean().required(),
     })
 }), registerUser)
 

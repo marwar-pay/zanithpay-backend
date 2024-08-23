@@ -7,6 +7,7 @@ import payinRoutes from "./routes/payIn.routes.js";
 import payOutRoutes from "./routes/payOut.routes.js";
 import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
 import callBackRoutes from "./routes/callBack.routes.js";
+import walletRoutes from "./routes/wallet.routes.js";
 import { errors } from "celebrate";
 
 // for use body data
@@ -25,23 +26,26 @@ app.use(express.static("public"));
 // for use secure cookies manuplation
 app.use(cookieParser());
 
-// api Route for user Setup
+// api Route for user
 app.use("/api/v1/user/", userRoutes);
 
-// api Route for package setup
+// api Route for package
 app.use("/api/v1/package/", packageRoutes);
 
-// api Route for Payin routes setup
+// api Route for Payin
 app.use("/api/v1/payin/", payinRoutes);
 
-// api Route for PayOut routes setup
+// api Route for PayOut 
 app.use("/api/v1/payout/", payOutRoutes);
 
-// api Switch Route for setup
+// api Switch Route
 app.use("/api/v1/apiswitch/", apiSwitchRoutes);
 
-// api Switch Route for setup
+// api callback Route
 app.use("/api/v1/callBack/", callBackRoutes);
+
+// api wallet Route
+app.use("/api/v1/wallet/", walletRoutes);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());
