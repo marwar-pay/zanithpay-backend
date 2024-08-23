@@ -90,9 +90,11 @@ const userSchema = new Schema({
     },
     upiWalletBalance: {
         type: Number,
+        default: 0
     },
     EwalletBalance: {
         type: Number,
+        default: 0
     },
     isActive: {
         type: Boolean,
