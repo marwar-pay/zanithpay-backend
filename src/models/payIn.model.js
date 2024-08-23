@@ -41,10 +41,6 @@ const payInSchema = new Schema({
         type: String,
         required: [true, "Required Description !"]
     },
-    description: {
-        type: String,
-        required: [true, "Required Description !"]
-    },
     trxInItDate: {
         type: String,
     },

@@ -119,7 +119,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
 
-    if (pack && data.BankRRN) {
+    if (pack && data?.BankRRN) {
         pack.callBackStatus = "Success"
         pack.save();
 

@@ -1,6 +1,7 @@
 import axios from "axios";
 import payOutModelGenerate from "../models/payOutGenerate.model.js";
 import payOutModel from "../models/payOutSuccess.model.js";
+import callBackResponse from "../models/callBackResponse.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
@@ -20,26 +21,18 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
 export const generatePayOut = asyncHandler(async (req, res) => {
     const { memberId, trxPassword, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount } = req.body;
 
-    let user = await userDB.aggregate([{ $match: { memberId: memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
-        $unwind: {
-            path: "$package",
-            preserveNullAndEmptyArrays: true,
-        }
-    }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+    let user = await userDB.aggregate([{ $match: { memberId: memberId } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
         $unwind: {
             path: "$payOutApi",
             preserveNullAndEmptyArrays: true,
         }
     }, {
-        $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayOutCharge": 1, "package.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
+        $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
     }])
 
     if (user[0]?.memberId !== memberId && user[0]?.trxPassword !== trxPassword) {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
     }
-
-    let chargeGatway = (user[0]?.package?.packagePayOutCharge / 100) * amount
-    let finalAmountAdd = amount - chargeGatway
 
     let userStoreData = {
         memberId: user[0]._id,
@@ -48,8 +41,6 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         accountNumber: accountNumber,
         ifscCode: ifscCode,
         amount: amount,
-        chargeAmount: chargeGatway,
-        finalAmount: finalAmountAdd,
         trxId: trxId
     }
     let data = await payOutModelGenerate.create(userStoreData);
@@ -105,7 +96,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    let data = { txnid: "jkdlfhjdckyjf43", optxid: "43543948", amount: 5000, rrn: "43543543534", status: "Success", statusCode: 200, statusMessage: "message on status" }
+    let data = { txnid: "jkdlfhc1kyjf43", optxid: "43543948", amount: 100, rrn: "43543543534", status: "Success", statusCode: 200, statusMessage: "message on status" }
 
     let userResponse = {
         status_code: 200,
@@ -117,19 +108,66 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         opt_msg: "Transaction Fetch Successfully"
     }
 
-    if (data.statusCode !== 200) {
-       return res.status(200).json({ userResponse });
+    if (data.statusCode != 200) {
+        return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
+
     // get the trxid Data 
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
 
-    if (!getDocoment) {
-        return res.status(400).json({ message: "Failed", data: "transaction not found !" })
+    if (getDocoment && data?.rrn) {
+        getDocoment.isSuccess = "Success"
+        await getDocoment.save();
+
+        let userInfo = await userDB.aggregate([{ $match: { _id: getDocoment?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+            $unwind: {
+                path: "$package",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+            $unwind: {
+                path: "$payOutApi",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, {
+            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayOutCharge": 1, "package.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
+        }]);
+
+        let chargePaymentGatway = (userInfo[0]?.package.packagePayOutCharge / 100) * data.amount
+        let finalAmount = data.amount - chargePaymentGatway
+
+        let payoutDataStore = {
+            memberId: getDocoment?.memberId,
+            amount: data?.amount,
+            chargeAmount: chargePaymentGatway,
+            finalAmount: finalAmount,
+            bankRRN: data?.rrn,
+            trxId: data?.txnid,
+            optxId: data?.optxid,
+            isSuccess: "Success"
+        }
+
+        await payOutModel.create(payoutDataStore)
+
+        // callback response to the 
+        let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: userInfo[0]?._id } }]);
+
+        if (userCallBackResp.length !== 1) {
+            return res.status(400).json({ message: "Failed", data: "User have multiple callback Url find !" })
+        }
+
+        let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+        // Calling the user callback and send the response to the user 
+        console.log(payOutUserCallBackURL, "user store callback url")
+
+        // end the user callback calling and send response 
+        return res.status(200).json({ message: "Success", data: userResponse})
     }
 
-    
 
-    res.status(200).json({ message: "Success",data:getDocoment })
+
+
+    res.status(200).json({ message: "Success", data: getDocoment })
 
 
 });

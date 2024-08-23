@@ -88,7 +88,10 @@ const userSchema = new Schema({
         type: Number,
         required: [true, "Please Enter minimum Walllet Balance Hold !"]
     },
-    walletBalance: {
+    upiWalletBalance: {
+        type: Number,
+    },
+    EwalletBalance: {
         type: Number,
     },
     isActive: {

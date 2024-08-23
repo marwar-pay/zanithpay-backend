@@ -6,20 +6,27 @@ const payOutSchema = new Schema({
         ref: "user",
         required: [true, "Please Select Member id!"]
     },
-    finalAmount: {
-        type: Number,
-        required: [true, "Required Amount !"]
-    },
-    rrnNumber: {
+    bankRRN: {
         type: String,
         required: [true, "Required RRN Number !"]
     },
     trxId: {
         type: String,
         trim: true,
-        unique: true,
         index: true,
         required: [true, "Required Trx ID !"]
+    },
+    amount: {
+        type: Number,
+        required: [true, "Required Amount !"]
+    },
+    chargeAmount: {
+        type: Number,
+        required: [true, "Required payment gatway charge !"]
+    },
+    finalAmount: {
+        type: Number,
+        required: [true, "Required Credit amount !"]
     },
     optxId: {
         type: String,
