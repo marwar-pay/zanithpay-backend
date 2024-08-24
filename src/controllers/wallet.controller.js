@@ -12,21 +12,30 @@ export const getAllTransaction = asyncHandler(async (req, res) => {
 
 export const upiToEwallet = asyncHandler(async (req, res) => {
     let query = req.params.id;
-    let userData = await userDB.findById(query,"_id userName memberId upiWalletBalance EwalletBalance")
+    const { transactionAmount, transactionType } = req.body;
+    let userData = await userDB.findById(query, "_id userName memberId upiWalletBalance EwalletBalance")
     if (!userData) {
-        return res.status(404).json({ message: "Failed",data:"User not Found !" })
+        return res.status(404).json({ message: "Failed", data: "User not Found !" })
     }
-    res.status(200).json({ message: "Sucess", data: userData })
-})
 
-export const eWalletToUpiWallet = asyncHandler(async (req, res) => {
-        let query = req.params.id;
-        let quaryFind = await packageModel.findByIdAndDelete(query)
-        if (!quaryFind) {
-            res.status(404).json({ message: "Faild", data: "Package not found !" })
+    // Upi To Ewallet
+    if (transactionAmount <= userData?.upiWalletBalance) {
+        let beforeAmountEwallet = userData?.EwalletBalance;
+        userData.upiWalletBalance -= transactionAmount;
+        userData.EwalletBalance += transactionAmount;
+        await userData.save();
+        let trxStore = {
+            memberId:userData._id,
+            transactionType:transactionType,
+            transactionAmount:transactionAmount,
+            beforeAmount:beforeAmountEwallet,
+            afterAmount:userData.EwalletBalance,
+            description:`Successfully ${transactionType} amount: ${transactionAmount}`,
+            transactionStatus:"Success",
         }
-        res.status(200).json({
-            message: "Sucess",
-            data: quaryFind
-        })
-})
+        let walletStore = await walletModel.create(trxStore);
+        res.status(200).json({ message: "Success", data: walletStore })
+    } else {
+        res.status(400).json({ message: "Failed", data: "Transaction amount grather then upi Wallet amount !" })
+    }
+});
