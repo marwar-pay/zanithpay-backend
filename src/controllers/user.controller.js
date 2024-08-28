@@ -93,5 +93,5 @@ export const logOut = asyncHandler(async (req, res) => {
     let userInfo = await userDB.findById(req.user._id);
     userInfo.refreshToken = undefined;
     await userInfo.save();
-    res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json(new ApiResponse(200,null,"User logged Out Successfully"))
+    res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json(new ApiResponse(200, null, "User logged Out Successfully"))
 })

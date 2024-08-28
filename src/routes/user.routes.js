@@ -64,7 +64,7 @@ router.post("/updateUser/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
     })
-}), userVerify,userAuthAdmin, updateUser)
+}), userVerify, userAuthAdmin, updateUser)
 
 router.post("/login", celebrate({
     body: Joi.object({

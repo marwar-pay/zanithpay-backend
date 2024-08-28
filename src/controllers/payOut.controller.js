@@ -36,12 +36,18 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
     }
     console.log(user[0]?.minWalletBalance, user[0]?.EwalletBalance)
-    console.log(typeof (user[0]?.minWalletBalance), amount)
+    console.log((user[0]?.minWalletBalance), amount)
 
-    if (user[0].minWalletBalance >= amount || user[0]?.EwalletBalance <= amount) {
+    if (user[0].minWalletBalance >= amount || user[0]?.EwalletBalance < amount) {
         return res.status(400).json({ message: "Failed", date: `Insufficient Fund holding amount : ${amount} ` })
-    } else {
-        return res.status(400).json({ message: "else", date: `Insufficient Fund holding amount ${payoutAbel}: ${amount} ` })
+    }
+
+    // if the data is lese then the amount the data
+    if(!user[0]?.EwalletBalance >= amount-user[0]?.minWalletBalance){
+        return res.status(200).json({message:"Failed",data:"on fit"})
+    }
+    else{
+        return res.status(200).json({message:"Success",data:amount})
     }
 
     let userStoreData = {
