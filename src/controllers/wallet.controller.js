@@ -1,16 +1,14 @@
 import walletModel from "../models/wallet.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 export const getAllTransaction = asyncHandler(async (req, res) => {
     let pack = await walletModel.find();
     if (!pack) {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
-    res.status(200).json({
-        message: "Sucess",
-        data: pack
-    })
+    res.status(200).json(new ApiResponse(200, pack))
 })
 
 export const getTransactionStatus = asyncHandler(async (req, res) => {
@@ -19,10 +17,7 @@ export const getTransactionStatus = asyncHandler(async (req, res) => {
     if (!pack) {
         return res.status(400).json({ message: "Failed", data: "No Transaction Found!" })
     }
-    res.status(200).json({
-        message: "Sucess",
-        data: pack
-    })
+    res.status(200).json(new ApiResponse(200, pack))
 })
 
 export const upiToEwallet = asyncHandler(async (req, res) => {
@@ -49,7 +44,7 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
             transactionStatus: "Success",
         }
         let walletStore = await walletModel.create(trxStore);
-        res.status(200).json({ message: "Success", data: walletStore })
+        res.status(200).json(new ApiResponse(200, walletStore))
     } else {
         res.status(400).json({ message: "Failed", data: `Transaction amount grather then upi Wallet Amount : ${userData.upiWalletBalance} !` })
     }

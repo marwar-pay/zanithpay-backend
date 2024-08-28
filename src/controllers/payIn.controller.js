@@ -4,6 +4,7 @@ import payInModel from "../models/payIn.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiFeatures } from "../utils/ApiFeatures.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let payment = await qrGenerationModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
@@ -16,7 +17,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
         $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
     }
     ]).then((result) => {
-        res.status(200).json({ message: "Success", result })
+        res.status(200).json(new ApiResponse(200, result))
     })
 });
 
@@ -59,16 +60,15 @@ export const generatePayment = asyncHandler(async (req, res) => {
         data.refId = bank.data.refId;
         await data.save();
 
+        let dataApiResponse = {
+            status_msg: bank.data.status_msg,
+            status: bank.data.status_code,
+            qr: bank.data.intent,
+            trxID: data.trxId,
+        }
+
         // Send response
-        res.status(200).json({
-            message: "Sucess",
-            data: {
-                status_msg: bank.data.status_msg,
-                status: bank.data.status_code,
-                qr: bank.data.intent,
-                trxID: data.trxId,
-            },
-        })
+        res.status(200).json(new ApiResponse(200, dataApiResponse))
     }).catch((error) => {
         res.status(400).json({ message: "Failed", data: error.message })
     })
@@ -88,10 +88,7 @@ export const paymentStatusCheck = asyncHandler(async (req, res) => {
     if (!pack.length) {
         return res.status(400).json({ message: "Faild", data: "No Transaction !" })
     }
-    res.status(200).json({
-        message: "Success",
-        data: pack
-    })
+    res.status(200).json(new ApiResponse(200, pack))
 });
 
 export const paymentStatusUpdate = asyncHandler(async (req, res) => {
@@ -105,7 +102,7 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
         }
         data.callBackStatus = req.body.callBackStatus;
         await data.save()
-        res.status(200).json({ message: "Success", data: data })
+        res.status(200).json(new ApiResponse(200, data))
     })
 })
 
@@ -147,10 +144,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         // callback send to the user url
 
         // callback end to the user url
-        return res.status(200).json({
-            message: "Success",
-            data: payinDataStore,
-        })
+        return res.status(200).json(new ApiResponse(200,payinDataStore))
     }
 
     res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })

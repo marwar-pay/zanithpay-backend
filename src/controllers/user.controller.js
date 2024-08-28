@@ -2,6 +2,7 @@ import userDB from "../models/user.model.js"
 import bcrypt from "bcrypt"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
+import { ApiResponse } from "../utils/ApiResponse.js"
 
 // Generation accessToken and refereshToken
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -28,10 +29,7 @@ export const getUser = asyncHandler(async (req, res) => {
             preserveNullAndEmptyArrays: true,
         },
     }]).then((data) => {
-        res.status(200).json({
-            message: "Sucess",
-            data
-        })
+        res.status(200).json(new ApiResponse(200, data))
     })
 })
 
@@ -41,25 +39,19 @@ export const getSingleUser = asyncHandler(async (req, res) => {
     if (!user) {
         return res.status(400).json({ message: "Failed", data: "User Not Avabile" })
     }
-    res.status(200).json({ message: "Success", data: user })
+    res.status(200).json(new ApiResponse(200, user))
 })
 
 export const addUser = asyncHandler(async (req, res) => {
     let user = await userDB.create(req.body).then((data) => {
-        res.status(200).json({
-            message: "Sucess",
-            data
-        })
+        res.status(201).json(new ApiResponse(201, user))
     })
 })
 
 export const updateUser = asyncHandler(async (req, res) => {
     let id = req.params.id
     let user = await userDB.findByIdAndUpdate(id, req.body).then((data) => {
-        res.status(200).json({
-            message: "Sucess",
-            data
-        })
+        res.status(200).json(new ApiResponse(200, data))
     })
 })
 
@@ -75,12 +67,10 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user[0]._id)
     let options = { httpOnly: true, secure: true }
-    return res.cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).status(200).json({
-        message: "Sucess",
-        data: user[0], accessToken, refreshToken,
-        Info: "User logged In Successfully"
-
-    })
+    let storeValue = { user: user[0], accessToken, refreshToken }
+    return res.cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).status(200).json(
+        new ApiResponse(200, storeValue, "User logged In Successfully")
+    )
 
 })
 
@@ -103,7 +93,5 @@ export const logOut = asyncHandler(async (req, res) => {
     let userInfo = await userDB.findById(req.user._id);
     userInfo.refreshToken = undefined;
     await userInfo.save();
-    res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json({
-        message: "Sucess",
-    })
+    res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json(new ApiResponse(200,null,"User logged Out Successfully"))
 })

@@ -5,6 +5,7 @@ import walletModel from "../models/wallet.model.js";
 import callBackResponse from "../models/callBackResponse.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let GetData = await payOutModelGenerate.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
@@ -16,7 +17,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     }, {
         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "bankRRN": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
     }]);
-    res.status(200).json({ message: "Success", data: GetData })
+    res.status(200).json(new ApiResponse(200, GetData))
 });
 
 export const generatePayOut = asyncHandler(async (req, res) => {
@@ -67,7 +68,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         optxid: "4543"
     }
 
-    res.status(200).json({ message: "Success", data: userResponse })
+    res.status(200).json(new ApiResponse(200, userResponse))
 });
 
 export const payoutStatusCheck = asyncHandler(async (req, res) => {
@@ -84,10 +85,7 @@ export const payoutStatusCheck = asyncHandler(async (req, res) => {
     if (!pack.length) {
         return res.status(400).json({ message: "Faild", data: "No Transaction !" })
     }
-    res.status(200).json({
-        message: "Success",
-        data: pack
-    })
+    res.status(200).json(new ApiResponse(200, pack))
 });
 
 export const payoutStatusUpdate = asyncHandler(async (req, res) => {
@@ -101,7 +99,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
     }
     pack.isSuccess = req.body.isSuccess;
     await pack.save()
-    res.status(200).json({ message: "Success", data: pack })
+    res.status(200).json(new ApiResponse(200, pack))
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
@@ -184,8 +182,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         // Calling the user callback and send the response to the user 
         console.log(payOutUserCallBackURL, "user store callback url")
 
+        let apiResponseData = { userResponse, userWalletInfo, storeTrx }
+
         // end the user callback calling and send response 
-        return res.status(200).json({ message: "Success", data: userResponse, userWalletInfo, storeTrx })
+        return res.status(200).json(new ApiResponse(200,apiResponseData))
     }
 
     res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
