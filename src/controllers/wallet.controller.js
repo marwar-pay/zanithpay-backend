@@ -4,6 +4,21 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getAllTransaction = asyncHandler(async (req, res) => {
     let pack = await walletModel.find();
+    if (!pack) {
+        return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
+    }
+    res.status(200).json({
+        message: "Sucess",
+        data: pack
+    })
+})
+
+export const getTransactionStatus = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    let pack = await walletModel.findById(query);
+    if (!pack) {
+        return res.status(400).json({ message: "Failed", data: "No Transaction Found!" })
+    }
     res.status(200).json({
         message: "Sucess",
         data: pack
@@ -25,17 +40,17 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
         userData.EwalletBalance += transactionAmount;
         await userData.save();
         let trxStore = {
-            memberId:userData._id,
-            transactionType:transactionType,
-            transactionAmount:transactionAmount,
-            beforeAmount:beforeAmountEwallet,
-            afterAmount:userData.EwalletBalance,
-            description:`Successfully ${transactionType} amount: ${transactionAmount}`,
-            transactionStatus:"Success",
+            memberId: userData._id,
+            transactionType: transactionType,
+            transactionAmount: transactionAmount,
+            beforeAmount: beforeAmountEwallet,
+            afterAmount: userData.EwalletBalance,
+            description: `Successfully ${transactionType} amount: ${transactionAmount}`,
+            transactionStatus: "Success",
         }
         let walletStore = await walletModel.create(trxStore);
         res.status(200).json({ message: "Success", data: walletStore })
     } else {
-        res.status(400).json({ message: "Failed", data: "Transaction amount grather then upi Wallet amount !" })
+        res.status(400).json({ message: "Failed", data: `Transaction amount grather then upi Wallet Amount : ${userData.upiWalletBalance} !` })
     }
 });
