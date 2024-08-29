@@ -108,8 +108,8 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 
 export const callBackResponse = asyncHandler(async (req, res) => {
     // let data = req.body.data;
-    let trxIdGet = "y55regfd354dg1";
-    let data = { status: "200", payerAmount: "200", payerName: "Test", txnID: trxIdGet, BankRRN: "123564654564", payerVA: "0000000000@ybl", TxnInitDate: "20220608131419", TxnCompletionDate: "20220608131422" }
+    let trxIdGet = "y55retgf35ret";
+    let data = { status: "200", payerAmount: 900, payerName: "Test", txnID: trxIdGet, BankRRN: "123564654564", payerVA: "0000000000@ybl", TxnInitDate: "20220608131419", TxnCompletionDate: "20220608131422" }
     let pack = await qrGenerationModel.findOne({ trxId: data.txnID });
 
     if (data.status != 200) {

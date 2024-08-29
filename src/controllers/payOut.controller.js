@@ -35,19 +35,16 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     if (user[0]?.memberId !== memberId && user[0]?.trxPassword !== trxPassword) {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
     }
-    console.log(user[0]?.minWalletBalance, user[0]?.EwalletBalance)
-    console.log((user[0]?.minWalletBalance), amount)
 
-    if (user[0].minWalletBalance >= amount || user[0]?.EwalletBalance < amount) {
-        return res.status(400).json({ message: "Failed", date: `Insufficient Fund holding amount : ${amount} ` })
+    let userUseAbelBalance = user[0]?.EwalletBalance - user[0]?.minWalletBalance
+
+    if (amount > user[0]?.EwalletBalance) {
+        return res.status(400).json({ message: "Failed", date: `Insufficient Fund usable Amount: ${userUseAbelBalance}` })
     }
 
     // if the data is lese then the amount the data
-    if(!user[0]?.EwalletBalance >= amount-user[0]?.minWalletBalance){
-        return res.status(200).json({message:"Failed",data:"on fit"})
-    }
-    else{
-        return res.status(200).json({message:"Success",data:amount})
+    if (amount > userUseAbelBalance) {
+        return res.status(400).json({ message: "Failed", data: `Insufficient Balance Holding Amount :${user[0]?.minWalletBalance} Usable Amount : ${userUseAbelBalance}` })
     }
 
     let userStoreData = {
@@ -109,7 +106,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    let data = { txnid: "54645443545ff", optxid: "43543948", amount: 100, rrn: "43543543534", status: "Success", statusCode: 200, statusMessage: "message on status" }
+    let data = { txnid: "55dndlh764yf", optxid: "43543948", amount: 100, rrn: "43543543534", status: "Success", statusCode: 200, statusMessage: "message on status" }
 
     let userResponse = {
         status_code: 200,
@@ -162,6 +159,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             transactionStatus: "Success",
         }
 
+        // update the user wallet balance 
+        userWalletInfo.EwalletBalance -= data?.amount
+        await userWalletInfo.save();
+
         let storeTrx = await walletModel.create(walletModelDataStore)
 
         let payoutDataStore = {
@@ -191,7 +192,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         let apiResponseData = { userResponse, userWalletInfo, storeTrx }
 
         // end the user callback calling and send response 
-        return res.status(200).json(new ApiResponse(200,apiResponseData))
+        return res.status(200).json(new ApiResponse(200, apiResponseData))
     }
 
     res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
