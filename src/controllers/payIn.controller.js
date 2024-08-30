@@ -3,10 +3,10 @@ import qrGenerationModel from "../models/qrGeneration.model.js";
 import payInModel from "../models/payIn.model.js";
 import userDB from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiFeatures } from "../utils/ApiFeatures.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
+    let queryObject = req.query;
     let payment = await qrGenerationModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
     {
         $unwind: {
@@ -17,7 +17,32 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
         $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
     }
     ]).then((result) => {
+        if (result.length === 0) {
+            res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+        }
+        res.status(200).json(new ApiResponse(200, result, queryObject))
+    }).catch((err) => {
+        res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
+    })
+});
+
+export const allSuccessPayment = asyncHandler(async (req, res) => {
+    let payment = await payInModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+    {
+        $unwind: {
+            path: "$userInfo",
+            preserveNullAndEmptyArrays: true,
+        }
+    }, {
+        $project: { "_id": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "payerName": 1, "isSuccess": 1, "vpaId": 1, "bankRRN": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+    }
+    ]).then((result) => {
+        if (result.length === 0) {
+            res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+        }
         res.status(200).json(new ApiResponse(200, result))
+    }).catch((err) => {
+        res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
     })
 });
 
@@ -144,7 +169,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         // callback send to the user url
 
         // callback end to the user url
-        return res.status(200).json(new ApiResponse(200,payinDataStore))
+        return res.status(200).json(new ApiResponse(200, payinDataStore))
     }
 
     res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
