@@ -1,6 +1,6 @@
 export class ApiFeatures {
-    constructor(query, queryStr) {
-      this.query = query;
+    constructor(queryData, queryStr) {
+      this.queryData = queryData;
       this.queryStr = queryStr;
     }
   

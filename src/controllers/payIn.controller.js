@@ -15,12 +15,12 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
         }
     }, {
         $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }
+    }, { $sort: { createdAt: -1 } }
     ]).then((result) => {
         if (result.length === 0) {
-            res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+            return res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
         }
-        res.status(200).json(new ApiResponse(200, result, queryObject))
+        res.status(200).json(new ApiResponse(200, result))
     }).catch((err) => {
         res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
     })
@@ -35,7 +35,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
         }
     }, {
         $project: { "_id": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "payerName": 1, "isSuccess": 1, "vpaId": 1, "bankRRN": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }
+    }, { $sort: { createdAt: -1 } }
     ]).then((result) => {
         if (result.length === 0) {
             res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
@@ -61,7 +61,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
     }
 
     // Api Switch Database and added 
-    let ApiSwitch = `${user[0].payInApi.apiURL}`
+    let ApiSwitch = `${user[0]?.payInApi?.apiURL}`
     let stringReplace = [
         { placeholderName: "${memberId}", value: memberId },
         { placeholderName: "${trxPassword}", value: trxPassword },
@@ -76,20 +76,26 @@ export const generatePayment = asyncHandler(async (req, res) => {
     // Api Switch Database and added  end
 
     // store database
-    await qrGenerationModel.create({ memberId: "66b4942200797c8f64fd8f9c", name, amount, trxId }).then(async (data) => {
+    await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
         // Banking Api
         let API_URL = ApiSwitch
         let bank = await axios.get(API_URL);
-
-        data.qrData = bank.data.intent;
-        data.refId = bank.data.refId;
-        await data.save();
 
         let dataApiResponse = {
             status_msg: bank.data.status_msg,
             status: bank.data.status_code,
             qr: bank.data.intent,
             trxID: data.trxId,
+        }
+
+        if (bank?.data?.status_code !== 200) {
+            data.callBackStatus = "Failed";
+            await data.save();
+            return res.status(400).json({ message: "Failed", dataApiResponse })
+        } else {
+            data.qrData = bank?.data?.intent;
+            data.refId = bank?.data?.refId;
+            await data.save();
         }
 
         // Send response
@@ -132,11 +138,10 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 })
 
 export const callBackResponse = asyncHandler(async (req, res) => {
-    // let data = req.body.data;
-    let trxIdGet = "y55retgf35ret";
-    let data = { status: "200", payerAmount: 900, payerName: "Test", txnID: trxIdGet, BankRRN: "123564654564", payerVA: "0000000000@ybl", TxnInitDate: "20220608131419", TxnCompletionDate: "20220608131422" }
-    let pack = await qrGenerationModel.findOne({ trxId: data.txnID });
-
+    let callBackData = req.body;
+    let data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+    
+    let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
     if (data.status != 200) {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
@@ -145,7 +150,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         pack.callBackStatus = "Success"
         pack.save();
 
-        let userInfo = await userDB.aggregate([{ $match: { memberId: "MPAPI836702" } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+        let userInfo = await userDB.aggregate([{ $match: { _id: pack?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
             $unwind: {
                 path: "$package",
                 preserveNullAndEmptyArrays: true,

@@ -16,7 +16,6 @@ const generateAccessAndRefereshTokens = async (userId) => {
 
         return { accessToken, refreshToken }
 
-
     } catch (error) {
         throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
@@ -56,6 +55,25 @@ export const updateUser = asyncHandler(async (req, res) => {
 })
 
 export const loginUser = asyncHandler(async (req, res) => {
+    let { username, password } = req.body;
+    let user = await userDB.aggregate([{ $match: { userName: username } }, { $project: { "_id": 1, "userName": 1, "memberId": 1, "memberType": 1, "password": 1, "isActive": 1 } }])
+    if (!user?.length) {
+        return res.status(404).json({ message: "Failed", data: "Invalid Credential Try Again !" })
+    }
+    if (user[0]?.password !== password) {
+        return res.status(404).json({ message: "Failed", data: "Invalid Credential Try Again !" })
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user[0]._id)
+    let options = { httpOnly: true, secure: true }
+    let storeValue = { user: user[0], accessToken, refreshToken }
+    return res.cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).status(200).json(
+        new ApiResponse(200, storeValue, "User logged In Successfully")
+    )
+
+})
+
+export const authTokenReVerify = asyncHandler(async (req, res) => {
     let { username, password } = req.body;
     let user = await userDB.aggregate([{ $match: { userName: username } }, { $project: { "_id": 1, "userName": 1, "memberId": 1, "memberType": 1, "password": 1, "isActive": 1 } }])
     if (!user?.length) {

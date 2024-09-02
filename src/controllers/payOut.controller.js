@@ -16,7 +16,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
         }
     }, {
         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "bankRRN": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }]);
+    },{ $sort: { createdAt: -1 } }]);
     res.status(200).json(new ApiResponse(200, GetData))
 });
 

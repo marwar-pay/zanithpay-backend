@@ -1,5 +1,5 @@
 import express from "express";
-import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser } from "../controllers/user.controller.js";
+import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser, authTokenReVerify } from "../controllers/user.controller.js";
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../middlewares/userAuth.js";
 const router = express.Router();
@@ -72,6 +72,8 @@ router.post("/login", celebrate({
         password: Joi.string().required(),
     })
 }), loginUser)
+
+router.get("/authTokenReVerify",authTokenReVerify)
 
 router.post("/register", celebrate({
     body: Joi.object({
