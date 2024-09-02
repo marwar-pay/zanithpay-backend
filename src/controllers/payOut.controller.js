@@ -16,14 +16,14 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
         }
     }, {
         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "bankRRN": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    },{ $sort: { createdAt: -1 } }]);
+    }, { $sort: { createdAt: -1 } }]);
     res.status(200).json(new ApiResponse(200, GetData))
 });
 
 export const generatePayOut = asyncHandler(async (req, res) => {
     const { memberId, trxPassword, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount } = req.body;
 
-    let user = await userDB.aggregate([{ $match: { memberId: memberId } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }] } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
         $unwind: {
             path: "$payOutApi",
             preserveNullAndEmptyArrays: true,
@@ -32,7 +32,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "minWalletBalance": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
     }])
 
-    if (user[0]?.memberId !== memberId && user[0]?.trxPassword !== trxPassword) {
+    if (user.length === 0) {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
     }
 
@@ -106,15 +106,16 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    let data = { txnid: "55dndlh764yf", optxid: "43543948", amount: 100, rrn: "43543543534", status: "Success", statusCode: 200, statusMessage: "message on status" }
+    let callBackPayout = req.body
+    let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status, statusCode: callBackPayout?.status_code, statusMessage: callBackPayout?.opt_msg }
 
     let userResponse = {
-        status_code: 200,
-        status_msg: "Ok",
-        status: "SUCCESS",
-        amount: 500,
-        txnid: 100,
-        rrn: "4545",
+        status_code: callBackPayout?.statusCode,
+        status_msg: callBackPayout?.opt_msg,
+        status: callBackPayout?.status,
+        amount: callBackPayout?.amount,
+        txnid: callBackPayout?.txnid,
+        rrn: callBackPayout?.rrn,
         opt_msg: "Transaction Fetch Successfully"
     }
 
@@ -124,6 +125,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
 
     // get the trxid Data 
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
+
+    if (getDocoment?.isSuccess !== "Pending") {
+        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${getDocoment?.isSuccess}` })
+    }
 
     if (getDocoment && data?.rrn) {
         getDocoment.isSuccess = "Success"
@@ -189,7 +194,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         // Calling the user callback and send the response to the user 
         console.log(payOutUserCallBackURL, "user store callback url")
 
-        let apiResponseData = { userResponse, userWalletInfo, storeTrx }
+        let apiResponseData = { userResponse }
 
         // end the user callback calling and send response 
         return res.status(200).json(new ApiResponse(200, apiResponseData))

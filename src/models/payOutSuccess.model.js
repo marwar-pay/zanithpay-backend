@@ -31,7 +31,6 @@ const payOutSchema = new Schema({
     optxId: {
         type: String,
         trim: true,
-        required: [true, "Required Optx ID !"]
     },
     isSuccess: {
         type: String,
