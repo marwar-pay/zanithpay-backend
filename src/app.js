@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 const app = express();
 import cookieParser from "cookie-parser";
 import userRoutes from "./routes/user.routes.js";
@@ -16,6 +17,15 @@ app.use(
         limit: "16kb",
     })
 );
+
+const corsOptions = {
+    origin: '*',
+    credentials: true,
+    optionsSuccessStatus: 200,
+  };
+
+ // Use CORS middleware
+ app.use(cors(corsOptions));
 
 // for use urlencoded with different
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
