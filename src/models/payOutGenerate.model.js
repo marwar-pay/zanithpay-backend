@@ -26,6 +26,10 @@ const payOutSchemaGen = new Schema({
         type: Number,
         required: [true, "Required Amount !"]
     },
+    afterChargeAmount: {
+        type: Number,
+        required: [true, "Required Amount !"]
+    },
     trxId: {
         type: String,
         trim: true,

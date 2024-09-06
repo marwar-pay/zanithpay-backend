@@ -28,23 +28,30 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             path: "$payOutApi",
             preserveNullAndEmptyArrays: true,
         }
+    }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+        $unwind: {
+            path: "$package",
+            preserveNullAndEmptyArrays: true,
+        }
     }, {
-        $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "minWalletBalance": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
+        $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "minWalletBalance": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1, "package._id": 1, "package.packageName": 1, "package.packagePayOutCharge": 1, "package.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
     }])
 
     if (user.length === 0) {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
     }
 
-    let userUseAbelBalance = user[0]?.EwalletBalance - user[0]?.minWalletBalance
+    let userChargeApply = (user[0]?.package?.packagePayOutCharge / 100) * amount;
+    let userUseAbelBalance = user[0]?.EwalletBalance - user[0]?.minWalletBalance;
+    let finalAmountDeduct = amount + userChargeApply;
 
-    if (amount > user[0]?.EwalletBalance) {
+    if (finalAmountDeduct > user[0]?.EwalletBalance) {
         return res.status(400).json({ message: "Failed", date: `Insufficient Fund usable Amount: ${userUseAbelBalance}` })
     }
 
     // if the data is lese then the amount the data
-    if (amount > userUseAbelBalance) {
-        return res.status(400).json({ message: "Failed", data: `Insufficient Balance Holding Amount :${user[0]?.minWalletBalance} Usable Amount : ${userUseAbelBalance}` })
+    if (finalAmountDeduct > userUseAbelBalance) {
+        return res.status(400).json({ message: "Failed", data: `Insufficient Balance Holding Amount :${user[0]?.minWalletBalance} and Usable amount + charge amount less then ${userUseAbelBalance}` })
     }
 
     let userStoreData = {
@@ -54,6 +61,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         accountNumber: accountNumber,
         ifscCode: ifscCode,
         amount: amount,
+        afterChargeAmount: finalAmountDeduct,
         trxId: trxId
     }
     let data = await payOutModelGenerate.create(userStoreData);
@@ -148,8 +156,8 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "EwalletBalance": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayOutCharge": 1, "package.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
         }]);
 
-        let chargePaymentGatway = (userInfo[0]?.package.packagePayOutCharge / 100) * data.amount;
-        let finalAmount = data.amount - chargePaymentGatway;
+        let chargePaymentGatway = (userInfo[0]?.package.packagePayOutCharge / 100) * getDocoment?.amount;
+        let mainAmount = getDocoment?.amount;
 
         let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
         let beforeAmountUser = userWalletInfo.EwalletBalance;
@@ -172,9 +180,9 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
 
         let payoutDataStore = {
             memberId: getDocoment?.memberId,
-            amount: data?.amount,
+            amount: mainAmount,
             chargeAmount: chargePaymentGatway,
-            finalAmount: finalAmount,
+            finalAmount: data?.amount,
             bankRRN: data?.rrn,
             trxId: data?.txnid,
             optxId: data?.optxid,
@@ -194,7 +202,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         // Calling the user callback and send the response to the user 
         console.log(payOutUserCallBackURL, "user store callback url")
 
-        let apiResponseData = { userResponse }
+        let apiResponseData = { userResponse, payoutDataStore }
 
         // end the user callback calling and send response 
         return res.status(200).json(new ApiResponse(200, apiResponseData))
