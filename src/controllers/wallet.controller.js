@@ -4,7 +4,12 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 export const getAllTransaction = asyncHandler(async (req, res) => {
-    let pack = await walletModel.find();
+    let pack = await walletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+        $unwind: {
+            path: "$userInfo",
+            preserveNullAndEmptyArrays: true,
+        }
+    },{$project:{"_id":1,"memberId":1,"transactionType":1,"transactionAmount":1,"beforeAmount":1,"afterAmount":1,"description":1,"transactionStatus":1,"createdAt":1,"updatedAt":1,"userInfo._id":1,"userInfo.userName":1,"userInfo.memberId":1}}]);
     if (!pack) {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
