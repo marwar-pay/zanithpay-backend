@@ -2,9 +2,11 @@ import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../middlewares/userAuth.js";
-import { allPayOutPayment, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate } from "../controllers/payOut.controller.js";
+import { allPayOutPayment, allPayOutPaymentSuccess, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate } from "../controllers/payOut.controller.js";
 
 router.get("/allPayOutPayment", userVerify, allPayOutPayment);
+
+router.get("/allPayOutOnSuccess", userVerify, allPayOutPaymentSuccess);
 
 router.post("/generatePayOut", celebrate({
     body: Joi.object({
