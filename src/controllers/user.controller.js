@@ -1,8 +1,8 @@
+import { ApiResponse } from "../utils/ApiResponse.js"
 import userDB from "../models/user.model.js"
 import bcrypt from "bcrypt"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js"
-import { ApiResponse } from "../utils/ApiResponse.js"
 
 // Generation accessToken and refereshToken
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -43,7 +43,7 @@ export const getSingleUser = asyncHandler(async (req, res) => {
 
 export const addUser = asyncHandler(async (req, res) => {
     let user = await userDB.create(req.body).then((data) => {
-        res.status(201).json(new ApiResponse(201, user))
+        res.status(201).json(new ApiResponse(201, data))
     })
 })
 

@@ -9,6 +9,7 @@ import payOutRoutes from "./routes/payOut.routes.js";
 import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
 import callBackRoutes from "./routes/callBack.routes.js";
 import walletRoutes from "./routes/wallet.routes.js";
+import utilityRoutes from "./routes/utility.routes.js";
 import { errors } from "celebrate";
 
 // for use body data
@@ -22,10 +23,10 @@ const corsOptions = {
     origin: '*',
     credentials: true,
     optionsSuccessStatus: 200,
-  };
+};
 
- // Use CORS middleware
- app.use(cors(corsOptions));
+// Use CORS middleware
+app.use(cors(corsOptions));
 
 // for use urlencoded with different
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
@@ -56,6 +57,9 @@ app.use("/api/v1/callBack/", callBackRoutes);
 
 // api wallet Route
 app.use("/api/v1/wallet/", walletRoutes);
+
+// api utility Route
+app.use("/api/v1/utility/", utilityRoutes);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());
