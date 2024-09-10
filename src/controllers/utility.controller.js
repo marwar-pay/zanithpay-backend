@@ -27,5 +27,12 @@ export const getPayOutApiList = asyncHandler(async (req, res) => {
 })
 
 export const getPayInApiList = asyncHandler(async (req, res) => {
-    res.status(200).json(new ApiResponse(200, "hello"))
+    let apiPayIn = await apiPayInModel.aggregate([{ $match: { isActive: true } }, {
+        $project: { "_id": 1, "apiName": 1 }
+    }, { $sort: { createdAt: -1 } }])
+
+    if(!apiPayIn.length){
+        return res.status(400).json({message:"Failed",data:"Not Payin Api Found !"})
+    }
+    res.status(200).json(new ApiResponse(200, apiPayIn))
 })
