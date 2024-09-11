@@ -10,6 +10,7 @@ import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
 import callBackRoutes from "./routes/callBack.routes.js";
 import walletRoutes from "./routes/wallet.routes.js";
 import utilityRoutes from "./routes/utility.routes.js";
+import userHandleUser from "./routes/userPannelRoutes/userHandleUser.routes.js";
 import { errors } from "celebrate";
 
 // for use body data
@@ -37,29 +38,32 @@ app.use(express.static("public"));
 // for use secure cookies manuplation
 app.use(cookieParser());
 
-// api Route for user
-app.use("/api/v1/user/", userRoutes);
+// api Route for user -- Admin
+app.use("/apiAdmin/v1/user/", userRoutes);
 
-// api Route for package
-app.use("/api/v1/package/", packageRoutes);
+// api Route for package -- Admin
+app.use("/apiAdmin/v1/package/", packageRoutes);
 
-// api Route for Payin
-app.use("/api/v1/payin/", payinRoutes);
+// api Route for Payin -- Admin
+app.use("/apiAdmin/v1/payin/", payinRoutes);
 
-// api Route for PayOut 
-app.use("/api/v1/payout/", payOutRoutes);
+// api Route for PayOut -- Admin
+app.use("/apiAdmin/v1/payout/", payOutRoutes);
 
-// api Switch Route
-app.use("/api/v1/apiswitch/", apiSwitchRoutes);
+// api Switch Route -- Admin
+app.use("/apiAdmin/v1/apiswitch/", apiSwitchRoutes);
 
-// api callback Route
-app.use("/api/v1/callBack/", callBackRoutes);
+// api callback Route -- Admin
+app.use("/apiAdmin/v1/callBack/", callBackRoutes);
 
-// api wallet Route
-app.use("/api/v1/wallet/", walletRoutes);
+// api wallet Route -- Admin
+app.use("/apiAdmin/v1/wallet/", walletRoutes);
 
-// api utility Route
-app.use("/api/v1/utility/", utilityRoutes);
+// api utility Route -- Admin
+app.use("/apiAdmin/v1/utility/", utilityRoutes);
+
+// api userHandle Route -- User
+app.use("/apiUser/v1/userRoute/", userHandleUser);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());
