@@ -11,6 +11,15 @@ export const getPackage = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, pack))
 })
 
+export const getSinglePackage = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    let pack = await packageModel.findById(query);
+    if (!pack) {
+        return new ApiError(400, "No Package Avabile !")
+    }
+    res.status(200).json(new ApiResponse(200, pack))
+})
+
 export const addPackage = asyncHandler(async (req, res) => {
     let pack = await packageModel.create(req.body);
     res.status(201).json(new ApiResponse(201, pack))

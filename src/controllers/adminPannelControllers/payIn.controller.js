@@ -4,6 +4,7 @@ import payInModel from "../../models/payIn.model.js";
 import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import callBackResponseModel from "../../models/callBackResponse.model.js";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let queryObject = req.query;
@@ -178,7 +179,9 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         let payInSuccessStore = await payInModel.create(payinDataStore);
         let updateUpiWallletBalance = await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
         // callback send to the user url
-
+        let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id }).select("_id payInCallBackUrl isActive");
+        console.log(callBackPayinUrl);
+        // if(call)
         // callback end to the user url
         return res.status(200).json(new ApiResponse(200, payinDataStore))
     }
