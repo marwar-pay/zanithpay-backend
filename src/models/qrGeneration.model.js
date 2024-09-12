@@ -28,6 +28,9 @@ const qrGenerationSchema = new Schema({
     qrData: {
         type: String,
     },
+    qrIntent: {
+        type: String,
+    },
     callBackStatus: {
         type: String,
         enum:["Pending","Failed","Success"],

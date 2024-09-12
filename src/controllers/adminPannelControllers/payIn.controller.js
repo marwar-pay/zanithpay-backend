@@ -61,31 +61,32 @@ export const generatePayment = asyncHandler(async (req, res) => {
     }
 
     // Api Switch Database and added 
-    let ApiSwitch = `${user[0]?.payInApi?.apiURL}`
-    let stringReplace = [
-        { placeholderName: "${memberId}", value: memberId },
-        { placeholderName: "${trxPassword}", value: trxPassword },
-        { placeholderName: "${name}", value: name },
-        { placeholderName: "${amount}", value: amount },
-        { placeholderName: "${trxId}", value: trxId }
-    ]
+    // let ApiSwitch = `${user[0]?.payInApi?.apiURL}`
+    // let stringReplace = [
+    //     { placeholderName: "${memberId}", value: memberId },
+    //     { placeholderName: "${trxPassword}", value: trxPassword },
+    //     { placeholderName: "${name}", value: name },
+    //     { placeholderName: "${amount}", value: amount },
+    //     { placeholderName: "${trxId}", value: trxId }
+    // ]
 
-    for (const str of stringReplace) {
-        ApiSwitch = ApiSwitch.replaceAll(str.placeholderName, str.value)
-    }
+    // for (const str of stringReplace) {
+    //     ApiSwitch = ApiSwitch.replaceAll(str.placeholderName, str.value)
+    // }
     // Api Switch Database and added  end
 
     // store database
     await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
         // Banking Api
-        let API_URL = ApiSwitch
+        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${trxPassword}&name=${name}&amount=${amount}&txnid=${trxId}`
         let bank = await axios.get(API_URL);
 
         let dataApiResponse = {
-            status_msg: bank.data.status_msg,
-            status: bank.data.status_code,
-            qr: bank.data.intent,
-            trxID: data.trxId,
+            status_msg: bank?.data?.status_msg,
+            status: bank?.data?.status_code,
+            qrImage: bank?.data?.qr_image,
+            qr: bank?.data?.intent,
+            trxID: data?.trxId,
         }
 
         if (bank?.data?.status_code !== 200) {
@@ -93,7 +94,8 @@ export const generatePayment = asyncHandler(async (req, res) => {
             await data.save();
             return res.status(400).json({ message: "Failed", dataApiResponse })
         } else {
-            data.qrData = bank?.data?.intent;
+            data.qrData = bank?.data?.qr_image;
+            data.qrIntent = bank?.data?.intent;
             data.refId = bank?.data?.refId;
             await data.save();
         }
@@ -147,7 +149,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
     }
 
     if (pack?.callBackStatus !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}`})
+        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
     }
 
     if (pack && data?.BankRRN) {
