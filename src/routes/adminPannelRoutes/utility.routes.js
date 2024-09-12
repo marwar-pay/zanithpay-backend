@@ -1,6 +1,6 @@
 import express from "express";
-import { userVerify } from "../middlewares/userAuth.js";
-import { getPackageList, getPayInApiList, getPayOutApiList, getUserList } from "../controllers/utility.controller.js";
+import { userVerify } from "../../middlewares/userAuth.js";
+import { getPackageList, getPayInApiList, getPayOutApiList, getUserList } from "../../controllers/adminPannelControllers/utility.controller.js";
 const router = express.Router();
 
 router.get("/getUserList", userVerify, getUserList);

@@ -1,9 +1,9 @@
 import axios from "axios";
-import qrGenerationModel from "../models/qrGeneration.model.js";
-import payInModel from "../models/payIn.model.js";
-import userDB from "../models/user.model.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import qrGenerationModel from "../../models/qrGeneration.model.js";
+import payInModel from "../../models/payIn.model.js";
+import userDB from "../../models/user.model.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let queryObject = req.query;

@@ -1,6 +1,6 @@
-import callBackModel from "../models/callBackResponse.model.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import callBackModel from "../../models/callBackResponse.model.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const getAllCallBackUrl = asyncHandler(async (req, res) => {
     let pack = await callBackModel.find();

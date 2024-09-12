@@ -1,8 +1,8 @@
-import { ApiResponse } from "../utils/ApiResponse.js"
-import userDB from "../models/user.model.js"
+import { ApiResponse } from "../../utils/ApiResponse.js"
+import userDB from "../../models/user.model.js"
 import bcrypt from "bcrypt"
-import { asyncHandler } from "../utils/asyncHandler.js"
-import { ApiError } from "../utils/ApiError.js"
+import { asyncHandler } from "../../utils/asyncHandler.js"
+import { ApiError } from "../../utils/ApiError.js"
 
 // Generation accessToken and refereshToken
 const generateAccessAndRefereshTokens = async (userId) => {

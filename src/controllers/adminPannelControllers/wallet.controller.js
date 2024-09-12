@@ -1,7 +1,7 @@
-import walletModel from "../models/wallet.model.js";
-import userDB from "../models/user.model.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import walletModel from "../../models/wallet.model.js";
+import userDB from "../../models/user.model.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
 export const getAllTransaction = asyncHandler(async (req, res) => {
     let pack = await walletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {

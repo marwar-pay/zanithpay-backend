@@ -2,14 +2,14 @@ import express from "express";
 import cors from "cors";
 const app = express();
 import cookieParser from "cookie-parser";
-import userRoutes from "./routes/user.routes.js";
-import packageRoutes from "./routes/package.routes.js";
-import payinRoutes from "./routes/payIn.routes.js";
-import payOutRoutes from "./routes/payOut.routes.js";
-import apiSwitchRoutes from "./routes/apiSwitch.routes.js";
-import callBackRoutes from "./routes/callBack.routes.js";
-import walletRoutes from "./routes/wallet.routes.js";
-import utilityRoutes from "./routes/utility.routes.js";
+import userRoutes from "./routes/adminPannelRoutes/user.routes.js";
+import packageRoutes from "./routes/adminPannelRoutes/package.routes.js";
+import payinRoutes from "./routes/adminPannelRoutes/payIn.routes.js";
+import payOutRoutes from "./routes/adminPannelRoutes/payOut.routes.js";
+import apiSwitchRoutes from "./routes/adminPannelRoutes/apiSwitch.routes.js";
+import callBackRoutes from "./routes/adminPannelRoutes/callBack.routes.js";
+import walletRoutes from "./routes/adminPannelRoutes/wallet.routes.js";
+import utilityRoutes from "./routes/adminPannelRoutes/utility.routes.js";
 import userHandleUser from "./routes/userPannelRoutes/userHandleUser.routes.js";
 import payInUserPannel from "./routes/userPannelRoutes/payInUser.routes.js";
 import payOutUserPannel from "./routes/userPannelRoutes/payOutUser.routes.js";
@@ -69,13 +69,13 @@ app.use("/apiAdmin/v1/utility/", utilityRoutes);
 app.use("/apiUser/v1/userRoute/", userHandleUser);
 
 // api payin Route -- User
-app.use("/apiUser/v1/payin/",payInUserPannel );
+app.use("/apiUser/v1/payin/", payInUserPannel);
 
 // api payin Route -- User
-app.use("/apiUser/v1/payout/",payOutUserPannel );
+app.use("/apiUser/v1/payout/", payOutUserPannel);
 
 // api payin Route -- User
-app.use("/apiUser/v1/wallet/",walletUserPannel );
+app.use("/apiUser/v1/wallet/", walletUserPannel);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());

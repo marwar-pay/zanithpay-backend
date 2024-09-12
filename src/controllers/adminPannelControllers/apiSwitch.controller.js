@@ -1,7 +1,7 @@
-import apiPayInModel from "../models/apiPayInSwitch.model.js";
-import apiPayOutModel from "../models/apiPayOutSwitch.model.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import apiPayInModel from "../../models/apiPayInSwitch.model.js";
+import apiPayOutModel from "../../models/apiPayOutSwitch.model.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const getAllApiPayIn = asyncHandler(async (req, res) => {
     let pack = await apiPayInModel.find();

@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { userVerify } from "../middlewares/userAuth.js";
-import { addCallBackUrl, deleteCallBackUrl, getAllCallBackUrl, getCallBackUrl, updateCallBackUrl } from "../controllers/callBack.controller.js";
+import { userVerify } from "../../middlewares/userAuth.js";
+import { addCallBackUrl, deleteCallBackUrl, getAllCallBackUrl, getCallBackUrl, updateCallBackUrl } from "../../controllers/adminPannelControllers/callBack.controller.js";
 
 router.get("/allCallBackUrl", userVerify, getAllCallBackUrl);
 

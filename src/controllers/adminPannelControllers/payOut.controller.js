@@ -1,11 +1,11 @@
 import axios from "axios";
-import payOutModelGenerate from "../models/payOutGenerate.model.js";
-import payOutModel from "../models/payOutSuccess.model.js";
-import walletModel from "../models/wallet.model.js";
-import callBackResponse from "../models/callBackResponse.model.js";
-import userDB from "../models/user.model.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import payOutModelGenerate from "../../models/payOutGenerate.model.js";
+import payOutModel from "../../models/payOutSuccess.model.js";
+import walletModel from "../../models/wallet.model.js";
+import callBackResponse from "../../models/callBackResponse.model.js";
+import userDB from "../../models/user.model.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let GetData = await payOutModelGenerate.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },

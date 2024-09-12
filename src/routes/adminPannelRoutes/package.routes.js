@@ -1,6 +1,6 @@
 import express from "express";
-import { addPackage, deletePackage, getPackage, updatePackage } from "../controllers/package.controller.js";
-import { userVerify } from "../middlewares/userAuth.js";
+import { addPackage, deletePackage, getPackage, updatePackage } from "../../controllers/adminPannelControllers/package.controller.js";
+import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 

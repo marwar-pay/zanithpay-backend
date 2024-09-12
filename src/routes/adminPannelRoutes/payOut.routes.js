@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { userVerify, userAuthAdmin } from "../middlewares/userAuth.js";
-import { allPayOutPayment, allPayOutPaymentSuccess, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate } from "../controllers/payOut.controller.js";
+import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
+import { allPayOutPayment, allPayOutPaymentSuccess, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate } from "../../controllers/adminPannelControllers/payOut.controller.js";
 
 router.get("/allPayOutPayment", userVerify, allPayOutPayment);
 

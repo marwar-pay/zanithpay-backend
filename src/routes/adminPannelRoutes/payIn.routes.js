@@ -1,8 +1,8 @@
 import express from "express";
-import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment } from "../controllers/payIn.controller.js";
+import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment } from "../../controllers/adminPannelControllers/payIn.controller.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { userVerify,userAuthAdmin } from "../middlewares/userAuth.js";
+import { userVerify,userAuthAdmin } from "../../middlewares/userAuth.js";
 
 router.get("/allPaymentGenerated",userVerify, allGeneratedPayment);
 

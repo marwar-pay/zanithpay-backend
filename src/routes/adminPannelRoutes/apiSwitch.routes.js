@@ -1,8 +1,8 @@
 import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { userVerify } from "../middlewares/userAuth.js";
-import { addApiPayIn, addApiPayOut, deleteApiPayIn, deleteApiPayOut, getAllApiPayIn, getAllApiPayOut, updateApiPayIn, updateApiPayOut } from "../controllers/apiSwitch.controller.js";
+import { userVerify } from "../../middlewares/userAuth.js";
+import { addApiPayIn, addApiPayOut, deleteApiPayIn, deleteApiPayOut, getAllApiPayIn, getAllApiPayOut, updateApiPayIn, updateApiPayOut } from "../../controllers/adminPannelControllers/apiSwitch.controller.js";
 
 router.get("/allPayInSwitch", userVerify, getAllApiPayIn);
 

@@ -1,8 +1,8 @@
 import express from "express";
-import { userVerify } from "../middlewares/userAuth.js";
+import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { getAllTransaction, getTransactionStatus, upiToEwallet } from "../controllers/wallet.controller.js";
+import { getAllTransaction, getTransactionStatus, upiToEwallet } from "../../controllers/adminPannelControllers/wallet.controller.js";
 
 router.get("/getAllTransaction", userVerify, getAllTransaction);
 

@@ -1,9 +1,9 @@
-import userDB from "../models/user.model.js";
-import packageModel from "../models/package.model.js";
-import apiPayInModel from "../models/apiPayInSwitch.model.js";
-import apiPayOutModel from "../models/apiPayOutSwitch.model.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import userDB from "../../models/user.model.js";
+import packageModel from "../../models/package.model.js";
+import apiPayInModel from "../../models/apiPayInSwitch.model.js";
+import apiPayOutModel from "../../models/apiPayOutSwitch.model.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const getUserList = asyncHandler(async (req, res) => {
     let userInfo = await userDB.aggregate([{ $match: { memberType: "Users" } }, {
