@@ -47,12 +47,10 @@ const userSchema = new Schema({
     payInApi: {
         type: Schema.Types.ObjectId,
         ref: "payinswitchs",
-        required: [true, "Please Select Payin API!"]
     },
     payOutApi: {
         type: Schema.Types.ObjectId,
         ref: "payinswitchs",
-        required: [true, "Please Select Payout API !"]
     },
     refreshToken: {
         type: String

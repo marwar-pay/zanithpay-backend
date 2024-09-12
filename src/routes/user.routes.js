@@ -21,8 +21,8 @@ router.post("/addUser", celebrate({
         email: Joi.string().required(),
         mobileNumber: Joi.string().required(),
         password: Joi.string().required(),
-        payInApi: Joi.string().required(),
-        payOutApi: Joi.string().required(),
+        payInApi: Joi.string().optional(),
+        payOutApi: Joi.string().optional(),
         trxPassword: Joi.string().required(),
         package: Joi.string().required(),
         addresh: Joi.object({

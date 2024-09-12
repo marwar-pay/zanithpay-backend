@@ -1,9 +1,10 @@
 import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { changePassword, logIn, updateProfile, userInfo } from "../../controllers/userPannelControllers/userHandleUser.controllers.js";
+import { changePassword, logInUserPannel, logOutUserPannel, updateProfile, userInfo } from "../../controllers/userPannelControllers/userHandleUser.controllers.js";
+import { userPannelAuth } from "../../middlewares/userPannelAuth.js";
 
-router.get("/userInfo", userInfo);
+router.get("/userInfo", userPannelAuth, userInfo);
 
 router.post("/changePassword", celebrate({
     body: Joi.object({
@@ -13,7 +14,7 @@ router.post("/changePassword", celebrate({
         packagePayInCharge: Joi.number().required(),
         isActive: Joi.boolean().optional(),
     })
-}), changePassword);
+}), userPannelAuth, changePassword);
 
 router.post("/updateProfile/:id", celebrate({
     body: Joi.object({
@@ -24,13 +25,15 @@ router.post("/updateProfile/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
     })
-}), updateProfile);
+}), userPannelAuth, updateProfile);
 
 router.post("/login", celebrate({
     body: Joi.object({
         userName: Joi.string().required(),
         password: Joi.string().required(),
     })
-}), logIn);
+}), logInUserPannel);
+
+router.get("/logout", userPannelAuth, logOutUserPannel);
 
 export default router;
