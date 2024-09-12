@@ -1,11 +1,11 @@
 import express from "express";
+import { eWalletToPayOutTrx, upiToEwalletTrx, upiWalletTrx } from "../../controllers/userPannelControllers/walletUser.controller.js";
 const router = express.Router();
-import { celebrate, Joi } from "celebrate";
-import { allPayInTransactionGeneration, allPayInTransactionSuccess } from "../../controllers/userPannelControllers/payInUser.controller.js";
 
-router.get("/getAllQrGenerated", allPayInTransactionGeneration);
+router.get("/upiWalletTrx", upiWalletTrx);
 
-router.get("/getAllPayInSuccess", allPayInTransactionSuccess);
+router.get("/upiToEwalletTrx", upiToEwalletTrx);
 
+router.get("/eWalletToPayOutTrx", eWalletToPayOutTrx);
 
 export default router;

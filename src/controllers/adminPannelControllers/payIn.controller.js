@@ -1,6 +1,7 @@
 import axios from "axios";
 import qrGenerationModel from "../../models/qrGeneration.model.js";
 import payInModel from "../../models/payIn.model.js";
+import upiWalletModel from "../../models/upiWallet.model.js";
 import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
@@ -176,13 +177,19 @@ export const callBackResponse = asyncHandler(async (req, res) => {
 
         let payinDataStore = { memberId: pack.memberId, payerName: data.payerName, trxId: data.txnID, amount: data.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data.payerVA, bankRRN: data.BankRRN, description: `Qr Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`, trxCompletionDate: data.TxnCompletionDate, trxInItDate: data.TxnInitDate, isSuccess: data.status == 200 ? "Success" : "Failed" }
 
+        let upiWalletDataObject = { memberId: userInfo[0]?._id, transactionType: "Cr.", transactionAmount: finalCredit, beforeAmount: userInfo[0]?.upiWalletBalance, afterAmount: userInfo[0]?.upiWalletBalance + finalCredit, description: `Successfully Cr. amount: ${finalCredit}`, transactionStatus: "Success" }
+
+        let upiWalletStore = await upiWalletModel.create(upiWalletDataObject);
+
         let payInSuccessStore = await payInModel.create(payinDataStore);
         let updateUpiWallletBalance = await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
+
         // callback send to the user url
-        let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id }).select("_id payInCallBackUrl isActive");
-        console.log(callBackPayinUrl);
-        // if(call)
+        let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
+        const userCallBackURL = callBackPayinUrl[0]?.payInCallBackUrl;
+        await axios.get(userCallBackURL);
         // callback end to the user url
+
         return res.status(200).json(new ApiResponse(200, payinDataStore))
     }
 
