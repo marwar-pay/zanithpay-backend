@@ -1,10 +1,10 @@
 import express from "express";
+import { userPannelAuth } from "../../middlewares/userPannelAuth.js";
+import { allPayOutTransactionGeneration, allPayOutTransactionSuccess } from "../../controllers/userPannelControllers/payOutUser.controller.js";
 const router = express.Router();
-import { celebrate, Joi } from "celebrate";
-import { allPayInTransactionGeneration, allPayInTransactionSuccess } from "../../controllers/userPannelControllers/payInUser.controller.js";
 
-router.get("/getAllQrGenerated", allPayInTransactionGeneration);
+router.get("/getAllPayOutGenerated", userPannelAuth, allPayOutTransactionGeneration);
 
-router.get("/getAllPayInSuccess", allPayInTransactionSuccess);
+router.get("/getAllPayOutSuccess", userPannelAuth, allPayOutTransactionSuccess);
 
 export default router;

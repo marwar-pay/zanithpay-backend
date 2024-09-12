@@ -1,6 +1,5 @@
 import express from "express";
 const router = express.Router();
-import { celebrate, Joi } from "celebrate";
 import { allPayInTransactionGeneration, allPayInTransactionSuccess } from "../../controllers/userPannelControllers/payInUser.controller.js";
 import { userPannelAuth } from "../../middlewares/userPannelAuth.js";
 
