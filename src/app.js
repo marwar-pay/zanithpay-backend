@@ -14,6 +14,7 @@ import userHandleUser from "./routes/userPannelRoutes/userHandleUser.routes.js";
 import payInUserPannel from "./routes/userPannelRoutes/payInUser.routes.js";
 import payOutUserPannel from "./routes/userPannelRoutes/payOutUser.routes.js";
 import walletUserPannel from "./routes/userPannelRoutes/walletUser.routes.js";
+import supportUserPannel from "./routes/userPannelRoutes/supportPannel.routes.js";
 import { errors } from "celebrate";
 
 // for use body data
@@ -76,6 +77,9 @@ app.use("/apiUser/v1/payout/", payOutUserPannel);
 
 // api payin Route -- User
 app.use("/apiUser/v1/wallet/", walletUserPannel);
+
+// api payin Route -- User
+app.use("/apiUser/v1/support/", supportUserPannel);
 
 // Joi Vaidator error middlewares setup
 app.use(errors());
