@@ -2,9 +2,11 @@ import express from "express";
 import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { getAllTransaction, getTransactionStatus, upiToEwallet } from "../../controllers/adminPannelControllers/wallet.controller.js";
+import { getAllTransactionEwallet, getAllTransactionUpi, getTransactionStatus, upiToEwallet } from "../../controllers/adminPannelControllers/wallet.controller.js";
 
-router.get("/getAllTransaction", userVerify, getAllTransaction);
+router.get("/getAllTransactionUpi", userVerify, getAllTransactionUpi);
+
+router.get("/getAllTransactionEwallet", userVerify, getAllTransactionEwallet);
 
 router.get("/getTransactionStatus/:id", celebrate({
     params: Joi.object({
@@ -14,7 +16,6 @@ router.get("/getTransactionStatus/:id", celebrate({
 
 router.post("/upiToEwallet/:id", celebrate({
     body: Joi.object({
-        transactionType: Joi.string().default("Cr."),
         transactionAmount: Joi.number().required(),
     }),
     params: Joi.object({

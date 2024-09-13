@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 
-const walletSchema = new Schema({
+const EwalletSchema = new Schema({
     memberId: {
         type: Schema.Types.ObjectId,
         ref: "user",
@@ -34,4 +34,4 @@ const walletSchema = new Schema({
     },
 }, { timestamps: true });
 
-export default new model("wallet", walletSchema);
+export default new model("Ewallet", EwalletSchema);

@@ -1,7 +1,7 @@
 import axios from "axios";
 import payOutModelGenerate from "../../models/payOutGenerate.model.js";
 import payOutModel from "../../models/payOutSuccess.model.js";
-import walletModel from "../../models/wallet.model.js";
+import walletModel from "../../models/Ewallet.model.js";
 import callBackResponse from "../../models/callBackResponse.model.js";
 import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -80,19 +80,31 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     let data = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
-
-
-    //  banking side api call end 
-
-    let userResponse = {
-        status_code: 200,
-        status_msg: "Success",
-        status: "Success",
-        txnid: "43543",
-        optxid: "4543"
+    const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth"
+    const postApiOptions = {
+        headers: {
+            'MemberID': 'MPAPI903851',
+            'TXNPWD': 'AB23'
+        }
+    };
+    const payoutApiDataSend =
+    {
+        txnID: trxId,
+        amount: amount,
+        ifsc: ifscCode,
+        account_no: accountNumber,
+        account_holder_name: accountHolderName,
+        mobile: mobileNumber,
+        response_type: 1
     }
+    axios.post(payOutApi, { payoutApiDataSend }, postApiOptions).then((data) => {
+        let bankServerResp = data?.data
 
-    res.status(200).json(new ApiResponse(200, userResponse))
+        res.status(200).json(new ApiResponse(200, bankServerResp))
+    }).catch((err) => {
+        res.status(500).json({ message: "Failed", data: err.message })
+    })
+    //  banking side api call end 
 });
 
 export const payoutStatusCheck = asyncHandler(async (req, res) => {

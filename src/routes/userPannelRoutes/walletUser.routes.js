@@ -1,11 +1,12 @@
 import express from "express";
 import { eWalletToPayOutTrx, upiToEwalletTrx, upiWalletTrx } from "../../controllers/userPannelControllers/walletUser.controller.js";
+import { userPannelAuth } from "../../middlewares/userPannelAuth.js";
 const router = express.Router();
 
-router.get("/upiWalletTrx", upiWalletTrx);
+router.get("/upiWalletTrx",userPannelAuth, upiWalletTrx);
 
-router.get("/upiToEwalletTrx", upiToEwalletTrx);
+router.get("/upiToEwalletTrx",userPannelAuth, upiToEwalletTrx);
 
-router.get("/eWalletToPayOutTrx", eWalletToPayOutTrx);
+router.get("/eWalletToPayOutTrx",userPannelAuth, eWalletToPayOutTrx);
 
 export default router;
