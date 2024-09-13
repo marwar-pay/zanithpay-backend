@@ -10,6 +10,7 @@ import apiSwitchRoutes from "./routes/adminPannelRoutes/apiSwitch.routes.js";
 import callBackRoutes from "./routes/adminPannelRoutes/callBack.routes.js";
 import walletRoutes from "./routes/adminPannelRoutes/wallet.routes.js";
 import utilityRoutes from "./routes/adminPannelRoutes/utility.routes.js";
+import supportRoutes from "./routes/adminPannelRoutes/support.routes.js";
 import userHandleUser from "./routes/userPannelRoutes/userHandleUser.routes.js";
 import payInUserPannel from "./routes/userPannelRoutes/payInUser.routes.js";
 import payOutUserPannel from "./routes/userPannelRoutes/payOutUser.routes.js";
@@ -65,6 +66,9 @@ app.use("/apiAdmin/v1/wallet/", walletRoutes);
 
 // api utility Route -- Admin
 app.use("/apiAdmin/v1/utility/", utilityRoutes);
+
+// api support Route -- Admin
+app.use("/apiAdmin/v1/support/", supportRoutes);
 
 // api userHandle Route -- User
 app.use("/apiUser/v1/userRoute/", userHandleUser);
