@@ -6,9 +6,9 @@ import { allPendingTicket, getAllTicket, getSingleTicket, updateTicketStatus } f
 
 router.get("/allGenTicket", userVerify, getAllTicket);
 
-router.get("/getSingleTicket/:id", celebrate({
+router.get("/getSingleTicket/:ticketId", celebrate({
     params: Joi.object({
-        id: Joi.string().trim().length(24).required(),
+        ticketId: Joi.string().trim().required(),
     })
 }), userVerify, getSingleTicket);
 
