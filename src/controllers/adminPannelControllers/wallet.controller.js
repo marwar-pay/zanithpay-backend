@@ -15,7 +15,7 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
     res.status(200).json(new ApiResponse(200, pack))
-})
+});
 
 export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
     let pack = await eWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
@@ -28,7 +28,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
     res.status(200).json(new ApiResponse(200, pack))
-})
+});
 
 export const getTransactionStatus = asyncHandler(async (req, res) => {
     let query = req.params.id;
@@ -37,7 +37,7 @@ export const getTransactionStatus = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "No Transaction Found!" })
     }
     res.status(200).json(new ApiResponse(200, pack))
-})
+});
 
 export const upiToEwallet = asyncHandler(async (req, res) => {
     let query = req.params.id;
