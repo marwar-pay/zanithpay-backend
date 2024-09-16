@@ -79,3 +79,56 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
         res.status(400).json({ message: "Failed", data: `Transaction amount grather then upi Wallet Amount : ${userData.upiWalletBalance} !` })
     }
 });
+
+export const eWalletFundCredit = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    const { transactionAmount, transactionType } = req.body;
+    let userData = await userDB.findById(query, "_id userName memberId EwalletBalance");
+    if (!userData) {
+        return res.status(404).json({ message: "Failed", data: "User not Found !" })
+    }
+    // Ewallet fund credit
+    let beforeAmount = userData?.EwalletBalance;
+    let updateUserWallet = beforeAmount + transactionAmount;
+    userData.EwalletBalance = updateUserWallet;
+    await userData.save();
+
+    let Ewallet = await eWalletModel.create({ memberId: userData?._id, transactionType: transactionType, transactionAmount: transactionAmount, beforeAmount: beforeAmount, afterAmount: updateUserWallet, description: `SuccessFully ${transactionType} Amount : ${transactionAmount}`, transactionStatus: "Success" })
+
+    res.status(200).json(new ApiResponse(200, Ewallet))
+});
+
+export const eWalletFundDebit = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    const { transactionAmount, transactionType } = req.body;
+    let userData = await userDB.findById(query, "_id userName memberId EwalletBalance")
+    if (!userData) {
+        return res.status(404).json({ message: "Failed", data: "User not Found !" })
+    }
+
+    // Ewallet fund credit
+    let beforeAmount = userData?.EwalletBalance;
+    let updateUserWallet = beforeAmount - transactionAmount;
+    userData.EwalletBalance = updateUserWallet;
+    await userData.save();
+
+    let Ewallet = await eWalletModel.create({ memberId: userData?._id, transactionType: transactionType, transactionAmount: transactionAmount, beforeAmount: beforeAmount, afterAmount: updateUserWallet, description: `SuccessFully ${transactionType} Amount : ${transactionAmount}`, transactionStatus: "Success" })
+    res.status(200).json(new ApiResponse(200, Ewallet))
+});
+
+export const eWalletMemberHistory = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    let dataEwallet = await eWalletModel.aggregate([{ $match: { $expr: { memberId: query } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+        $unwind: {
+            path: "$userInfo",
+            preserveNullAndEmptyArrays: true,
+        }
+    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "createdAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
+
+
+    // if (dataEwallet.length === 0) {
+    //     return res.status(404).json({ message: "Failed", data: "No Trx Avaible !" })
+    // }
+
+    res.status(200).json(new ApiResponse(200, dataEwallet))
+});
