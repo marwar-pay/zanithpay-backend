@@ -84,7 +84,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     const postApiOptions = {
         headers: {
             'MemberID': 'MPAPI903851',
-            'TXNPWD': 'AB23'
+            'TXNPWD': 'AB23',
+            'Content-Type': 'multipart/form-data'
         }
     };
     const payoutApiDataSend =
@@ -97,7 +98,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         mobile: mobileNumber,
         response_type: 1
     }
-    axios.post(payOutApi, { payoutApiDataSend }, postApiOptions).then((data) => {
+
+    axios.post(payOutApi, payoutApiDataSend, postApiOptions).then((data) => {
         let bankServerResp = data?.data
 
         res.status(200).json(new ApiResponse(200, bankServerResp))

@@ -1,4 +1,5 @@
 import packageModel from "../../models/package.model.js";
+import payOutPackageModel from "../../models/payOutCharge.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -42,4 +43,24 @@ export const deletePackage = asyncHandler(async (req, res) => {
         return res.status(400).json(new ApiError(400, "Package Not Found !"))
     }
     res.status(200).json(new ApiResponse(200, quaryFind))
+})
+
+export const getPayOutPackage = asyncHandler(async (req, res) => {
+    let quaryFind = await payOutPackageModel.find()
+    if (!quaryFind) {
+        return res.status(400).json(new ApiError(400, "Package Not Found !"))
+    }
+    res.status(200).json(new ApiResponse(200, quaryFind))
+})
+
+export const addPayOutPackage = asyncHandler(async (req, res) => {
+    let quaryFind = await payOutPackageModel.create(req.body)
+    res.status(201).json(new ApiResponse(200, quaryFind))
+})
+
+export const updatePayOutPackage = asyncHandler(async (req, res) => {
+    let packageId = req.params.id;
+    const packUpdate = req.body;
+    let quaryFind = await payOutPackageModel.findByIdAndUpdate(packageId, { ...packUpdate }, { new: true });
+    res.status(200).json(new ApiResponse(200, { dataOld: quaryFind }))
 })
