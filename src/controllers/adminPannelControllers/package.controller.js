@@ -62,5 +62,5 @@ export const updatePayOutPackage = asyncHandler(async (req, res) => {
     let packageId = req.params.id;
     const packUpdate = req.body;
     let quaryFind = await payOutPackageModel.findByIdAndUpdate(packageId, { ...packUpdate }, { new: true });
-    res.status(200).json(new ApiResponse(200, { dataOld: quaryFind }))
+    res.status(200).json(new ApiResponse(200, quaryFind))
 })
