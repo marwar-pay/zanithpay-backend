@@ -15,9 +15,9 @@ export const getUserList = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, userInfo))
 })
 
-export const getUserListWithUpiWallet = asyncHandler(async (req, res) => {
+export const getUserListWithWallet = asyncHandler(async (req, res) => {
     let userInfo = await userDB.aggregate([{ $match: { memberType: "Users" } }, {
-        $project: { "_id": 1, "memberId": 1, "fullName": 1, "upiWalletBalance": 1 }
+        $project: { "_id": 1, "memberId": 1, "fullName": 1, "upiWalletBalance": 1,"EwalletBalance": 1 }
     }, { $sort: { createdAt: -1 } }])
     if (!userInfo.length) {
         return res.status(400).json({ message: "Failed", data: "Not Active User Avabile !" })

@@ -1,11 +1,11 @@
 import express from "express";
 import { userVerify } from "../../middlewares/userAuth.js";
-import { getPackageList, getPayInApiList, getPayOutApiList, getUserList, getUserListWithUpiWallet } from "../../controllers/adminPannelControllers/utility.controller.js";
+import { getPackageList, getPayInApiList, getPayOutApiList, getUserList, getUserListWithWallet } from "../../controllers/adminPannelControllers/utility.controller.js";
 const router = express.Router();
 
 router.get("/getUserList", userVerify, getUserList);
 
-router.get("/getUserWithUpiWallet", userVerify, getUserListWithUpiWallet);
+router.get("/getUserWithWallet", userVerify, getUserListWithWallet);
 
 router.get("/getPackageList", userVerify, getPackageList);
 

@@ -1,12 +1,9 @@
 import { Schema, model } from "mongoose";
 
 const payOutPackageSchema = new Schema({
-    packageName: {
+    payOutPackageName: {
         type: String,
-        required: [true, "Please Enter Package Name !"]
-    },
-    packageInfo: {
-        type: String,
+        required: [true, "Please Enter PayoutPackage Name !"]
     },
     payOutChargeRange: [{
         lowerLimit: {

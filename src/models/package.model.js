@@ -9,8 +9,9 @@ const packageSchema = new Schema({
         type: String,
     },
     packagePayOutCharge: {
-        type: Number,
-        required: [true, "Required Payout Charges!"]
+        type: Schema.Types.ObjectId,
+        ref: "payoutpackages",
+        required: [true, "Please Select Payout Package !"]
     },
     packagePayInCharge: {
         type: Number,

@@ -36,7 +36,7 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 export const generatePayOut = asyncHandler(async (req, res) => {
     const { memberId, trxPassword, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount } = req.body;
 
-    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }] } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }, { isActive: true }] } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
         $unwind: {
             path: "$payOutApi",
             preserveNullAndEmptyArrays: true,
@@ -46,17 +46,44 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             path: "$package",
             preserveNullAndEmptyArrays: true,
         }
+    }, { $lookup: { from: "payoutpackages", localField: "package.packagePayOutCharge", foreignField: "_id", as: "packageCharge" } }, {
+        $unwind: {
+            path: "$packageCharge",
+            preserveNullAndEmptyArrays: true,
+        }
     }, {
-        $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "minWalletBalance": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1, "package._id": 1, "package.packageName": 1, "package.packagePayOutCharge": 1, "package.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
+        $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "minWalletBalance": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1, "package._id": 1, "package.packageName": 1, "packageCharge._id": 1, "packageCharge.payOutChargeRange": 1, "packageCharge.isActive": 1 }
     }])
 
     if (user.length === 0) {
-        return res.status(401).json({ message: "Failed", date: "Invalid Credentials !" })
+        return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
     }
 
-    let userChargeApply = (user[0]?.package?.packagePayOutCharge / 100) * amount;
-    let userUseAbelBalance = user[0]?.EwalletBalance - user[0]?.minWalletBalance;
-    let finalAmountDeduct = amount + userChargeApply;
+    let chargeRange = user[0]?.packageCharge?.payOutChargeRange;
+    let chargeType;
+    let chargeAmout;
+
+    chargeRange.forEach((value) => {
+        if (value.lowerLimit <= amount && value.upperLimit > amount) {
+            chargeType = value.chargeType
+            chargeAmout = value.charge
+            return 0;
+        }
+    })
+
+    let userChargeApply;
+    let userUseAbelBalance;
+    let finalAmountDeduct;
+
+    if (chargeType === "Flat") {
+        userChargeApply = chargeAmout;
+        userUseAbelBalance = user[0]?.EwalletBalance - user[0]?.minWalletBalance;
+        finalAmountDeduct = amount + userChargeApply;
+    } else {
+        userChargeApply = (chargeAmout / 100) * amount;
+        userUseAbelBalance = user[0]?.EwalletBalance - user[0]?.minWalletBalance;
+        finalAmountDeduct = amount + userChargeApply;
+    }
 
     if (finalAmountDeduct > user[0]?.EwalletBalance) {
         return res.status(400).json({ message: "Failed", date: `Insufficient Fund usable Amount: ${userUseAbelBalance}` })
@@ -80,7 +107,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     let data = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
-    const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth"
+    const payOutApi = user[0]?.payOutApi?.apiURL;
     const postApiOptions = {
         headers: {
             'MemberID': 'MPAPI903851',
@@ -101,7 +128,6 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
     axios.post(payOutApi, payoutApiDataSend, postApiOptions).then((data) => {
         let bankServerResp = data?.data
-
         res.status(200).json(new ApiResponse(200, bankServerResp))
     }).catch((err) => {
         res.status(500).json({ message: "Failed", data: err.message })

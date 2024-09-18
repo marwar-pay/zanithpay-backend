@@ -23,7 +23,7 @@ router.post("/addPackage", celebrate({
     body: Joi.object({
         packageName: Joi.string().required(),
         packageInfo: Joi.string().optional(),
-        packagePayOutCharge: Joi.number().required(),
+        packagePayOutCharge: Joi.string().trim().length(24).required(),
         packagePayInCharge: Joi.number().required(),
         isActive: Joi.boolean().optional(),
     })
@@ -33,7 +33,7 @@ router.post("/updatePackage/:id", celebrate({
     body: Joi.object({
         packageName: Joi.string().optional(),
         packageInfo: Joi.string().optional(),
-        packagePayOutCharge: Joi.number().optional(),
+        packagePayOutCharge: Joi.string().trim().length(24).optional(),
         packagePayInCharge: Joi.number().optional(),
         isActive: Joi.boolean().optional(),
     }),
@@ -52,7 +52,7 @@ router.get("/getPayOutPackage", userVerify, getPayOutPackage);
 
 router.post("/addPayOutPackage", celebrate({
     body: Joi.object({
-        packageName: Joi.string().required(),
+        payOutPackageName: Joi.string().required(),
         payOutChargeRange: Joi.array().items(payoutCharge).required(),
         isActive: Joi.boolean().default(true),
     })
@@ -60,7 +60,7 @@ router.post("/addPayOutPackage", celebrate({
 
 router.post("/updatePayOutPackage/:id", celebrate({
     body: Joi.object({
-        packageName: Joi.string().optional(),
+        payOutPackageName: Joi.string().optional(),
         payOutChargeRange: Joi.array().items(payoutCharge).optional(),
         isActive: Joi.boolean().optional(),
     }),
