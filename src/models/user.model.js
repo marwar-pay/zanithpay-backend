@@ -50,7 +50,7 @@ const userSchema = new Schema({
     },
     payOutApi: {
         type: Schema.Types.ObjectId,
-        ref: "payinswitchs",
+        ref: "payoutswitches",
     },
     refreshToken: {
         type: String

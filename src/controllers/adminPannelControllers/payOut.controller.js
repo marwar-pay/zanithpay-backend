@@ -195,21 +195,16 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         getDocoment.isSuccess = "Success"
         await getDocoment.save();
 
-        let userInfo = await userDB.aggregate([{ $match: { _id: getDocoment?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
-            $unwind: {
-                path: "$package",
-                preserveNullAndEmptyArrays: true,
-            }
-        }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+        let userInfo = await userDB.aggregate([{ $match: { _id: getDocoment?.memberId } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
             $unwind: {
                 path: "$payOutApi",
                 preserveNullAndEmptyArrays: true,
             }
         }, {
-            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "EwalletBalance": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayOutCharge": 1, "package.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
+            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
         }]);
 
-        let chargePaymentGatway = (userInfo[0]?.package.packagePayOutCharge / 100) * getDocoment?.amount;
+        let chargePaymentGatway = getDocoment?.afterChargeAmount - getDocoment?.amount;
         let mainAmount = getDocoment?.amount;
 
         let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
@@ -226,7 +221,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         }
 
         // update the user wallet balance 
-        userWalletInfo.EwalletBalance -= data?.amount
+        userWalletInfo.EwalletBalance -= getDocoment?.afterChargeAmount
         await userWalletInfo.save();
 
         let storeTrx = await walletModel.create(walletModelDataStore)
@@ -235,7 +230,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             memberId: getDocoment?.memberId,
             amount: mainAmount,
             chargeAmount: chargePaymentGatway,
-            finalAmount: data?.amount,
+            finalAmount: getDocoment?.afterChargeAmount,
             bankRRN: data?.rrn,
             trxId: data?.txnid,
             optxId: data?.optxid,
