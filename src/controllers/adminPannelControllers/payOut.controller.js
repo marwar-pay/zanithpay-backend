@@ -107,11 +107,12 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     let data = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
-    const payOutApi = user[0]?.payOutApi?.apiURL;
+    // const payOutApi = user[0]?.payOutApi?.apiURL;
+    const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth";
     const postApiOptions = {
         headers: {
-            'MemberID': 'MPAPI903851',
-            'TXNPWD': 'AB23',
+            'MemberID': memberId,
+            'TXNPWD': trxPassword,
             'Content-Type': 'multipart/form-data'
         }
     };
@@ -128,9 +129,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
     axios.post(payOutApi, payoutApiDataSend, postApiOptions).then((data) => {
         let bankServerResp = data?.data
-        res.status(200).json(new ApiResponse(200, bankServerResp))
+        return res.status(200).json(new ApiResponse(200, bankServerResp))
     }).catch((err) => {
-        res.status(500).json({ message: "Failed", data: err.message })
+        return res.status(500).json({ message: "Failed", data: err.message })
     })
     //  banking side api call end 
 });
@@ -248,13 +249,29 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
 
         let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
         // Calling the user callback and send the response to the user 
-        console.log(payOutUserCallBackURL, "user store callback url")
+        const config = {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
 
-        let apiResponseData = { userResponse, payoutDataStore }
+        let userResp = {
+            status: req.body.status,
+            txnid: req.body.txnid,
+            optxid: req.body.optxid,
+            amount: req.body.amount,
+            rrn: req.body.rrn,
+        }
+        let jsonConvt = JSON.stringify(userResp);
+        axios.post(payOutUserCallBackURL, jsonConvt, config).then((data) => {
+            return res.status(200).json(new ApiResponse(200, data))
+        }).catch((err) => {
+            return res.status(400).json({ success: "Failed", message: err })
+        })
 
         // end the user callback calling and send response 
-        return res.status(200).json(new ApiResponse(200, apiResponseData))
+    } else {
+        res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
     }
 
-    res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
 });

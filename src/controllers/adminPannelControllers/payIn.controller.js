@@ -51,7 +51,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 export const generatePayment = asyncHandler(async (req, res) => {
     const { memberId, trxPassword, name, amount, trxId } = req.body
 
-    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, { $project: { "_id": 1, "memberId": 1, "trxPassword": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.apiURL": 1, "payInApi.isActive": 1 } }, {
+    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, { $project: { "_id": 1, "memberId": 1, "trxPassword": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.apiURL": 1, "payInApi.isActive": 1 } }, {
         $unwind: {
             path: "$payInApi",
             preserveNullAndEmptyArrays: true,
@@ -59,7 +59,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
     }])
 
     if (user.length === 0) {
-        return res.status(400).json({ message: "Failed", data: "Invalid User Please change again !" })
+        return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please change again !" })
     }
 
     // Api Switch Database and added 
@@ -139,7 +139,7 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
         await data.save()
         res.status(200).json(new ApiResponse(200, data))
     })
-})
+});
 
 export const callBackResponse = asyncHandler(async (req, res) => {
     let callBackData = req.body;
@@ -206,4 +206,4 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
     }
 
-})
+});
