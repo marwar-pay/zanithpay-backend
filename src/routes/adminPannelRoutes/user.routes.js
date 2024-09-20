@@ -24,7 +24,7 @@ router.post("/addUser", celebrate({
         payInApi: Joi.string().optional(),
         payOutApi: Joi.string().optional(),
         trxPassword: Joi.string().required(),
-        package: Joi.string().required(),
+        package: Joi.string().optional(),
         addresh: Joi.object({
             country: Joi.string().required(),
             state: Joi.string().required(),
@@ -35,7 +35,7 @@ router.post("/addUser", celebrate({
         minWalletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
-}), userVerify, userAuthAdmin, addUser)
+}), addUser)
 
 router.post("/updateUser/:id", celebrate({
     body: Joi.object({

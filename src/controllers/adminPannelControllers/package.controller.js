@@ -53,6 +53,15 @@ export const getPayOutPackage = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, quaryFind))
 })
 
+export const getSinglePayOutPackage = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    let pack = await payOutPackageModel.findById(query);
+    if (!pack) {
+        return new ApiError(400, "No Package Avabile !")
+    }
+    res.status(200).json(new ApiResponse(200, pack))
+})
+
 export const addPayOutPackage = asyncHandler(async (req, res) => {
     let quaryFind = await payOutPackageModel.create(req.body)
     res.status(201).json(new ApiResponse(200, quaryFind))

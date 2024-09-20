@@ -1,5 +1,5 @@
 import express from "express";
-import { addPackage, addPayOutPackage, deletePackage, getPackage, getPayOutPackage, getSinglePackage, updatePackage, updatePayOutPackage } from "../../controllers/adminPannelControllers/package.controller.js";
+import { addPackage, addPayOutPackage, deletePackage, getPackage, getPayOutPackage, getSinglePackage, getSinglePayOutPackage, updatePackage, updatePayOutPackage } from "../../controllers/adminPannelControllers/package.controller.js";
 import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
@@ -49,6 +49,12 @@ router.delete("/deletePackage/:id", celebrate({
 }), userVerify, deletePackage);
 
 router.get("/getPayOutPackage", userVerify, getPayOutPackage);
+
+router.get("/getSinglePayOutPackage/:id", celebrate({
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, getSinglePayOutPackage);
 
 router.post("/addPayOutPackage", celebrate({
     body: Joi.object({

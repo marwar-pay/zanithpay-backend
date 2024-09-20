@@ -150,9 +150,9 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
 
-    if (pack?.callBackStatus !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
-    }
+    // if (pack?.callBackStatus !== "Pending") {
+    //     return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
+    // }
 
     if (pack && data?.BankRRN) {
         pack.callBackStatus = "Success"
@@ -163,13 +163,8 @@ export const callBackResponse = asyncHandler(async (req, res) => {
                 path: "$package",
                 preserveNullAndEmptyArrays: true,
             }
-        }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
-            $unwind: {
-                path: "$payInApi",
-                preserveNullAndEmptyArrays: true,
-            }
         }, {
-            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayInCharge": 1, "package.isActive": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.apiURL": 1, "payInApi.isActive": 1 }
+            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayInCharge": 1, "package.isActive": 1 }
         }])
 
         let gatwarCharge = (userInfo[0]?.package?.packagePayInCharge / 100) * data.payerAmount;
@@ -187,11 +182,28 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         // callback send to the user url
         let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
         const userCallBackURL = callBackPayinUrl[0]?.payInCallBackUrl;
-        await axios.get(userCallBackURL);
+        const config = {
+            'Content-Type': 'application/json',
+        };
+        let userResp = {
+            status: req.body.status,
+            payerAmount: req.body.payerAmount,
+            payerName: req.body.payerName,
+            txnID: req.body.txnID,
+            BankRRN: req.body.BankRRN,
+            payerVA: req.body.payerVA,
+            TxnInitDate: req.body.TxnInitDate,
+            TxnCompletionDate: req.body.TxnCompletionDate,
+        }
+        let jsonConvt = JSON.stringify(userResp);
+        axios.post(userCallBackURL, jsonConvt, config).then((data) => {
+            return res.status(200).json(new ApiResponse(200, data))
+        }).catch((err) => {
+            return res.status(400).json({ success: "Failed", message: err.message })
+        })
         // callback end to the user url
-
-        return res.status(200).json(new ApiResponse(200, payinDataStore))
+    } else {
+        return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
     }
 
-    res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
 })

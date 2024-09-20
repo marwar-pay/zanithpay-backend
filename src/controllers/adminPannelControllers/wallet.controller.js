@@ -73,8 +73,8 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
             transactionStatus: "Success",
         }
         let eWalletStore = await eWalletModel.create(trxStoreEwallet);
-        let upiWalletStore = await upiWalletModel.create(trxStoreUpiWallet);
-        res.status(200).json(new ApiResponse(200, { eWalletStore, upiWalletStore }))
+        await upiWalletModel.create(trxStoreUpiWallet);
+        res.status(200).json(new ApiResponse(200, eWalletStore))
     } else {
         res.status(400).json({ message: "Failed", data: `Transaction amount grather then upi Wallet Amount : ${userData.upiWalletBalance} !` })
     }
