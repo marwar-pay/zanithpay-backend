@@ -20,7 +20,7 @@ router.post("/updateProfile/:id", celebrate({
     body: Joi.object({
         fullName: Joi.string().optional(),
         mobileNumber: Joi.string().optional(),
-        email: Joi.number().optional(),
+        email: Joi.string().optional(),
     }),
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
