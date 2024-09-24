@@ -4,6 +4,7 @@ const callBackResponseURL = new Schema({
     memberId: {
         type: Schema.Types.ObjectId,
         ref: "users",
+        unique: true,
         required: [true, "Please Select Member Id !"]
     },
     payInCallBackUrl: {
