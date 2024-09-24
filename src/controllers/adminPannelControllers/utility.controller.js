@@ -1,5 +1,6 @@
 import userDB from "../../models/user.model.js";
 import packageModel from "../../models/package.model.js";
+import payOutChargeModel from "../../models/payOutCharge.model.js";
 import apiPayInModel from "../../models/apiPayInSwitch.model.js";
 import ticketInModel from "../../models/supportTicket.model.js";
 import apiPayOutModel from "../../models/apiPayOutSwitch.model.js";
@@ -85,4 +86,15 @@ export const getPendingTicketList = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "Not Pending Ticket Found !" })
     }
     res.status(200).json(new ApiResponse(200, apiPayIn))
+})
+
+export const getPayOutPackageList = asyncHandler(async (req, res) => {
+    let payoutPackage = await payOutChargeModel.aggregate([{ $match: { isActive: true } }, {
+        $project: { "_id": 1, "payOutPackageName": 1, }
+    }, { $sort: { createdAt: -1 } }])
+
+    if (!payoutPackage.length) {
+        return res.status(400).json({ message: "Failed", data: "No Payout package Found !" })
+    }
+    res.status(200).json(new ApiResponse(200, payoutPackage))
 })

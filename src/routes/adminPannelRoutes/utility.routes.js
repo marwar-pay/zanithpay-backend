@@ -1,6 +1,6 @@
 import express from "express";
 import { userVerify } from "../../middlewares/userAuth.js";
-import { getAllGenTicketList, getAllMemberList, getPackageList, getPayInApiList, getPayOutApiList, getPendingTicketList, getUserList, getUserListWithWallet } from "../../controllers/adminPannelControllers/utility.controller.js";
+import { getAllGenTicketList, getAllMemberList, getPackageList, getPayInApiList, getPayOutApiList, getPayOutPackageList, getPendingTicketList, getUserList, getUserListWithWallet } from "../../controllers/adminPannelControllers/utility.controller.js";
 const router = express.Router();
 
 router.get("/getUserList", userVerify, getUserList);
@@ -18,5 +18,7 @@ router.get("/getPayOutApiList", userVerify, getPayOutApiList);
 router.get("/getAllGenTicketList", userVerify, getAllGenTicketList);
 
 router.get("/getPendingTicketList", userVerify, getPendingTicketList);
+
+router.get("/getPayOutPackageList", userVerify, getPayOutPackageList);
 
 export default router;
