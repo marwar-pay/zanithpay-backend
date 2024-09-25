@@ -49,8 +49,8 @@ router.post("/updateUser/:id", celebrate({
         payInApi: Joi.string().optional(),
         payOutApi: Joi.string().optional(),
         trxPassword: Joi.string().optional(),
-        addresh: Joi.string().optional(),
-        package: Joi.object({
+        package: Joi.string().optional(),
+        addresh: Joi.object({
             country: Joi.string().optional(),
             state: Joi.string().optional(),
             city: Joi.string().optional(),
@@ -73,7 +73,7 @@ router.post("/login", celebrate({
     })
 }), loginUser)
 
-router.get("/authTokenReVerify",authTokenReVerify)
+router.get("/authTokenReVerify", authTokenReVerify)
 
 router.post("/register", celebrate({
     body: Joi.object({
