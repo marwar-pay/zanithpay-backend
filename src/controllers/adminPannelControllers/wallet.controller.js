@@ -119,25 +119,30 @@ export const eWalletFundDebit = asyncHandler(async (req, res) => {
 });
 
 export const getSettlementAmountAll = asyncHandler(async (req, res) => {
-    let dateStart = new Date("2024-09-26T09:34:32.073Z")
-    let dateEnd = new Date("2024-09-20T07:20:00.073Z")
-    let dataEwallet = await payInModel.aggregate([{ $match: { createdAt: { $gte: dateEnd, $lt: dateStart } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } }, { $group: { _id: "$userInfo.fullName", amount: { $sum: "$finalAmount" } } }, { $sort: { amount: -1 } }]);
+    const { startTimeAndDate, endTimeAndDate } = req.body;
+    let dateStart = new Date(startTimeAndDate)
+    let dateEnd = new Date(endTimeAndDate)
+    let dataEwallet = await payInModel.aggregate([{ $match: { createdAt: { $gte: dateStart, $lt: dateEnd } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } }, { $group: { _id: "$userInfo.fullName", amount: { $sum: "$finalAmount" } } }, { $sort: { amount: -1 } }]);
 
 
     if (dataEwallet.length === 0) {
         return res.status(404).json({ message: "Failed", data: "No Settlement Amount Avabile !" })
     }
 
-    res
-        .status(200).json(new ApiResponse(200, { dataEwallet }))
+    res.status(200).json(new ApiResponse(200, { dataEwallet }))
 });
 
 export const getSettlementAmountOne = asyncHandler(async (req, res) => {
     let query = req.params.id;
-    console.log(query)
+    const { startTimeAndDate, endTimeAndDate } = req.body;
+    let dateStart = new Date(startTimeAndDate)
+    let dateEnd = new Date(endTimeAndDate)
     let dataEwallet = await payInModel.aggregate([{
         $match: {
-            memberId: new mongoose.Types.ObjectId(query)
+            $and: [{
+                memberId: new mongoose.Types.ObjectId(query)
+            }, { createdAt: { $gte: dateStart, $lt: dateEnd } }
+            ]
         }
     }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } }, { $group: { _id: "$userInfo.fullName", amount: { $sum: "$finalAmount" } } }]);
 

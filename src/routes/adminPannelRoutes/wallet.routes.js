@@ -43,9 +43,18 @@ router.post("/eWalletFundDebit/:id", celebrate({
     })
 }), userVerify, eWalletFundDebit);
 
-router.get("/getSettlementAmountAll", userVerify, getSettlementAmountAll);
+router.post("/getSettlementAmountAll", celebrate({
+    body: Joi.object({
+        startTimeAndDate: Joi.date().iso().required(),
+        endTimeAndDate: Joi.date().iso().required(),
+    })
+}), userVerify, getSettlementAmountAll);
 
-router.get("/getSettlementAmountOne/:id", celebrate({
+router.post("/getSettlementAmountOne/:id", celebrate({
+    body: Joi.object({
+        startTimeAndDate: Joi.date().iso().required(),
+        endTimeAndDate: Joi.date().iso().required(),
+    }),
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
     })
