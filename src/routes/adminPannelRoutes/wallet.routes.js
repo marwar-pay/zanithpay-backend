@@ -2,7 +2,7 @@ import express from "express";
 import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { eWalletFundCredit, eWalletFundDebit, eWalletMemberHistory, getAllTransactionEwallet, getAllTransactionUpi, getTransactionStatus, upiToEwallet } from "../../controllers/adminPannelControllers/wallet.controller.js";
+import { eWalletFundCredit, eWalletFundDebit, getAllTransactionEwallet, getAllTransactionUpi, getSettlementAmountAll, getSettlementAmountOne, getTransactionStatus, upiToEwallet } from "../../controllers/adminPannelControllers/wallet.controller.js";
 
 router.get("/getAllTransactionUpi", userVerify, getAllTransactionUpi);
 
@@ -43,10 +43,12 @@ router.post("/eWalletFundDebit/:id", celebrate({
     })
 }), userVerify, eWalletFundDebit);
 
-router.get("/eWalletMember/:id", celebrate({
+router.get("/getSettlementAmountAll", userVerify, getSettlementAmountAll);
+
+router.get("/getSettlementAmountOne/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
     })
-}), userVerify, eWalletMemberHistory);
+}), userVerify, getSettlementAmountOne);
 
 export default router;

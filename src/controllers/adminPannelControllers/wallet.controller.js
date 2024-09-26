@@ -1,8 +1,10 @@
 import eWalletModel from "../../models/Ewallet.model.js";
 import upiWalletModel from "../../models/upiWallet.model.js";
+import payInModel from "../../models/payIn.model.js";
 import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import mongoose from "mongoose";
 
 export const getAllTransactionUpi = asyncHandler(async (req, res) => {
     let pack = await eWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
@@ -116,19 +118,32 @@ export const eWalletFundDebit = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, Ewallet))
 });
 
-export const eWalletMemberHistory = asyncHandler(async (req, res) => {
+export const getSettlementAmountAll = asyncHandler(async (req, res) => {
+    let dateStart = new Date("2024-09-26T09:34:32.073Z")
+    let dateEnd = new Date("2024-09-20T07:20:00.073Z")
+    let dataEwallet = await payInModel.aggregate([{ $match: { createdAt: { $gte: dateEnd, $lt: dateStart } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } }, { $group: { _id: "$userInfo.fullName", amount: { $sum: "$finalAmount" } } }, { $sort: { amount: -1 } }]);
+
+
+    if (dataEwallet.length === 0) {
+        return res.status(404).json({ message: "Failed", data: "No Settlement Amount Avabile !" })
+    }
+
+    res
+        .status(200).json(new ApiResponse(200, { dataEwallet }))
+});
+
+export const getSettlementAmountOne = asyncHandler(async (req, res) => {
     let query = req.params.id;
-    let dataEwallet = await eWalletModel.aggregate([{ $match: { $expr: { memberId: query } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    console.log(query)
+    let dataEwallet = await payInModel.aggregate([{
+        $match: {
+            memberId: new mongoose.Types.ObjectId(query)
         }
-    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "createdAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
+    }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } }, { $group: { _id: "$userInfo.fullName", amount: { $sum: "$finalAmount" } } }]);
 
-
-    // if (dataEwallet.length === 0) {
-    //     return res.status(404).json({ message: "Failed", data: "No Trx Avaible !" })
-    // }
+    if (dataEwallet.length === 0) {
+        return res.status(404).json({ message: "Failed", data: "No Settlement Amount Avaible !" })
+    }
 
     res.status(200).json(new ApiResponse(200, dataEwallet))
 });
