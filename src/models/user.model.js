@@ -5,7 +5,6 @@ const userSchema = new Schema({
     userName: {
         type: String,
         unique: true,
-        lowercase: true,
         trim: true,
         index: true,
         required: [true, "Please Enter username !"]
@@ -17,7 +16,7 @@ const userSchema = new Schema({
     },
     memberType: {
         type: String,
-        enum: ["Admin", "Manager","Users"],
+        enum: ["Admin", "Manager", "Users"],
         required: [true, "Please Select member Type !"]
     },
     fullName: {

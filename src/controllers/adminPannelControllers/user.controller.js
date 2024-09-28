@@ -27,7 +27,7 @@ export const getUser = asyncHandler(async (req, res) => {
             path: "$package",
             preserveNullAndEmptyArrays: true,
         },
-    }]).then((data) => {
+    }, { $sort: { createdAt: -1 } }]).then((data) => {
         res.status(200).json(new ApiResponse(200, data))
     })
 })
