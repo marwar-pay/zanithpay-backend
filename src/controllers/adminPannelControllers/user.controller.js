@@ -30,7 +30,7 @@ export const getUser = asyncHandler(async (req, res) => {
     }, { $sort: { createdAt: -1 } }]).then((data) => {
         res.status(200).json(new ApiResponse(200, data))
     })
-})
+});
 
 export const getSingleUser = asyncHandler(async (req, res) => {
     let data = req.params.id
@@ -39,7 +39,7 @@ export const getSingleUser = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "User Not Avabile" })
     }
     res.status(200).json(new ApiResponse(200, user))
-})
+});
 
 export const addUser = asyncHandler(async (req, res) => {
     let storeData = req.body;
@@ -53,7 +53,7 @@ export const addUser = asyncHandler(async (req, res) => {
     }).catch((err) => {
         res.status(500).json({ message: "Failed", data: err.message })
     })
-})
+});
 
 export const updateUser = asyncHandler(async (req, res) => {
     let id = req.params.id
@@ -62,7 +62,7 @@ export const updateUser = asyncHandler(async (req, res) => {
     }).catch((err) => {
         res.status(500).json({ message: "Failed", data: err.message })
     })
-})
+});
 
 export const loginUser = asyncHandler(async (req, res) => {
     let { username, password } = req.body;
@@ -82,7 +82,7 @@ export const loginUser = asyncHandler(async (req, res) => {
         new ApiResponse(200, storeValue, "User logged In Successfully")
     )
 
-})
+});
 
 export const authTokenReVerify = asyncHandler(async (req, res) => {
     let { username, password } = req.body;
@@ -101,7 +101,7 @@ export const authTokenReVerify = asyncHandler(async (req, res) => {
         new ApiResponse(200, storeValue, "User logged In Successfully")
     )
 
-})
+});
 
 export const registerUser = asyncHandler(async (req, res) => {
     bcrypt.hash(myPlaintextPassword, process.env.SALTROUND_BCRYPT, function (err, hash) {
@@ -116,11 +116,11 @@ export const registerUser = asyncHandler(async (req, res) => {
             data
         })
     })
-})
+});
 
 export const logOut = asyncHandler(async (req, res) => {
     let userInfo = await userDB.findById(req.user._id);
     userInfo.refreshToken = undefined;
     await userInfo.save();
     res.clearCookie("accessToken").clearCookie("refreshToken").status(200).json(new ApiResponse(200, null, "User logged Out Successfully"))
-})
+});
