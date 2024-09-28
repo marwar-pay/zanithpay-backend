@@ -5,7 +5,13 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const getPackage = asyncHandler(async (req, res) => {
-    let pack = await packageModel.find();
+    let pack = await packageModel.aggregate([{ $lookup: { from: "payoutpackages", localField: "packagePayOutCharge", foreignField: "_id", as: "payOutPackage" } },
+    {
+        $unwind: {
+            path: "$payOutPackage",
+            preserveNullAndEmptyArrays: true,
+        }
+    }, { $project: { "_id": 1, "packageName": 1, "packageInfo": 1, "packagePayOutCharge": 1, "packagePayInCharge": 1, "isActive": 1, "createdAt": 1, "payOutPackage._id": 1, "payOutPackage.payOutPackageName": 1, } }]);
     if (!pack) {
         return new ApiError(400, "No Package Avabile !")
     }
