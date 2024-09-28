@@ -42,15 +42,25 @@ export const getSingleUser = asyncHandler(async (req, res) => {
 })
 
 export const addUser = asyncHandler(async (req, res) => {
-    let user = await userDB.create(req.body).then((data) => {
-        res.status(201).json(new ApiResponse(201, data))
+    let storeData = req.body;
+    let date = new Date().getTime()
+    storeData.userName = `M${date}`
+    storeData.memberId = `M${date}`
+    storeData.password = `PA${date}`
+    storeData.trxPassword = `PTX${date}`
+    let user = await userDB.create(storeData).then((data) => {
+        res.status(201).json(new ApiResponse(201, data, "User Created Succesfully !"))
+    }).catch((err) => {
+        res.status(500).json({ message: "Failed", data: err.message })
     })
 })
 
 export const updateUser = asyncHandler(async (req, res) => {
     let id = req.params.id
-    let user = await userDB.findByIdAndUpdate(id, req.body).then((data) => {
+    let user = await userDB.findByIdAndUpdate(id, req.body, { new: true }).then((data) => {
         res.status(200).json(new ApiResponse(200, data))
+    }).catch((err) => {
+        res.status(500).json({ message: "Failed", data: err.message })
     })
 })
 

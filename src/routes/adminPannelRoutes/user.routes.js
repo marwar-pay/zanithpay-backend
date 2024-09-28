@@ -14,16 +14,12 @@ router.get("/userProfile/:id", celebrate({
 
 router.post("/addUser", celebrate({
     body: Joi.object({
-        userName: Joi.string().required(),
-        memberId: Joi.string().required(),
-        memberType: Joi.string().valid("Admin", "SuperAdmin", "ApiUser", "MasterDistributor", "Distributor", "Retailer", "Users").required(),
+        memberType: Joi.string().valid("Admin", "Manager", "Users").required(),
         fullName: Joi.string().required(),
         email: Joi.string().required(),
         mobileNumber: Joi.string().required(),
-        password: Joi.string().required(),
         payInApi: Joi.string().optional(),
         payOutApi: Joi.string().optional(),
-        trxPassword: Joi.string().required(),
         package: Joi.string().optional(),
         addresh: Joi.object({
             country: Joi.string().required(),
@@ -39,16 +35,12 @@ router.post("/addUser", celebrate({
 
 router.post("/updateUser/:id", celebrate({
     body: Joi.object({
-        userName: Joi.string().optional(),
-        memberId: Joi.string().optional(),
-        memberType: Joi.string().valid("Admin", "SuperAdmin", "ApiUser", "MasterDistributor", "Distributor", "Retailer", "Users").optional(),
+        memberType: Joi.string().valid("Admin", "Manager", "Users").optional(),
         fullName: Joi.string().optional(),
         email: Joi.string().optional(),
         mobileNumber: Joi.string().optional(),
-        password: Joi.string().optional(),
         payInApi: Joi.string().optional(),
         payOutApi: Joi.string().optional(),
-        trxPassword: Joi.string().optional(),
         package: Joi.string().optional(),
         addresh: Joi.object({
             country: Joi.string().optional(),
