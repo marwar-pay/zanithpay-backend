@@ -16,6 +16,11 @@ export const userVerify = asyncHandler(async (req, res, next) => {
         if (!user) {
             throw new ApiError(401, "Invalid Access Token")
         }
+
+        if (user.isActive !== true && memberType !== "Admin") {
+            throw new ApiError(401, "Don't have permission to access this resource !")
+        }
+
         req.user = user;
         next();
     } catch (error) {
@@ -25,7 +30,7 @@ export const userVerify = asyncHandler(async (req, res, next) => {
 
 export const userAuthAdmin = asyncHandler((req, res, next) => {
     const isAdmin = req.user?.memberType
-    try {    
+    try {
         if (isAdmin === "SuperAdmin" || isAdmin === "Admin") {
             next();
         } else {

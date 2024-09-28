@@ -66,12 +66,13 @@ export const updateUser = asyncHandler(async (req, res) => {
 
 export const loginUser = asyncHandler(async (req, res) => {
     let { username, password } = req.body;
-    let user = await userDB.aggregate([{ $match: { userName: username } }, { $project: { "_id": 1, "userName": 1, "memberId": 1, "memberType": 1, "password": 1, "isActive": 1 } }])
+    let user = await userDB.aggregate([{ $match: { userName: username, password: password, memberType: "Admin" } }, { $project: { "_id": 1, "userName": 1, "memberId": 1, "memberType": 1, "password": 1, "isActive": 1 } }])
     if (!user?.length) {
         return res.status(404).json({ message: "Failed", data: "Invalid Credential Try Again !" })
     }
-    if (user[0]?.password !== password) {
-        return res.status(404).json({ message: "Failed", data: "Invalid Credential Try Again !" })
+
+    if (user[0]?.isActive !== true) {
+        return res.status(404).json({ message: "Failed", data: "User Status is Not Active" })
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(user[0]._id)
