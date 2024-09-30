@@ -51,36 +51,16 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 export const generatePayment = asyncHandler(async (req, res) => {
     const { memberId, trxPassword, name, amount, trxId } = req.body
 
-    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, { $project: { "_id": 1, "memberId": 1, "trxPassword": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.apiURL": 1, "payInApi.isActive": 1 } }, {
-        $unwind: {
-            path: "$payInApi",
-            preserveNullAndEmptyArrays: true,
-        }
-    }])
+    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }, { isActive: true }] } }])
 
     if (user.length === 0) {
-        return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please change again !" })
+        return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
     }
-
-    // Api Switch Database and added 
-    // let ApiSwitch = `${user[0]?.payInApi?.apiURL}`
-    // let stringReplace = [
-    //     { placeholderName: "${memberId}", value: memberId },
-    //     { placeholderName: "${trxPassword}", value: trxPassword },
-    //     { placeholderName: "${name}", value: name },
-    //     { placeholderName: "${amount}", value: amount },
-    //     { placeholderName: "${trxId}", value: trxId }
-    // ]
-
-    // for (const str of stringReplace) {
-    //     ApiSwitch = ApiSwitch.replaceAll(str.placeholderName, str.value)
-    // }
-    // Api Switch Database and added  end
 
     // store database
     await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
         // Banking Api
-        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=${memberId}&txnpwd=${trxPassword}&name=${name}&amount=${amount}&txnid=${trxId}`
+        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=MPAPI903851&txnpwd=AB23&name=${name}&amount=${amount}&txnid=${trxId}`
         let bank = await axios.get(API_URL);
 
         let dataApiResponse = {
@@ -105,7 +85,11 @@ export const generatePayment = asyncHandler(async (req, res) => {
         // Send response
         res.status(200).json(new ApiResponse(200, dataApiResponse))
     }).catch((error) => {
-        res.status(400).json({ message: "Failed", data: error.message })
+        if (error.code == 11000) {
+            return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
+        } else {
+            return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+        }
     })
 });
 
@@ -150,9 +134,9 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
 
-    if (pack?.callBackStatus !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
-    }
+    // if (pack?.callBackStatus !== "Pending") {
+    //     return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
+    // }
 
     if (pack && data?.BankRRN) {
         pack.callBackStatus = "Success"
@@ -183,23 +167,14 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
         const userCallBackURL = callBackPayinUrl[0]?.payInCallBackUrl;
         const config = {
-            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
         };
-        let userResp = {
-            status: req.body.status,
-            payerAmount: req.body.payerAmount,
-            payerName: req.body.payerName,
-            txnID: req.body.txnID,
-            BankRRN: req.body.BankRRN,
-            payerVA: req.body.payerVA,
-            TxnInitDate: req.body.TxnInitDate,
-            TxnCompletionDate: req.body.TxnCompletionDate,
-        }
-        let jsonConvt = JSON.stringify(userResp);
-        axios.post(userCallBackURL, jsonConvt, config).then((data) => {
-            return res.status(200).json(new ApiResponse(200, data))
+
+        axios.post(userCallBackURL, req.body, config).then((a) => {
+            return res.status(200).json(new ApiResponse(200, null, "Successfully"))
         }).catch((err) => {
-            return res.status(400).json({ success: "Failed", message: err.message })
+            return res.status(500).json({ success: "Failed", message: "Error User Api calling !" })
         })
         // callback end to the user url
     } else {
