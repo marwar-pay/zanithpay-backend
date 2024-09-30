@@ -134,9 +134,9 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
 
-    // if (pack?.callBackStatus !== "Pending") {
-    //     return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
-    // }
+    if (pack?.callBackStatus !== "Pending") {
+        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
+    }
 
     if (pack && data?.BankRRN) {
         pack.callBackStatus = "Success"

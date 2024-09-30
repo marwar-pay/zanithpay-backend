@@ -111,8 +111,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth";
     const postApiOptions = {
         headers: {
-            'MemberID': memberId,
-            'TXNPWD': trxPassword,
+            'MemberID': "MPAPI903851",
+            'TXNPWD': "AB23",
             'Content-Type': 'multipart/form-data'
         }
     };
@@ -131,7 +131,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         let bankServerResp = data?.data
         return res.status(200).json(new ApiResponse(200, bankServerResp))
     }).catch((err) => {
-        return res.status(500).json({ message: "Failed", data: err.message })
+        return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
     })
     //  banking side api call end 
 });
@@ -171,16 +171,6 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status, statusCode: callBackPayout?.status_code, statusMessage: callBackPayout?.opt_msg }
 
-    let userResponse = {
-        status_code: callBackPayout?.statusCode,
-        status_msg: callBackPayout?.opt_msg,
-        status: callBackPayout?.status,
-        amount: callBackPayout?.amount,
-        txnid: callBackPayout?.txnid,
-        rrn: callBackPayout?.rrn,
-        opt_msg: "Transaction Fetch Successfully"
-    }
-
     if (data.statusCode != 200) {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
@@ -188,9 +178,9 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     // get the trxid Data 
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
 
-    if (getDocoment?.isSuccess !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${getDocoment?.isSuccess}` })
-    }
+    // if (getDocoment?.isSuccess !== "Pending") {
+    //     return res.status(400).json({ message: "Failed", data: `Trx already done status : ${getDocoment?.isSuccess}` })
+    // }
 
     if (getDocoment && data?.rrn) {
         getDocoment.isSuccess = "Success"
@@ -251,22 +241,15 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         // Calling the user callback and send the response to the user 
         const config = {
             headers: {
+                'Accept': 'application/json',
                 'Content-Type': 'application/json'
             }
         };
 
-        let userResp = {
-            status: req.body.status,
-            txnid: req.body.txnid,
-            optxid: req.body.optxid,
-            amount: req.body.amount,
-            rrn: req.body.rrn,
-        }
-        let jsonConvt = JSON.stringify(userResp);
-        axios.post(payOutUserCallBackURL, jsonConvt, config).then((data) => {
-            return res.status(200).json(new ApiResponse(200, data))
+        axios.post(payOutUserCallBackURL, req.body, config).then((data) => {
+            return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
         }).catch((err) => {
-            return res.status(400).json({ success: "Failed", message: err })
+            return res.status(400).json({ success: "Failed", message: "Internel server error !" })
         })
 
         // end the user callback calling and send response 
