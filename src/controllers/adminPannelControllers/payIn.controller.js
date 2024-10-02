@@ -74,7 +74,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
         if (bank?.data?.status_code !== 200) {
             data.callBackStatus = "Failed";
             await data.save();
-            return res.status(400).json({ message: "Failed", dataApiResponse })
+            return res.status(400).json({ message: "Failed", data: dataApiResponse })
         } else {
             data.qrData = bank?.data?.qr_image;
             data.qrIntent = bank?.data?.intent;
