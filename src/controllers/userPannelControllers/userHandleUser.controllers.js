@@ -51,7 +51,27 @@ export const updateProfile = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "Profile not update or Not Found !" })
     }
     res.status(200).json(new ApiResponse(200, data))
-})
+});
+
+export const updatePassword = asyncHandler(async (req, res) => {
+    let userId = req.params.id;
+    let data = await userDB.findByIdAndUpdate(userId, req.body, { new: true })
+
+    if (!data) {
+        return res.status(400).json({ message: "Failed", data: "Profile not update or Not Found !" })
+    }
+    res.status(200).json(new ApiResponse(200, data))
+});
+
+export const updateTrxPassword = asyncHandler(async (req, res) => {
+    let userId = req.params.id;
+    let data = await userDB.findByIdAndUpdate(userId, req.body, { new: true })
+
+    if (!data) {
+        return res.status(400).json({ message: "Failed", data: "Profile not update or Not Found !" })
+    }
+    res.status(200).json(new ApiResponse(200, data))
+});
 
 export const logInUserPannel = asyncHandler(async (req, res) => {
     let { userName, password } = req.body;

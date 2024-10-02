@@ -1,7 +1,7 @@
 import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { changePassword, logInUserPannel, logOutUserPannel, updateProfile, userInfo } from "../../controllers/userPannelControllers/userHandleUser.controllers.js";
+import { changePassword, logInUserPannel, logOutUserPannel, updatePassword, updateProfile, updateTrxPassword, userInfo } from "../../controllers/userPannelControllers/userHandleUser.controllers.js";
 import { userPannelAuth } from "../../middlewares/userPannelAuth.js";
 
 router.get("/userInfo", userPannelAuth, userInfo);
@@ -26,6 +26,24 @@ router.post("/updateProfile/:id", celebrate({
         id: Joi.string().trim().length(24).required(),
     })
 }), userPannelAuth, updateProfile);
+
+router.post("/updatePassword/:id", celebrate({
+    body: Joi.object({
+        password: Joi.string().required(),
+    }),
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userPannelAuth, updatePassword);
+
+router.post("/updateTrxPassword/:id", celebrate({
+    body: Joi.object({
+        trxPassword: Joi.string().required(),
+    }),
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userPannelAuth, updateTrxPassword);
 
 router.post("/login", celebrate({
     body: Joi.object({
