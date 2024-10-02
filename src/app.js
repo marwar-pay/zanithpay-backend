@@ -18,6 +18,8 @@ import walletUserPannel from "./routes/userPannelRoutes/walletUser.routes.js";
 import supportUserPannel from "./routes/userPannelRoutes/supportPannel.routes.js";
 import callBackUrl from "./routes/userPannelRoutes/callBackUser.routes.js";
 import { errors } from "celebrate";
+import { ApiError } from "./utils/ApiError.js";
+import ErrorMiddleware from "./middlewares/ErrorMiddleware.js";
 
 // for use body data
 app.use(
@@ -89,7 +91,15 @@ app.use("/apiUser/v1/support/", supportUserPannel);
 // api callbackurls Route -- User
 app.use("/apiUser/v1/callBackUrl/", callBackUrl);
 
+// api callbackurls Route -- User
+app.all("*", (req, res, next) => {
+    next(new ApiError(404, `Not Available Path ${req.baseUrl} !`))
+});
+
 // Joi Vaidator error middlewares setup
 app.use(errors());
+
+// Custom error middlewares setup
+app.use(ErrorMiddleware);
 
 export default app;
