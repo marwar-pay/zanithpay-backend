@@ -11,7 +11,7 @@ export const allPayInTransactionGeneration = asyncHandler(async (req, res) => {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
         },
-    }, { $project: { "_id": 1, "memberId": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.memberId": 1 } }]).then((data) => {
+    }, { $project: { "_id": 1, "memberId": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]).then((data) => {
         if (data.length === 0) {
             return res.status(200).json({ message: "Failed", data: "No Trx Avabile !" })
         }
@@ -28,7 +28,7 @@ export const allPayInTransactionSuccess = asyncHandler(async (req, res) => {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
         },
-    }, { $project: { "_id": 1, "memberId": 1, "payerName": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "vpaId": 1, "bankRRN": 1, "isSuccess": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.memberId": 1 } }]).then((data) => {
+    }, { $project: { "_id": 1, "memberId": 1, "payerName": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "vpaId": 1, "bankRRN": 1, "isSuccess": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]).then((data) => {
         if (data.length === 0) {
             return res.status(200).json({ message: "Failed", data: "No Trx Avabile !" })
         }
