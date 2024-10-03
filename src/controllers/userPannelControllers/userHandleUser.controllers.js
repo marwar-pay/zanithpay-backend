@@ -2,6 +2,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js"
 import userDB from "../../models/user.model.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
 import { ApiError } from "../../utils/ApiError.js"
+import mongoose from "mongoose"
 
 // Generation accessToken and refereshToken
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -21,8 +22,9 @@ const generateAccessAndRefereshTokens = async (userId) => {
 }
 
 export const userInfo = asyncHandler(async (req, res) => {
-    let userId = "66dc3720a5218282ea0c6f53"
-    let user = await userDB.aggregate([{ $match: {} }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+    let userId = req.user.id;
+
+    let user = await userDB.aggregate([{ $match: { _id: userId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
         $unwind: {
             path: "$package",
             preserveNullAndEmptyArrays: true,
@@ -32,19 +34,8 @@ export const userInfo = asyncHandler(async (req, res) => {
     })
 })
 
-export const changePassword = asyncHandler(async (req, res) => {
-    let user = await userDB.aggregate([{ $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
-        $unwind: {
-            path: "$package",
-            preserveNullAndEmptyArrays: true,
-        },
-    }]).then((data) => {
-        res.status(200).json(new ApiResponse(200, data))
-    })
-})
-
 export const updateProfile = asyncHandler(async (req, res) => {
-    let userId = req.params.id;
+    let userId = req.user.id;
     let data = await userDB.findByIdAndUpdate(userId, req.body, { new: true })
 
     if (!data) {
@@ -54,23 +45,40 @@ export const updateProfile = asyncHandler(async (req, res) => {
 });
 
 export const updatePassword = asyncHandler(async (req, res) => {
-    let userId = req.params.id;
-    let data = await userDB.findByIdAndUpdate(userId, req.body, { new: true })
+    let userId = req.user.id;
+    const { currentPassword, password } = req.body;
+    let data = await userDB.findById(userId)
 
     if (!data) {
-        return res.status(400).json({ message: "Failed", data: "Profile not update or Not Found !" })
+        return res.status(404).json({ message: "Failed", data: "Profile not update or Not Found !" })
     }
-    res.status(200).json(new ApiResponse(200, data))
+
+    if (data.password !== currentPassword) {
+        return res.status(404).json({ message: "Failed", data: "Invalid Old Password Please try Again !" })
+    } else {
+        data.password = password;
+        await data.save();
+    }
+
+    res.status(200).json(new ApiResponse(200, "Successfully Update user Password !"))
 });
 
 export const updateTrxPassword = asyncHandler(async (req, res) => {
-    let userId = req.params.id;
-    let data = await userDB.findByIdAndUpdate(userId, req.body, { new: true })
+    let userId = req.user.id;
+    const { currentPassword, trxPassword } = req.body;
+    let data = await userDB.findById(userId);
 
     if (!data) {
-        return res.status(400).json({ message: "Failed", data: "Profile not update or Not Found !" })
+        return res.status(404).json({ message: "Failed", data: "Profile not update or Not Found !" })
     }
-    res.status(200).json(new ApiResponse(200, data))
+
+    if (data.trxPassword !== currentPassword) {
+        return res.status(404).json({ message: "Failed", data: "Invalid Old Password Please try Again !" })
+    } else {
+        data.trxPassword = trxPassword;
+        await data.save();
+    }
+    res.status(200).json(new ApiResponse(200, "Successfully Update Transaction Password !"))
 });
 
 export const logInUserPannel = asyncHandler(async (req, res) => {
