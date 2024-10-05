@@ -47,7 +47,7 @@ export const allPendingTicket = asyncHandler(async (req, res) => {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
         }
-    }, { $project: { "_id": 1, "memberId": 1, "TicketID": 1, "subject": 1, "relatedTo": 1, "message": 1, "isStatus": 1, "createdAt": 1, "createdAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }]);
+    }, { $project: { "_id": 1, "memberId": 1, "TicketID": 1, "subject": 1, "relatedTo": 1, "message": 1, "isStatus": 1, "createdAt": 1, "createdAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
     if (!pack) {
         return new ApiError(400, "No Ticket Avabile !")
     }

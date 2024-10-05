@@ -7,12 +7,12 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import mongoose from "mongoose";
 
 export const getAllTransactionUpi = asyncHandler(async (req, res) => {
-    let pack = await eWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+    let pack = await upiWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
         $unwind: {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
         }
-    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }]);
+    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
     if (!pack) {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
@@ -25,7 +25,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
         }
-    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }]);
+    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
     if (!pack) {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
