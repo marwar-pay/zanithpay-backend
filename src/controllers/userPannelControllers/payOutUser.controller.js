@@ -3,10 +3,13 @@ import payOutModelGen from "../../models/payOutGenerate.model.js"
 import payOutModelSuccess from "../../models/payOutSuccess.model.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
 import { ApiError } from "../../utils/ApiError.js"
+import mongoose from "mongoose";
+
+const mongoDBObJ = mongoose.Types.ObjectId;
 
 export const allPayOutTransactionGeneration = asyncHandler(async (req, res) => {
     let userId = req.user._id
-    let user = await payOutModelGen.aggregate([{ $match: { $expr: { memberId: userId } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+    let user = await payOutModelGen.aggregate([{ $match: { memberId: new mongoDBObJ(userId) } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
         $unwind: {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
@@ -23,7 +26,7 @@ export const allPayOutTransactionGeneration = asyncHandler(async (req, res) => {
 
 export const allPayOutTransactionSuccess = asyncHandler(async (req, res) => {
     let userId = req.user._id;
-    let user = await payOutModelSuccess.aggregate([{ $match: { $expr: { memberId: userId } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+    let user = await payOutModelSuccess.aggregate([{ $match: { memberId: new mongoDBObJ(userId) } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
         $unwind: {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,

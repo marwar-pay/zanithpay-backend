@@ -3,10 +3,13 @@ import QrGenerationModel from "../../models/qrGeneration.model.js"
 import payInModelSuccess from "../../models/payIn.model.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
 import { ApiError } from "../../utils/ApiError.js"
+import mongoose from "mongoose";
+
+const mongoDBObJ = mongoose.Types.ObjectId;
 
 export const allPayInTransactionGeneration = asyncHandler(async (req, res) => {
     let userId = req.user._id
-    let user = await QrGenerationModel.aggregate([{ $match: { $expr: { memberId: userId } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+    let user = await QrGenerationModel.aggregate([{ $match: { memberId: new mongoDBObJ(userId) } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
         $unwind: {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
@@ -23,7 +26,7 @@ export const allPayInTransactionGeneration = asyncHandler(async (req, res) => {
 
 export const allPayInTransactionSuccess = asyncHandler(async (req, res) => {
     let userId = req.user._id;
-    let user = await payInModelSuccess.aggregate([{ $match: { $expr: { memberId: userId } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+    let user = await payInModelSuccess.aggregate([{ $match: { memberId: new mongoDBObJ(userId) } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
         $unwind: {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
