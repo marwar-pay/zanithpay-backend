@@ -25,7 +25,7 @@ export const eWalletTrx = asyncHandler(async (req, res) => {
 
 export const upiToEwalletTrx = asyncHandler(async (req, res) => {
     let userId = req.user._id;
-    let userUpiTrx = await eWalletModel.find({ memberId: userId, transactionType: "Cr." });
+    let userUpiTrx = await upiWalletModel.find({ memberId: userId, transactionType: "Dr." });
     if (userUpiTrx.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Trx Avabile !" })
     }
