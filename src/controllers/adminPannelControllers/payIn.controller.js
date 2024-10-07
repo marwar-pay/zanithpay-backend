@@ -130,7 +130,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
     let data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
 
     let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
-    if (data.status != 200) {
+    if (data.status != "200") {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
 
