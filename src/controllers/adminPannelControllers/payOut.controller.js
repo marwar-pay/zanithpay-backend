@@ -171,16 +171,16 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status, statusCode: callBackPayout?.status_code, statusMessage: callBackPayout?.opt_msg }
 
-    if (data.statusCode != 200) {
+    if (data.status != "SUCCESS") {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
 
     // get the trxid Data 
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
 
-    // if (getDocoment?.isSuccess !== "Pending") {
-    //     return res.status(400).json({ message: "Failed", data: `Trx already done status : ${getDocoment?.isSuccess}` })
-    // }
+    if (getDocoment?.isSuccess !== "Pending") {
+        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${getDocoment?.isSuccess}` })
+    }
 
     if (getDocoment && data?.rrn) {
         getDocoment.isSuccess = "Success"
