@@ -242,11 +242,8 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             }
         };
 
-        axios.post(payOutUserCallBackURL, req.body, config).then((data) => {
-            return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
-        }).catch((err) => {
-            return res.status(400).json({ success: "Failed", message: "Internel server error !" })
-        })
+        let dataApi = await axios.post(payOutUserCallBackURL, req.body, config)
+        return res.status(200).json(new ApiResponse(200, dataApi.data, "Successfully !"))
 
         // end the user callback calling and send response 
     } else {
