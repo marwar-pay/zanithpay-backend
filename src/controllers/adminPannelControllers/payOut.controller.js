@@ -178,10 +178,6 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     // get the trxid Data 
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
 
-    if (getDocoment?.isSuccess !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${getDocoment?.isSuccess}` })
-    }
-
     if (getDocoment && data?.rrn) {
         getDocoment.isSuccess = "Success"
         await getDocoment.save();
