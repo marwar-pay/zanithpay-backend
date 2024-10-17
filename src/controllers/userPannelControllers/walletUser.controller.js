@@ -54,5 +54,5 @@ export const walletBalanceAuth = asyncHandler(async (req, res) => {
         e_wallet_balance: user?.EwalletBalance,
         upi_wallet_balance: user?.upiWalletBalance
     }
-    res.status(200).json({ message: "Success", userResp });
+    res.status(200).json(new ApiResponse(200, userResp));
 });
