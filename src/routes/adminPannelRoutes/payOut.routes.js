@@ -3,6 +3,8 @@ const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
 import { allPayOutPayment, allPayOutPaymentSuccess, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate } from "../../controllers/adminPannelControllers/payOut.controller.js";
+import multer from "multer";
+const upload = multer();
 
 router.get("/allPayOutPayment", userVerify, allPayOutPayment);
 
@@ -36,6 +38,6 @@ router.post("/payoutStatusUpdate/:trxId", celebrate({
     })
 }), userVerify, userAuthAdmin, payoutStatusUpdate);
 
-router.post("/payoutCallBackResponse", payoutCallBackResponse);
+router.post("/payoutCallBackResponse", upload.none(), payoutCallBackResponse);
 
 export default router;

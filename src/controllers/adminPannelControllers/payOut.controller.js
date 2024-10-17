@@ -169,7 +169,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body
-    let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status, statusCode: callBackPayout?.status_code, statusMessage: callBackPayout?.opt_msg }
+    let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
     if (data.status != "SUCCESS") {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
@@ -242,7 +242,15 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             }
         };
 
-        let dataApi = await axios.post(payOutUserCallBackURL, req.body, config)
+        let shareObjData = {
+            status: req.body.status,
+            txnid: req.body.txnid,
+            optxid: req.body.optxid,
+            amount: req.body.amount,
+            rrn: req.body.rrn
+        }
+
+        let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
         return res.status(200).json(new ApiResponse(200, dataApi.data, "Successfully !"))
 
         // end the user callback calling and send response 
