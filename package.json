@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
-    "prod": "node ./src/index.js"
+    "prod": "node -r dotenv/config src/index.js"
   },
   "keywords": [
     "marwarpay",
