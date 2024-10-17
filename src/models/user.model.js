@@ -22,13 +22,13 @@ const userSchema = new Schema({
     fullName: {
         type: String,
         trim: true,
-        index: true,
         required: [true, "Please Enter your Full Name !"]
     },
     email: {
         type: String,
         lowecase: true,
         trim: true,
+        unique: true,
         required: [true, "Please Enter your email id !"]
     },
     mobileNumber: {
@@ -50,6 +50,9 @@ const userSchema = new Schema({
     payOutApi: {
         type: Schema.Types.ObjectId,
         ref: "payoutswitches",
+    },
+    trxAuthToken: {
+        type: String
     },
     refreshToken: {
         type: String

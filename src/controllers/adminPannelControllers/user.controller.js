@@ -3,6 +3,7 @@ import userDB from "../../models/user.model.js"
 import bcrypt from "bcrypt"
 import { asyncHandler } from "../../utils/asyncHandler.js"
 import { ApiError } from "../../utils/ApiError.js"
+import { createHash } from "crypto";
 
 // Generation accessToken and refereshToken
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -19,6 +20,17 @@ const generateAccessAndRefereshTokens = async (userId) => {
     } catch (error) {
         throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
+}
+
+// Generation trxToken for Transaction
+const generateTrxAuthToken = (memberId, trxPassword) => {
+    let data = {
+        memberId,
+        trxPassword
+    }
+    let jsonToString = JSON.stringify(data);
+    let sha256Generate = createHash('sha256').update(jsonToString).digest('hex');
+    return sha256Generate;
 }
 
 export const getUser = asyncHandler(async (req, res) => {
@@ -48,8 +60,10 @@ export const addUser = asyncHandler(async (req, res) => {
     storeData.memberId = `M${date}`
     storeData.password = `PA${date}`
     storeData.trxPassword = `PTX${date}`
-    let user = await userDB.create(storeData).then((data) => {
-        res.status(201).json(new ApiResponse(201, data, "User Created Succesfully !"))
+    storeData.trxAuthToken = generateTrxAuthToken(storeData.memberId, storeData.trxPassword)
+
+    await userDB.create(storeData).then((data) => {
+        res.status(201).json(new ApiResponse(201, "User Created Succesfully !"))
     }).catch((err) => {
         res.status(500).json({ message: "Failed", data: err.message })
     })

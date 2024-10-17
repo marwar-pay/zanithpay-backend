@@ -34,9 +34,9 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 });
 
 export const generatePayOut = asyncHandler(async (req, res) => {
-    const { memberId, trxPassword, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount } = req.body;
+    const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount } = req.body;
 
-    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }, { isActive: true }] } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+    let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
         $unwind: {
             path: "$payOutApi",
             preserveNullAndEmptyArrays: true,

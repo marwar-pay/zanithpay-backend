@@ -49,14 +49,14 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 });
 
 export const generatePayment = asyncHandler(async (req, res) => {
-    const { memberId, trxPassword, name, amount, trxId } = req.body
+    const { userName, authToken, name, amount, trxId } = req.body
 
-    let user = await userDB.aggregate([{ $match: { $and: [{ memberId: memberId }, { trxPassword: trxPassword }, { isActive: true }] } }])
+    let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }])
 
     if (user.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
     }
-
+    
     // store database
     await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
         // Banking Api

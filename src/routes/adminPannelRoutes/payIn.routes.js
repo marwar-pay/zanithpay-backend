@@ -2,17 +2,17 @@ import express from "express";
 import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment } from "../../controllers/adminPannelControllers/payIn.controller.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
-import { userVerify,userAuthAdmin } from "../../middlewares/userAuth.js";
+import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
 
-router.get("/allPaymentGenerated",userVerify, allGeneratedPayment);
+router.get("/allPaymentGenerated", userVerify, allGeneratedPayment);
 
-router.get("/allSuccessPayIn",userVerify, allSuccessPayment);
+router.get("/allSuccessPayIn", userVerify, allSuccessPayment);
 
 router.post("/generatePayment", celebrate({
     body: Joi.object({
-        memberId: Joi.string().required(),
-        trxId: Joi.string().min(10).max(15).required(),
-        trxPassword: Joi.string().required(),
+        userName: Joi.string().required(),
+        authToken: Joi.string().required(),
+        trxId: Joi.string().min(10).max(25).required(),
         refId: Joi.string().optional(),
         amount: Joi.number().required(),
         name: Joi.string().required(),
@@ -21,7 +21,7 @@ router.post("/generatePayment", celebrate({
 
 router.get("/paymentStatusCheck/:trxId", celebrate({
     params: Joi.object({
-        trxId: Joi.string().trim().min(10).max(15).required(),
+        trxId: Joi.string().trim().min(10).max(25).required(),
     })
 }), paymentStatusCheck);
 
@@ -30,9 +30,9 @@ router.post("/paymentStatusUpdate/:trxId", celebrate({
         callBackStatus: Joi.string().valid("Pending", "Failed", "Success").required(),
     }),
     params: Joi.object({
-        trxId: Joi.string().trim().min(10).max(15).required(),
+        trxId: Joi.string().trim().min(10).max(25).required(),
     })
-}), userVerify,userAuthAdmin, paymentStatusUpdate);
+}), userVerify, userAuthAdmin, paymentStatusUpdate);
 
 router.post("/callBackResponse", callBackResponse);
 

@@ -12,20 +12,20 @@ router.get("/allPayOutOnSuccess", userVerify, allPayOutPaymentSuccess);
 
 router.post("/generatePayOut", celebrate({
     body: Joi.object({
-        memberId: Joi.string().required(),
-        trxPassword: Joi.string().required(),
+        userName: Joi.string().required(),
+        authToken: Joi.string().required(),
         mobileNumber: Joi.string().required(),
         accountHolderName: Joi.string().required(),
         accountNumber: Joi.number().required(),
         ifscCode: Joi.string().required(),
-        trxId: Joi.string().min(10).max(15).required(),
+        trxId: Joi.string().min(10).max(25).required(),
         amount: Joi.number().required(),
     })
 }), generatePayOut);
 
 router.get("/payoutStatusCheck/:trxId", celebrate({
     params: Joi.object({
-        trxId: Joi.string().trim().min(10).max(15).required(),
+        trxId: Joi.string().trim().min(10).max(25).required(),
     })
 }), payoutStatusCheck);
 
@@ -34,7 +34,7 @@ router.post("/payoutStatusUpdate/:trxId", celebrate({
         isSuccess: Joi.string().valid("Pending", "Failed", "Success").required(),
     }),
     params: Joi.object({
-        trxId: Joi.string().trim().min(10).max(15).required(),
+        trxId: Joi.string().trim().min(10).max(25).required(),
     })
 }), userVerify, userAuthAdmin, payoutStatusUpdate);
 
