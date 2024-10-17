@@ -14,8 +14,8 @@ router.get("/eWalletToPayOutTrx", userPannelAuth, eWalletToPayOutTrx);
 
 router.post("/walletBalance", celebrate({
     body: Joi.object({
-        memberId: Joi.string().required(),
-        trxPassword: Joi.string().required(),
+        userName: Joi.string().required(),
+        authToken: Joi.string().required(),
     })
 }), walletBalanceAuth);
 

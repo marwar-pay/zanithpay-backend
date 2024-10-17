@@ -42,8 +42,8 @@ export const eWalletToPayOutTrx = asyncHandler(async (req, res) => {
 });
 
 export const walletBalanceAuth = asyncHandler(async (req, res) => {
-    const { memberId, trxPassword } = req.body;
-    let user = await userDB.findOne({ memberId: memberId, trxPassword, isActive: true });
+    const { userName, authToken } = req.body;
+    let user = await userDB.findOne({ userName: userName, trxAuthToken: authToken, isActive: true });
     if (!user) {
         return res.status(401).json({ message: "Failed", data: "Invalid Credential !" })
     }
