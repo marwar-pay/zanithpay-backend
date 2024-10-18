@@ -2,7 +2,6 @@ import { ApiResponse } from "../../utils/ApiResponse.js"
 import userDB from "../../models/user.model.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
 import { ApiError } from "../../utils/ApiError.js"
-import mongoose from "mongoose"
 
 // Generation accessToken and refereshToken
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -19,6 +18,17 @@ const generateAccessAndRefereshTokens = async (userId) => {
     } catch (error) {
         throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
+}
+
+// Generation trxToken for Transaction
+const generateTrxAuthToken = (memberId, trxPassword) => {
+    let data = {
+        memberId,
+        trxPassword
+    }
+    let jsonToString = JSON.stringify(data);
+    let sha256Generate = createHash('sha256').update(jsonToString).digest('hex');
+    return sha256Generate;
 }
 
 export const userInfo = asyncHandler(async (req, res) => {
@@ -75,7 +85,9 @@ export const updateTrxPassword = asyncHandler(async (req, res) => {
     if (data.trxPassword !== currentPassword) {
         return res.status(404).json({ message: "Failed", data: "Invalid Old Password Please try Again !" })
     } else {
+        let TrxUpdateHash = generateTrxAuthToken(data?.memberId, trxPassword);
         data.trxPassword = trxPassword;
+        data.trxAuthToken = TrxUpdateHash;
         await data.save();
     }
     res.status(200).json(new ApiResponse(200, "Successfully Update Transaction Password !"))
