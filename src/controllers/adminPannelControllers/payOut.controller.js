@@ -59,6 +59,10 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
     }
 
+    if (true) {
+        return res.status(200).json({ data: user,messae:"Success" })
+    }
+
     let chargeRange = user[0]?.packageCharge?.payOutChargeRange;
     let chargeType;
     let chargeAmout;

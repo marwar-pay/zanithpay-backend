@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify } from "../../middlewares/userAuth.js";
-import { addApiPayIn, addApiPayOut, deleteApiPayIn, deleteApiPayOut, getAllApiPayIn, getAllApiPayOut, updateApiPayIn, updateApiPayOut } from "../../controllers/adminPannelControllers/apiSwitch.controller.js";
+import { addApiPayIn, addApiPayOut, AllUserSwitchPayIn, AllUserSwitchPayOut, deleteApiPayIn, deleteApiPayOut, getAllApiPayIn, getAllApiPayOut, OneUserSwitchPayIn, OneUserSwitchPayOut, updateApiPayIn, updateApiPayOut } from "../../controllers/adminPannelControllers/apiSwitch.controller.js";
 
 router.get("/allPayInSwitch", userVerify, getAllApiPayIn);
 
@@ -61,5 +61,31 @@ router.delete("/deletePayOutSwitch/:id", celebrate({
         id: Joi.string().trim().length(24).required(),
     })
 }), userVerify, deleteApiPayOut);
+
+router.post("/AllUserSwitchPayIn", celebrate({
+    body: Joi.object({
+        apiId: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, AllUserSwitchPayIn);
+
+router.post("/AllUserSwitchPayOut", celebrate({
+    body: Joi.object({
+        apiId: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, AllUserSwitchPayOut);
+
+router.post("/OneUserSwitchPayIn", celebrate({
+    body: Joi.object({
+        userId: Joi.string().trim().length(24).required(),
+        apiId: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, OneUserSwitchPayIn);
+
+router.post("/OneUserSwitchPayOut", celebrate({
+    body: Joi.object({
+        userId: Joi.string().trim().length(24).required(),
+        apiId: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, OneUserSwitchPayOut);
 
 export default router;
