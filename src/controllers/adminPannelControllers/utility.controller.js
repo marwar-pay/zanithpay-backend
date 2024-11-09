@@ -27,6 +27,30 @@ export const getUserListWithWallet = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, userInfo))
 })
 
+export const getUserWithSwitchApi = asyncHandler(async (req, res) => {
+    let userInfo = await userDB.aggregate([{ $match: { memberType: "Users" } }, {
+        $lookup: {
+            from: "payinswitches",
+            localField: "payInApi",
+            foreignField: "_id",
+            as: "payInApi"
+        }
+    }, { $unwind: { path: "$payInApi", preserveNullAndEmptyArrays: true } }, {
+        $lookup: {
+            from: "payoutswitches",
+            localField: "payOutApi",
+            foreignField: "_id",
+            as: "payOutApi"
+        }
+    }, { $unwind: { path: "$payOutApi", preserveNullAndEmptyArrays: true } }, {
+        $project: { "_id": 1, "memberId": 1, "fullName": 1, "payInApi._id": 1, "payInApi.apiName": 1, "payInApi.isActive": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.isActive": 1 }
+    }, { $sort: { createdAt: -1 } }])
+    if (!userInfo.length) {
+        return res.status(400).json({ message: "Failed", data: "Not Active User Avabile !" })
+    }
+    res.status(200).json(new ApiResponse(200, userInfo))
+})
+
 export const getAllMemberList = asyncHandler(async (req, res) => {
     let userInfo = await userDB.aggregate([{
         $project: { "_id": 1, "memberId": 1, "fullName": 1 }
@@ -46,7 +70,7 @@ export const getPackageList = asyncHandler(async (req, res) => {
 
 export const getPayOutApiList = asyncHandler(async (req, res) => {
     let apiPayOut = await apiPayOutModel.aggregate([{ $match: { isActive: true } }, {
-        $project: { "_id": 1, "apiName": 1 }
+        $project: { "_id": 1, "apiName": 1, "isActive": 1 }
     }, { $sort: { createdAt: -1 } }])
 
     if (!apiPayOut.length) {
@@ -57,7 +81,7 @@ export const getPayOutApiList = asyncHandler(async (req, res) => {
 
 export const getPayInApiList = asyncHandler(async (req, res) => {
     let apiPayIn = await apiPayInModel.aggregate([{ $match: { isActive: true } }, {
-        $project: { "_id": 1, "apiName": 1 }
+        $project: { "_id": 1, "apiName": 1, "isActive": 1 }
     }, { $sort: { createdAt: -1 } }])
 
     if (!apiPayIn.length) {
