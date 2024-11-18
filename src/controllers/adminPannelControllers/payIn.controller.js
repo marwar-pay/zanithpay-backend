@@ -6,6 +6,7 @@ import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
+import FormData from "form-data";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let queryObject = req.query;
@@ -51,46 +52,107 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 export const generatePayment = asyncHandler(async (req, res) => {
     const { userName, authToken, name, amount, trxId } = req.body
 
-    let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }])
+    let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
+        $unwind: {
+            path: "$payInApi",
+            preserveNullAndEmptyArrays: true,
+        }
+    },])
 
     if (user.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
     }
-    
-    // store database
-    await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
-        // Banking Api
-        let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=MPAPI903851&txnpwd=AB23&name=${name}&amount=${amount}&txnid=${trxId}`
-        let bank = await axios.get(API_URL);
 
-        let dataApiResponse = {
-            status_msg: bank?.data?.status_msg,
-            status: bank?.data?.status_code,
-            qrImage: bank?.data?.qr_image,
-            qr: bank?.data?.intent,
-            trxID: data?.trxId,
-        }
+    // Banking api Switch for 
+    let apiSwitchApiOption = user[0]?.payInApi?.apiName;
+    switch (apiSwitchApiOption) {
+        case "neyopayPayIn":
+            let url = user[0].payInApi.apiURL
+            let data = new FormData()
+            data.append("amount", amount)
+            data.append("Apikey", "14205")
+            data.append("url", "__target")
+            data.append("transactionId", trxId)
+            data.append("mobile", "8000623206")
 
-        if (bank?.data?.status_code !== 200) {
-            data.callBackStatus = "Failed";
-            await data.save();
+            // store database
+            await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
+                // Bankking api calling !
+                let resp = await axios.post(url, data)
+
+                let dataApiResponse = {
+                    status_msg: resp?.data?.message,
+                    status: resp?.data?.status ? 200 : 400,
+                    qrImage: resp?.data?.Payment_link,
+                    qr: resp?.data?.intent,
+                    trxID: trxId,
+                }
+
+                if (resp?.data?.status !== true) {
+                    data.callBackStatus = "Failed";
+                    await data.save();
+                    return res.status(400).json({ message: "Failed", data: dataApiResponse })
+                } else {
+                    data.qrData = bankingCalling?.data?.qr_image;
+                    data.qrIntent = bankingCalling?.data?.intent;
+                    data.refId = bankingCalling?.data?.refId;
+                    await data.save();
+                }
+
+                // Send response
+                return res.status(200).json(new ApiResponse(200, dataApiResponse))
+            }).catch((error) => {
+                if (error.code == 11000) {
+                    return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
+                } else {
+                    return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+                }
+            })
+            break;
+        case "marwarpayInSwitch":
+            // store database
+            await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
+                // Banking Api
+                let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=MPAPI903851&txnpwd=AB23&name=${name}&amount=${amount}&txnid=${trxId}`
+                let bank = await axios.get(API_URL);
+
+                let dataApiResponse = {
+                    status_msg: bank?.data?.status_msg,
+                    status: bank?.data?.status_code,
+                    qrImage: bank?.data?.qr_image,
+                    qr: bank?.data?.intent,
+                    trxID: data?.trxId,
+                }
+
+                if (bank?.data?.status_code !== 200) {
+                    data.callBackStatus = "Failed";
+                    await data.save();
+                    return res.status(400).json({ message: "Failed", data: dataApiResponse })
+                } else {
+                    data.qrData = bank?.data?.qr_image;
+                    data.qrIntent = bank?.data?.intent;
+                    data.refId = bank?.data?.refId;
+                    await data.save();
+                }
+
+                // Send response
+                return res.status(200).json(new ApiResponse(200, dataApiResponse))
+            }).catch((error) => {
+                if (error.code == 11000) {
+                    return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
+                } else {
+                    return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+                }
+            })
+            break;
+        default:
+            let dataApiResponse = {
+                status_msg: "failed",
+                status: 400,
+                trxID: trxId,
+            }
             return res.status(400).json({ message: "Failed", data: dataApiResponse })
-        } else {
-            data.qrData = bank?.data?.qr_image;
-            data.qrIntent = bank?.data?.intent;
-            data.refId = bank?.data?.refId;
-            await data.save();
-        }
-
-        // Send response
-        res.status(200).json(new ApiResponse(200, dataApiResponse))
-    }).catch((error) => {
-        if (error.code == 11000) {
-            return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
-        } else {
-            return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-        }
-    })
+    }
 });
 
 export const paymentStatusCheck = asyncHandler(async (req, res) => {
