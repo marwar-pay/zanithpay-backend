@@ -100,8 +100,6 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 // Send response
                 return res.status(200).json(new ApiResponse(200, dataApiResponse))
             }).catch((error) => {
-                console.log(error, "full error")
-                console.log(error.message, "error error")
                 if (error.code == 11000) {
                     return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
                 } else {
