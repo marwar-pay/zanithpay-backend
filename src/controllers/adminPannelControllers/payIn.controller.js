@@ -187,7 +187,14 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 
 export const callBackResponse = asyncHandler(async (req, res) => {
     let callBackData = req.body;
+    if (Object.keys(req.body).length === 1) {
+        let key = Object.keys(req.body)
+        let stringfi = JSON.parse(key)
+        req.body = stringfi;
+        callBackData = stringfi;
+    }
     console.log(req.body, "body")
+    console.log(callBackData, "callBackData response")
     var data;
     let switchApi;
     if (req.body.partnerTxnId) {
