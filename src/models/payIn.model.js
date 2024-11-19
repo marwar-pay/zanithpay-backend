@@ -8,7 +8,6 @@ const payInSchema = new Schema({
     },
     payerName: {
         type: String,
-        required: [true, "Required Payber Name !"]
     },
     trxId: {
         type: String,
@@ -30,7 +29,6 @@ const payInSchema = new Schema({
     },
     vpaId: {
         type: String,
-        required: [true, "Required VPA ID !"]
     },
     bankRRN: {
         type: String,

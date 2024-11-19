@@ -189,15 +189,34 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 
 export const callBackResponse = asyncHandler(async (req, res) => {
     let callBackData = req.body;
-    let data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
-
-    let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
-    if (data.status != 200) {
-        return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
+    var data;
+    let switchApi;
+    if (req.body.partnerTxnId) {
+        switchApi = "neyopayPayIn"
+    }
+    if (req.body.txnID) {
+        switchApi = "marwarpayInSwitch"
+    }
+    switch (switchApi) {
+        case "neyopayPayIn":
+            data = { status: callBackData?.txnstatus == "Success" || "success" ? "200" : "400", payerAmount: callBackData?.amount, payerName: callBackData?.payerName, txnID: callBackData?.partnerTxnId, BankRRN: callBackData?.rrn, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+            break;
+        case "marwarpayInSwitch":
+            data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+            break;
+        default:
+            console.log("its default")
+            break;
     }
 
+    if (data?.status != "200") {
+        return res.status(400).json({ message: "Failed", data: "trx is pending or not success" })
+    }
+
+    let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
+
     if (pack?.callBackStatus !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status : ${pack?.callBackStatus}` })
+        return res.status(400).json({ message: "Failed", data: `Trx already done status or not created : ${pack?.callBackStatus}` })
     }
 
     if (pack && data?.BankRRN) {
@@ -216,14 +235,14 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         let gatwarCharge = (userInfo[0]?.package?.packagePayInCharge / 100) * data.payerAmount;
         let finalCredit = data.payerAmount - gatwarCharge
 
-        let payinDataStore = { memberId: pack.memberId, payerName: data.payerName, trxId: data.txnID, amount: data.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data.payerVA, bankRRN: data.BankRRN, description: `Qr Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`, trxCompletionDate: data.TxnCompletionDate, trxInItDate: data.TxnInitDate, isSuccess: data.status == 200 ? "Success" : "Failed" }
+        let payinDataStore = { memberId: pack?.memberId, payerName: data?.payerName, trxId: data?.txnID, amount: data?.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data?.payerVA, bankRRN: data?.BankRRN, description: `Qr Generated Successfully Amount:${data?.payerAmount} PayerVa:${data?.payerVA} BankRRN:${data?.BankRRN}`, trxCompletionDate: data?.TxnCompletionDate, trxInItDate: data?.TxnInitDate, isSuccess: data?.status == 200 || "200" || "Success" || "success" ? "Success" : "Failed" }
 
         let upiWalletDataObject = { memberId: userInfo[0]?._id, transactionType: "Cr.", transactionAmount: finalCredit, beforeAmount: userInfo[0]?.upiWalletBalance, afterAmount: userInfo[0]?.upiWalletBalance + finalCredit, description: `Successfully Cr. amount: ${finalCredit}`, transactionStatus: "Success" }
 
-        let upiWalletStore = await upiWalletModel.create(upiWalletDataObject);
+        await upiWalletModel.create(upiWalletDataObject);
 
-        let payInSuccessStore = await payInModel.create(payinDataStore);
-        let updateUpiWallletBalance = await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
+        await payInModel.create(payinDataStore);
+        await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
 
         // callback send to the user url
         let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
