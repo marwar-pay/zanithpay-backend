@@ -68,17 +68,17 @@ export const generatePayment = asyncHandler(async (req, res) => {
     switch (apiSwitchApiOption) {
         case "neyopayPayIn":
             let url = user[0].payInApi.apiURL
-            let data = new FormData()
-            data.append("amount", amount)
-            data.append("Apikey", "14205")
-            data.append("url", "__target")
-            data.append("transactionId", trxId)
-            data.append("mobile", "8000623206")
+            let formData = new FormData()
+            formData.append("amount", amount)
+            formData.append("Apikey", "14205")
+            formData.append("url", "__target")
+            formData.append("transactionId", trxId)
+            formData.append("mobile", "8000623206")
 
             // store database
             await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
                 // Bankking api calling !
-                let resp = await axios.post(url, data)
+                let resp = await axios.post(url, formData)
 
                 let dataApiResponse = {
                     status_msg: resp?.data?.message,
@@ -102,6 +102,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 // Send response
                 return res.status(200).json(new ApiResponse(200, dataApiResponse))
             }).catch((error) => {
+                console.log(error)
                 if (error.code == 11000) {
                     return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
                 } else {
