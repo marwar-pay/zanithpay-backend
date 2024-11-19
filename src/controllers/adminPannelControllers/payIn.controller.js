@@ -80,14 +80,9 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 // Bankking api calling !
                 let resp = await axios.post(url, formData)
 
-                if(true){
-                    console.log(resp.data)
-                    return res.status(200).json({message:"invalid",data:resp?.data})
-                }
-
                 let dataApiResponse = {
                     status_msg: resp?.data?.message,
-                    status: resp?.data?.status ? 200 : 400,
+                    status: resp?.data?.status == true ? 200 : 400,
                     qrImage: resp?.data?.Payment_link,
                     trxID: trxId,
                 }
@@ -97,17 +92,16 @@ export const generatePayment = asyncHandler(async (req, res) => {
                     await data.save();
                     return res.status(400).json({ message: "Failed", data: dataApiResponse })
                 } else {
-                    data.qrData = bankingCalling?.data?.qr_image;
-                    data.qrIntent = bankingCalling?.data?.intent;
-                    data.refId = bankingCalling?.data?.refId;
+                    data.qrData = resp?.data?.Payment_link;
+                    data.refId = resp?.data?.refId;
                     await data.save();
                 }
 
                 // Send response
                 return res.status(200).json(new ApiResponse(200, dataApiResponse))
             }).catch((error) => {
-                console.log(error,"full error")
-                console.log(error.message,"error error")
+                console.log(error, "full error")
+                console.log(error.message, "error error")
                 if (error.code == 11000) {
                     return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
                 } else {
