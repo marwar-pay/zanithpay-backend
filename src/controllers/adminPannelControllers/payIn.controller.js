@@ -193,8 +193,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         req.body = stringfi;
         callBackData = stringfi;
     }
-    console.log(req.body, "body")
-    console.log(callBackData, "callBackData response")
+
     var data;
     let switchApi;
     if (req.body.partnerTxnId) {
