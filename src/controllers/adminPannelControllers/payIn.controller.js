@@ -50,7 +50,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 });
 
 export const generatePayment = asyncHandler(async (req, res) => {
-    const { userName, authToken, name, amount, trxId } = req.body
+    const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
 
     let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
         $unwind: {
@@ -73,7 +73,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
             formData.append("Apikey", "14205")
             formData.append("url", "https://zanithpay.com")
             formData.append("transactionId", trxId)
-            formData.append("mobile", "8000623206")
+            formData.append("mobile", mobileNumber)
 
             // store database
             await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
