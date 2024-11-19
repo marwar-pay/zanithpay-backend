@@ -84,7 +84,6 @@ export const generatePayment = asyncHandler(async (req, res) => {
                     status_msg: resp?.data?.message,
                     status: resp?.data?.status ? 200 : 400,
                     qrImage: resp?.data?.Payment_link,
-                    qr: resp?.data?.intent,
                     trxID: trxId,
                 }
 
