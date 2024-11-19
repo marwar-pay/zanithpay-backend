@@ -80,6 +80,11 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 // Bankking api calling !
                 let resp = await axios.post(url, formData)
 
+                if(true){
+                    console.log(resp.data)
+                    return res.status(200).json({message:"invalid",data:resp?.data})
+                }
+
                 let dataApiResponse = {
                     status_msg: resp?.data?.message,
                     status: resp?.data?.status ? 200 : 400,
@@ -101,6 +106,8 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 // Send response
                 return res.status(200).json(new ApiResponse(200, dataApiResponse))
             }).catch((error) => {
+                console.log(error,"full error")
+                console.log(error.message,"error error")
                 if (error.code == 11000) {
                     return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
                 } else {
