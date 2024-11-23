@@ -60,7 +60,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
     }
 
     if (true) {
-        return res.status(200).json({ data: user,messae:"Success" })
+        return res.status(200).json({ data: user, message: "Success" })
     }
 
     let chargeRange = user[0]?.packageCharge?.payOutChargeRange;
