@@ -6,6 +6,7 @@ import callBackResponse from "../../models/callBackResponse.model.js";
 import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import { AESUtils } from "../../utils/CryptoEnc.js";
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let GetData = await payOutModelGenerate.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
@@ -59,9 +60,30 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
     }
 
-    if (true) {
-        return res.status(200).json({ data: user, message: "Success" })
-    }
+    // if (true) {
+    //     let BodyObj = {
+    //         beneName: "Ajay Kumar",
+    //         beneAccountNo: "2211217740244935",
+    //         beneifsc: "AUBL0002177",
+    //         benePhoneNo: 9177756865,
+    //         clientReferenceNo: "DdsfAD8783268F09C",
+    //         amount: 101,
+    //         fundTransferType: "IMPS",
+    //         latlong: "22.8031731,88.7874172",
+    //         pincode: 751004,
+    //         custName: "Ajay Kumar",
+    //         custMobNo: 8000623206,
+    //         custIpAddress: "110.235.219.55",
+    //         beneBankName: "AU SMALL FINANCE BANK",
+    //         paramA: "",
+    //         paramB: ""
+    //     }
+
+    //     let EncKey = "a6T8tOCYiSzDTrcqPvCbJfy0wSQOVcfaevH0gtwCtoU="
+    //     let EncryptedBodyReq = await AESUtils.EncryptRequest(BodyObj, EncKey)
+    //     console.log(EncryptedBodyReq)
+    //     return res.status(200).json({ data: user, enc: EncryptedBodyReq, message: "Success" })
+    // }
 
     let chargeRange = user[0]?.packageCharge?.payOutChargeRange;
     let chargeType;
@@ -108,30 +130,75 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         afterChargeAmount: finalAmountDeduct,
         trxId: trxId
     }
-    let data = await payOutModelGenerate.create(userStoreData);
+
+    // let data = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
-    // const payOutApi = user[0]?.payOutApi?.apiURL;
-    const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth";
-    const postApiOptions = {
-        headers: {
-            'MemberID': "MPAPI903851",
-            'TXNPWD': "AB23",
-            'Content-Type': 'multipart/form-data'
-        }
-    };
-    const payoutApiDataSend =
-    {
-        txnID: trxId,
-        amount: amount,
-        ifsc: ifscCode,
-        account_no: accountNumber,
-        account_holder_name: accountHolderName,
-        mobile: mobileNumber,
-        response_type: 1
-    }
+    const payOutApi = user[0]?.payOutApi;
+    // const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth";
+    // const postApiOptions = {
+    //     headers: {
+    //         'MemberID': "MPAPI903851",
+    //         'TXNPWD': "AB23",
+    //         'Content-Type': 'multipart/form-data'
+    //     }
+    // };
+    // const payoutApiDataSend =
+    // {
+    //     txnID: trxId,
+    //     amount: amount,
+    //     ifsc: ifscCode,
+    //     account_no: accountNumber,
+    //     account_holder_name: accountHolderName,
+    //     mobile: mobileNumber,
+    //     response_type: 1
+    // }
+    var postApiOptions;
+    var payoutApiDataSend;
 
-    axios.post(payOutApi, payoutApiDataSend, postApiOptions).then((data) => {
+    switch (payOutApi?.apiName) {
+        case "iServerEuApi":
+            postApiOptions = {
+                headers: {
+                    'header_secrets': "Y1a+87erGXpruIFkSsk4517T3GWGOtvxfOvYq0oWVzNFiCV2hCQtCAjcWuvhA7dqf3PKfcTDbPpPGCZ1iI4xsG9nwNQvSihwNkYwY7V3+PNSUEOLZhFQs85SSxjZN/RuvexCZ5Weez18REQxpPnbRVloAlimcxkogHEXsZdNpb2LyiTn2SgmEgFp1ZEToPYesNOUwjJJGPtbgpa+/RY2iJscKEMELpnmOiILJM+utpxGrjw6ujUegT5vQtJmq2D5",
+                    'pass_key': "ZDBJKROB5QEZKJ4MZ66G562ZTB4MTWDC7EXXU4GYASPXOJZMH4CQ",
+                    'Content-Type': 'application/json'
+                }
+            };
+            payoutApiDataSend =
+            {
+                RequestData: "3Qi+ibjEprukq0b9t630keOi/C81Kqb15Nj8b4jLL6ZoqaASb2Pg2TUC7xIL61giX662UEwnVlaxQf6S9y3LEqiGVEc1KnlDICb5tzuqebmxqgNh4B81GJMGo/YqG+I0jwNdxofzrUSB6wIL6AO6M+KZWU1G4NGd4sTI/OcZNKAwGB/KLEpNahw1kKZ++wDkBR+iLfI8LvkvZXBkeKiOcjXMihXnNRaZzSSZpzVxWIMOXrgZyV1AEeTaNgmj8Aq/xWi0Vb2bFLDtmb1IU46eAcN2rxyGlhNKmTviYsHC0664LJRkuUoNb5jPNIvyOIMS2WNTnZnMJ1mqdUM5dJLtk0UMu2Def/+A/jTVFRicZAH7YeTktqOFRYBaXHYcfeNhar3rC5RB4e5miJ5QAJTofD/gX/+gQu/IzY29obUAo8Pf/2E8ve0qZR1FsaHFvIZzyohrgouDt2eRNl4eLnUMrTmWLXMMACmjX3KNU5WxiuQfMKDTT6udvmspmu2ZwD8y8XSlpjkJJBfutHddgVCKpQ=="
+            }
+            break;
+        case "MarwarpayApi":
+            postApiOptions = {
+                headers: {
+                    'MemberID': "MPAPI903851",
+                    'TXNPWD': "AB23",
+                    'Content-Type': 'multipart/form-data'
+                }
+            };
+            payoutApiDataSend =
+            {
+                txnID: trxId,
+                amount: amount,
+                ifsc: ifscCode,
+                account_no: accountNumber,
+                account_holder_name: accountHolderName,
+                mobile: mobileNumber,
+                response_type: 1
+            }
+            break;
+        default:
+            console.log("Hello")
+            break;
+    }
+    // if (true) {
+    //     console.log(payOutApi)
+    //     return res.status(200).json({ message: "success", data: { payOutApi, postApiOptions, payoutApiDataSend } })
+    // }
+
+    axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then((data) => {
         let bankServerResp = data?.data
         return res.status(200).json(new ApiResponse(200, bankServerResp))
     }).catch((err) => {

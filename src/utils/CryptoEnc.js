@@ -9,7 +9,7 @@ export class AESUtils {
         }
         // Generate a random IV
         const iv = crypto.randomBytes(16);
-        console.log("IV generated: " + iv.toString('hex'));
+        // console.log("IV generated: " + iv.toString('hex'));
         // Convert payload to byte array
         const payloadBytes = Buffer.from(JSON.stringify(incomingJsonReq));
         // Initialize AES cipher
