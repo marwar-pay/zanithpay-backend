@@ -35,7 +35,11 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 });
 
 export const generatePayOut = asyncHandler(async (req, res) => {
-    const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount } = req.body;
+    const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
+
+    if (amount < 1) {
+        return res.status(400).json({ message: "Failed", data: `Amount 1 or More: ${amount}` })
+    }
 
     let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
         $unwind: {
@@ -60,34 +64,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
     }
 
-    // if (true) {
-    //     let BodyObj = {
-    //         beneName: "Ajay Kumar",
-    //         beneAccountNo: "2211217740244935",
-    //         beneifsc: "AUBL0002177",
-    //         benePhoneNo: 9177756865,
-    //         clientReferenceNo: "DdsfAD8783268F09C",
-    //         amount: 101,
-    //         fundTransferType: "IMPS",
-    //         latlong: "22.8031731,88.7874172",
-    //         pincode: 751004,
-    //         custName: "Ajay Kumar",
-    //         custMobNo: 8000623206,
-    //         custIpAddress: "110.235.219.55",
-    //         beneBankName: "AU SMALL FINANCE BANK",
-    //         paramA: "",
-    //         paramB: ""
-    //     }
-
-    //     let EncKey = "a6T8tOCYiSzDTrcqPvCbJfy0wSQOVcfaevH0gtwCtoU="
-    //     let EncryptedBodyReq = await AESUtils.EncryptRequest(BodyObj, EncKey)
-    //     console.log(EncryptedBodyReq)
-    //     return res.status(200).json({ data: user, enc: EncryptedBodyReq, message: "Success" })
-    // }
-
     let chargeRange = user[0]?.packageCharge?.payOutChargeRange;
-    let chargeType;
-    let chargeAmout;
+    var chargeType;
+    var chargeAmout;
 
     chargeRange.forEach((value) => {
         if (value.lowerLimit <= amount && value.upperLimit > amount) {
@@ -97,9 +76,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         }
     })
 
-    let userChargeApply;
-    let userUseAbelBalance;
-    let finalAmountDeduct;
+    var userChargeApply;
+    var userUseAbelBalance;
+    var finalAmountDeduct;
 
     if (chargeType === "Flat") {
         userChargeApply = chargeAmout;
@@ -131,44 +110,63 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         trxId: trxId
     }
 
-    // let data = await payOutModelGenerate.create(userStoreData);
+    let data = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
     const payOutApi = user[0]?.payOutApi;
-    // const payOutApi = "https://www.marwarpay.in/portal/api/transferAuth";
-    // const postApiOptions = {
-    //     headers: {
-    //         'MemberID': "MPAPI903851",
-    //         'TXNPWD': "AB23",
-    //         'Content-Type': 'multipart/form-data'
-    //     }
-    // };
-    // const payoutApiDataSend =
-    // {
-    //     txnID: trxId,
-    //     amount: amount,
-    //     ifsc: ifscCode,
-    //     account_no: accountNumber,
-    //     account_holder_name: accountHolderName,
-    //     mobile: mobileNumber,
-    //     response_type: 1
-    // }
+
     var postApiOptions;
     var payoutApiDataSend;
 
     switch (payOutApi?.apiName) {
         case "iServerEuApi":
+            const passKey = "ZDBJKROB5QEZKJ4MZ66G562ZTB4MTWDC7EXXU4GYASPXOJZMH4CQ";
+            const EncKey = "a6T8tOCYiSzDTrcqPvCbJfy0wSQOVcfaevH0gtwCtoU=";
+            let HeaderObj = {
+                client_id: "42Zuw71Ok7e2TGAgHPKttM7PFGMspJLLy3ewq15dhgjtGM9l",
+                client_secret: "MDB9krmA8OqYdgjTKflkXXU7BTNAJgVDEWBmhWjQ8YBvAPNKNPLbxnJGSKcKiEV9",
+                epoch: String(Date.now())
+            }
+            let BodyObj = {
+                beneName: accountHolderName,
+                beneAccountNo: accountNumber,
+                beneifsc: ifscCode,
+                benePhoneNo: mobileNumber,
+                clientReferenceNo: trxId,
+                amount: amount,
+                fundTransferType: "IMPS",
+                latlong: "22.8031731,88.7874172",
+                pincode: 302012,
+                custName: accountHolderName,
+                custMobNo: mobileNumber,
+                custIpAddress: "110.235.219.55",
+                beneBankName: bankName,
+            }
+            let headerSecrets = await AESUtils.EncryptRequest(HeaderObj, EncKey)
+            let BodyRequestEnc = await AESUtils.EncryptRequest(BodyObj, EncKey)
             postApiOptions = {
                 headers: {
-                    'header_secrets': "Y1a+87erGXpruIFkSsk4517T3GWGOtvxfOvYq0oWVzNFiCV2hCQtCAjcWuvhA7dqf3PKfcTDbPpPGCZ1iI4xsG9nwNQvSihwNkYwY7V3+PNSUEOLZhFQs85SSxjZN/RuvexCZ5Weez18REQxpPnbRVloAlimcxkogHEXsZdNpb2LyiTn2SgmEgFp1ZEToPYesNOUwjJJGPtbgpa+/RY2iJscKEMELpnmOiILJM+utpxGrjw6ujUegT5vQtJmq2D5",
-                    'pass_key': "ZDBJKROB5QEZKJ4MZ66G562ZTB4MTWDC7EXXU4GYASPXOJZMH4CQ",
+                    'header_secrets': headerSecrets,
+                    'pass_key': passKey,
                     'Content-Type': 'application/json'
                 }
             };
             payoutApiDataSend =
             {
-                RequestData: "3Qi+ibjEprukq0b9t630keOi/C81Kqb15Nj8b4jLL6ZoqaASb2Pg2TUC7xIL61giX662UEwnVlaxQf6S9y3LEqiGVEc1KnlDICb5tzuqebmxqgNh4B81GJMGo/YqG+I0jwNdxofzrUSB6wIL6AO6M+KZWU1G4NGd4sTI/OcZNKAwGB/KLEpNahw1kKZ++wDkBR+iLfI8LvkvZXBkeKiOcjXMihXnNRaZzSSZpzVxWIMOXrgZyV1AEeTaNgmj8Aq/xWi0Vb2bFLDtmb1IU46eAcN2rxyGlhNKmTviYsHC0664LJRkuUoNb5jPNIvyOIMS2WNTnZnMJ1mqdUM5dJLtk0UMu2Def/+A/jTVFRicZAH7YeTktqOFRYBaXHYcfeNhar3rC5RB4e5miJ5QAJTofD/gX/+gQu/IzY29obUAo8Pf/2E8ve0qZR1FsaHFvIZzyohrgouDt2eRNl4eLnUMrTmWLXMMACmjX3KNU5WxiuQfMKDTT6udvmspmu2ZwD8y8XSlpjkJJBfutHddgVCKpQ=="
+                RequestData: BodyRequestEnc
             }
+
+            // Banking api calling
+            axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
+                let bankServerResp = data?.data?.ResponseData
+                // decrypt the data and send to client;
+                let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, EncKey);
+                let BankJsonConvt = await JSON.parse(BodyResponceDec)
+                return res.status(200).json(new ApiResponse(200, BankJsonConvt))
+            }).catch((err) => {
+                return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+            })
+            //  banking side api call end 
             break;
         case "MarwarpayApi":
             postApiOptions = {
@@ -188,23 +186,19 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 mobile: mobileNumber,
                 response_type: 1
             }
+            // banking api calling
+            axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then((data) => {
+                let bankServerResp = data?.data
+                return res.status(200).json(new ApiResponse(200, bankServerResp))
+            }).catch((err) => {
+                return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+            })
+            //  banking side api call end 
             break;
         default:
-            console.log("Hello")
+            return res.status(400).json({ message: "Failed", data: { trxId: trxId } })
             break;
     }
-    // if (true) {
-    //     console.log(payOutApi)
-    //     return res.status(200).json({ message: "success", data: { payOutApi, postApiOptions, payoutApiDataSend } })
-    // }
-
-    axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then((data) => {
-        let bankServerResp = data?.data
-        return res.status(200).json(new ApiResponse(200, bankServerResp))
-    }).catch((err) => {
-        return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-    })
-    //  banking side api call end 
 });
 
 export const payoutStatusCheck = asyncHandler(async (req, res) => {
