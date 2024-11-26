@@ -107,11 +107,11 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 }
             })
             break;
-        case "marwarpayInSwitch":
+        case "impactpeaksoftwareApi":
             // store database
             await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
                 // Banking Api
-                let API_URL = `https://www.marwarpay.in/portal/api/generateQrAuth?memberid=MPAPI903851&txnpwd=AB23&name=${name}&amount=${amount}&txnid=${trxId}`
+                let API_URL = `https://impactpeaksoftware.in/portal/api/generateQrAuth?memberid=IMPSAPI837165&txnpwd=8156&name=${name}&amount=${amount}&txnid=${trxId}`
                 let bank = await axios.get(API_URL);
 
                 let dataApiResponse = {
