@@ -195,6 +195,35 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             })
             //  banking side api call end 
             break;
+        case "waayupayPayOutApi":
+            postApiOptions = {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            payoutApiDataSend =
+            {
+                clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
+                secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
+                number: String(mobileNumber),
+                transferMode: "NEFT",
+                clientOrderId: trxId,
+                amount: String(amount),
+                ifscCode: ifscCode,
+                accountNo: String(accountNumber),
+                beneficiaryName: accountHolderName,
+                vpa: "ajaybudaniya1@ybl"
+            }
+
+            // banking api calling
+            axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then((data) => {
+                let bankServerResp = data?.data
+                return res.status(200).json(new ApiResponse(200, bankServerResp))
+            }).catch((err) => {
+                return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+            })
+            //  banking side api call end 
+            break;
         default:
             let respSend = {
                 statusCode: "400",

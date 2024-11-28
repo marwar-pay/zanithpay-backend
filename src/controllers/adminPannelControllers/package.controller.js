@@ -12,7 +12,14 @@ export const getPackage = asyncHandler(async (req, res) => {
             path: "$payOutPackage",
             preserveNullAndEmptyArrays: true,
         }
-    }, { $project: { "_id": 1, "packageName": 1, "packageInfo": 1, "packagePayOutCharge": 1, "packagePayInCharge": 1, "isActive": 1, "createdAt": 1, "payOutPackage._id": 1, "payOutPackage.payOutPackageName": 1, } }]);
+    }, { $lookup: { from: "payinpackages", localField: "packagePayInCharge", foreignField: "_id", as: "payInPackage" } },
+    {
+        $unwind: {
+            path: "$payInPackage",
+            preserveNullAndEmptyArrays: true,
+        }
+    }, { $project: { "_id": 1, "packageName": 1, "packageInfo": 1, "packagePayOutCharge": 1, "packagePayInCharge": 1, "isActive": 1, "createdAt": 1, "payOutPackage._id": 1, "payOutPackage.payOutPackageName": 1, "payInPackage._id": 1, "payInPackage.payInPackageName": 1, } }]);
+
     if (!pack) {
         return new ApiError(400, "No Package Avabile !")
     }
