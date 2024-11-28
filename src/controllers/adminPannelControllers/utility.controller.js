@@ -1,6 +1,7 @@
 import userDB from "../../models/user.model.js";
 import packageModel from "../../models/package.model.js";
 import payOutChargeModel from "../../models/payOutCharge.model.js";
+import payInChargeModel from "../../models/payInCharge.model.js";
 import apiPayInModel from "../../models/apiPayInSwitch.model.js";
 import ticketInModel from "../../models/supportTicket.model.js";
 import apiPayOutModel from "../../models/apiPayOutSwitch.model.js";
@@ -121,4 +122,15 @@ export const getPayOutPackageList = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Failed", data: "No Payout package Found !" })
     }
     res.status(200).json(new ApiResponse(200, payoutPackage))
+})
+
+export const getPayInPackageList = asyncHandler(async (req, res) => {
+    let payInPackage = await payInChargeModel.aggregate([{ $match: { isActive: true } }, {
+        $project: { "_id": 1, "payInPackageName": 1, }
+    }, { $sort: { createdAt: -1 } }])
+
+    if (!payInPackage.length) {
+        return res.status(400).json({ message: "Failed", data: "No Payin package Found !" })
+    }
+    res.status(200).json(new ApiResponse(200, payInPackage))
 })

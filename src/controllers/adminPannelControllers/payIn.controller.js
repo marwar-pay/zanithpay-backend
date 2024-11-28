@@ -233,12 +233,40 @@ export const callBackResponse = asyncHandler(async (req, res) => {
                 path: "$package",
                 preserveNullAndEmptyArrays: true,
             }
+        }, { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } }, {
+            $unwind: {
+                path: "$packageCharge",
+                preserveNullAndEmptyArrays: true,
+            }
         }, {
-            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "package._id": 1, "package.packageName": 1, "package.packagePayInCharge": 1, "package.isActive": 1 }
+            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "packageCharge._id": 1, "packageCharge.payInPackageName": 1, "packageCharge.payInChargeRange": 1, "packageCharge.isActive": 1 }
         }])
 
-        let gatwarCharge = (userInfo[0]?.package?.packagePayInCharge / 100) * data.payerAmount;
-        let finalCredit = data.payerAmount - gatwarCharge
+        let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
+        var chargeTypePayIn;
+        var chargeAmoutPayIn;
+
+        chargeRange.forEach((value) => {
+            if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
+                chargeTypePayIn = value.chargeType
+                chargeAmoutPayIn = value.charge
+                return 0;
+            }
+        })
+
+        var userChargeApply;
+        var finalAmountAdd;
+
+        if (chargeTypePayIn === "Flat") {
+            userChargeApply = chargeAmoutPayIn;
+            finalAmountAdd = data?.payerAmount - userChargeApply;
+        } else {
+            userChargeApply = (chargeAmoutPayIn / 100) * data?.payerAmount;
+            finalAmountAdd = data?.payerAmount - userChargeApply;
+        }
+
+        let gatwarCharge = userChargeApply;
+        let finalCredit = finalAmountAdd;
 
         let payinDataStore = { memberId: pack?.memberId, payerName: data?.payerName, trxId: data?.txnID, amount: data?.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data?.payerVA, bankRRN: data?.BankRRN, description: `Qr Generated Successfully Amount:${data?.payerAmount} PayerVa:${data?.payerVA} BankRRN:${data?.BankRRN}`, trxCompletionDate: data?.TxnCompletionDate, trxInItDate: data?.TxnInitDate, isSuccess: data?.status == 200 || "200" || "Success" || "success" ? "Success" : "Failed" }
 

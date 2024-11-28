@@ -14,8 +14,9 @@ const packageSchema = new Schema({
         required: [true, "Please Select Payout Package !"]
     },
     packagePayInCharge: {
-        type: Number,
-        required: [true, "Required Payout Charges!"]
+        type: Schema.Types.ObjectId,
+        ref: "payinpackages",
+        required: [true, "Please Select Payin Package !"]
     },
     isActive: {
         type: Boolean,

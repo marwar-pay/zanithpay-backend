@@ -1,10 +1,17 @@
 import express from "express";
-import { addPackage, addPayOutPackage, deletePackage, getPackage, getPayOutPackage, getSinglePackage, getSinglePayOutPackage, updatePackage, updatePayOutPackage } from "../../controllers/adminPannelControllers/package.controller.js";
+import { addPackage, addPayInPackage, addPayOutPackage, deletePackage, getPackage, getPayInPackage, getPayOutPackage, getSinglePackage, getSinglePayInPackage, getSinglePayOutPackage, updatePackage, updatePayInPackage, updatePayOutPackage } from "../../controllers/adminPannelControllers/package.controller.js";
 import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 
 const payoutCharge = Joi.object().keys({
+    lowerLimit: Joi.number().required(),
+    upperLimit: Joi.number().required(),
+    chargeType: Joi.string().valid("Flat", "Percentage").required(),
+    charge: Joi.number().required(),
+})
+
+const payInCharge = Joi.object().keys({
     lowerLimit: Joi.number().required(),
     upperLimit: Joi.number().required(),
     chargeType: Joi.string().valid("Flat", "Percentage").required(),
@@ -24,7 +31,7 @@ router.post("/addPackage", celebrate({
         packageName: Joi.string().required(),
         packageInfo: Joi.string().optional(),
         packagePayOutCharge: Joi.string().trim().length(24).required(),
-        packagePayInCharge: Joi.number().required(),
+        packagePayInCharge: Joi.string().trim().length(24).required(),
         isActive: Joi.boolean().optional(),
     })
 }), userVerify, addPackage);
@@ -34,7 +41,7 @@ router.post("/updatePackage/:id", celebrate({
         packageName: Joi.string().optional(),
         packageInfo: Joi.string().optional(),
         packagePayOutCharge: Joi.string().trim().length(24).optional(),
-        packagePayInCharge: Joi.number().optional(),
+        packagePayInCharge: Joi.string().trim().length(24).optional(),
         isActive: Joi.boolean().optional(),
     }),
     params: Joi.object({
@@ -47,6 +54,33 @@ router.delete("/deletePackage/:id", celebrate({
         id: Joi.string().trim().length(24).required(),
     })
 }), userVerify, deletePackage);
+
+router.get("/getPayInPackage", userVerify, getPayInPackage);
+
+router.get("/getSinglePayInPackage/:id", celebrate({
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, getSinglePayInPackage);
+
+router.post("/addPayInPackage", celebrate({
+    body: Joi.object({
+        payInPackageName: Joi.string().required(),
+        payInChargeRange: Joi.array().items(payInCharge).required(),
+        isActive: Joi.boolean().default(true),
+    })
+}), userVerify, addPayInPackage);
+
+router.post("/updatePayInPackage/:id", celebrate({
+    body: Joi.object({
+        payInPackageName: Joi.string().optional(),
+        payInChargeRange: Joi.array().items(payInCharge).optional(),
+        isActive: Joi.boolean().optional(),
+    }),
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, updatePayInPackage);
 
 router.get("/getPayOutPackage", userVerify, getPayOutPackage);
 

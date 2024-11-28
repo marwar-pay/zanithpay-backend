@@ -196,8 +196,11 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             //  banking side api call end 
             break;
         default:
-            return res.status(400).json({ message: "Failed", data: { trxId: trxId } })
-            break;
+            let respSend = {
+                statusCode: "400",
+                txnID: trxId
+            }
+            return res.status(400).json({ message: "Failed", data: respSend })
     }
 });
 

@@ -1,5 +1,6 @@
 import packageModel from "../../models/package.model.js";
 import payOutPackageModel from "../../models/payOutCharge.model.js";
+import payInPackageModel from "../../models/payInCharge.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -48,6 +49,35 @@ export const deletePackage = asyncHandler(async (req, res) => {
     if (!quaryFind) {
         return res.status(400).json(new ApiError(400, "Package Not Found !"))
     }
+    res.status(200).json(new ApiResponse(200, quaryFind))
+})
+
+export const getPayInPackage = asyncHandler(async (req, res) => {
+    let quaryFind = await payInPackageModel.find()
+    if (!quaryFind) {
+        return res.status(400).json(new ApiError(400, "Package Not Found !"))
+    }
+    res.status(200).json(new ApiResponse(200, quaryFind))
+})
+
+export const getSinglePayInPackage = asyncHandler(async (req, res) => {
+    let query = req.params.id;
+    let pack = await payInPackageModel.findById(query);
+    if (!pack) {
+        return new ApiError(400, "No Package Avabile !")
+    }
+    res.status(200).json(new ApiResponse(200, pack))
+})
+
+export const addPayInPackage = asyncHandler(async (req, res) => {
+    let quaryFind = await payInPackageModel.create(req.body)
+    res.status(201).json(new ApiResponse(200, quaryFind))
+})
+
+export const updatePayInPackage = asyncHandler(async (req, res) => {
+    let packageId = req.params.id;
+    const packUpdate = req.body;
+    let quaryFind = await payInPackageModel.findByIdAndUpdate(packageId, { ...packUpdate }, { new: true });
     res.status(200).json(new ApiResponse(200, quaryFind))
 })
 
