@@ -9,8 +9,10 @@ import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
-    let queryObject = req.query;
-    let payment = await qrGenerationModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+    // let queryObject = req.query;
+    let date = new Date();
+    let DateComp = `${date.getFullYear()}-${(date.getMonth()) + 1}-${date.getDate()}`
+    let payment = await qrGenerationModel.aggregate([{ $match: { createdAt: { $gte: new Date(DateComp) } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
     {
         $unwind: {
             path: "$userInfo",
