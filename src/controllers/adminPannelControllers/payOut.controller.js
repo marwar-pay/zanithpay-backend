@@ -110,7 +110,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         trxId: trxId
     }
 
-    // let data = await payOutModelGenerate.create(userStoreData);
+    let data = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
     const payOutApi = user[0]?.payOutApi;
