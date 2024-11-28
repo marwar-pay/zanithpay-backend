@@ -276,6 +276,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
+    if (req.body.UTR) {
+        data = { txnid: callBackPayout?.ClientOrderId, optxid: callBackPayout?.OrderId, amount: callBackPayout?.Amount, rrn: callBackPayout?.UTR, status: (callBackPayout?.Status == 1) ? "SUCCESS" : "Pending" }
+    }
+
     if (data.status != "SUCCESS") {
         return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
     }
