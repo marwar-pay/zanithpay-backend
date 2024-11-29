@@ -110,7 +110,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         trxId: trxId
     }
 
-    let data = await payOutModelGenerate.create(userStoreData);
+    let payOutModelGen = await payOutModelGenerate.create(userStoreData);
 
     // Payout data store successfully and send to the banking side
     const payOutApi = user[0]?.payOutApi;
@@ -161,8 +161,21 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 let bankServerResp = data?.data?.ResponseData
                 // decrypt the data and send to client;
                 let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, EncKey);
-                let BankJsonConvt = await JSON.parse(BodyResponceDec)
-                return res.status(200).json(new ApiResponse(200, BankJsonConvt))
+                let BankJsonConvt = await JSON.parse(BodyResponceDec);
+
+                if (BankJsonConvt.subStatus == -1 || 2 || -2) {
+                    payOutModelGen.isSuccess = "Failed";
+                    await payOutModelGen.save();
+                    return res.status(200).json({ message: BankJsonConvt, data: "failed with me" })
+                }
+
+                let userRespPayOut = {
+                    statusCode: BodyResponceDec?.subStatus,
+                    status: BodyResponceDec?.status,
+                    trxId: BodyResponceDec?.clientReferenceNo,
+                    opt_msg: BodyResponceDec?.statusDesc
+                }
+                return res.status(200).json(new ApiResponse(200, BankJsonConvt.subStatus))
             }).catch((err) => {
                 return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
             })
@@ -274,8 +287,8 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body;
-    console.log(callBackPayout,"callback")
-    console.log(req.body,"req.body")
+    console.log(callBackPayout, "callback")
+    console.log(req.body, "req.body")
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
     if (req.body.UTR) {
