@@ -129,7 +129,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             }
             let BodyObj = {
                 beneName: accountHolderName,
-                beneAccountNo: accountNumber,
+                beneAccountNo: accountNumber.toString(),
                 beneifsc: ifscCode,
                 benePhoneNo: mobileNumber,
                 clientReferenceNo: trxId,
@@ -274,7 +274,6 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body;
-    console.log(callBackPayout);
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
     if (req.body.UTR) {
@@ -293,7 +292,6 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     }
 
     if (getDocoment && data?.rrn) {
-        console.log("hello")
         getDocoment.isSuccess = "Success"
         await getDocoment.save();
 
@@ -364,8 +362,6 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             amount: data?.amount,
             rrn: data?.rrn
         }
-
-        console.log(shareObjData)
 
         let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
         return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
