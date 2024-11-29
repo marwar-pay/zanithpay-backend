@@ -208,7 +208,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
                 number: mobileNumber.toString(),
                 amount: amount.toString(),
-                transferMode: "NEFT",
+                transferMode: "IMPS",
                 accountNo: accountNumber.toString(),
                 ifscCode: ifscCode,
                 beneficiaryName: accountHolderName,
