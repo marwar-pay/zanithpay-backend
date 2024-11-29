@@ -166,16 +166,17 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 if (BankJsonConvt.subStatus == -1 || 2 || -2) {
                     payOutModelGen.isSuccess = "Failed";
                     await payOutModelGen.save();
-                    return res.status(200).json({ message: BankJsonConvt, data: "failed with me" })
+                    // return res.status(200).json({ message: BankJsonConvt})
                 }
 
                 let userRespPayOut = {
-                    statusCode: BodyResponceDec?.subStatus,
-                    status: BodyResponceDec?.status,
-                    trxId: BodyResponceDec?.clientReferenceNo,
-                    opt_msg: BodyResponceDec?.statusDesc
+                    statusCode: BankJsonConvt?.subStatus,
+                    status: BankJsonConvt?.status,
+                    trxId: BankJsonConvt?.clientReferenceNo,
+                    opt_msg: BankJsonConvt?.statusDesc
                 }
-                return res.status(200).json(new ApiResponse(200, BankJsonConvt.subStatus))
+
+                return res.status(200).json(new ApiResponse(200, userRespPayOut))
             }).catch((err) => {
                 return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
             })
