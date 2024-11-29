@@ -274,6 +274,8 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body;
+    console.log(callBackPayout,"callback")
+    console.log(req.body,"req.body")
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
     if (req.body.UTR) {
