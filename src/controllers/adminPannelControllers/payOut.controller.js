@@ -273,7 +273,8 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    let callBackPayout = req.body
+    let callBackPayout = req.body;
+    console.log(callBackPayout);
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
     if (req.body.UTR) {
@@ -288,6 +289,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
 
     if (getDocoment && data?.rrn) {
+        console.log("hello")
         getDocoment.isSuccess = "Success"
         await getDocoment.save();
 
@@ -352,15 +354,17 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         };
 
         let shareObjData = {
-            status: req.body.status,
-            txnid: req.body.txnid,
-            optxid: req.body.optxid,
-            amount: req.body.amount,
-            rrn: req.body.rrn
+            status: data?.status,
+            txnid: data?.txnid,
+            optxid: data?.optxid,
+            amount: data?.amount,
+            rrn: data?.rrn
         }
 
+        console.log(shareObjData)
+
         let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
-        return res.status(200).json(new ApiResponse(200, dataApi.data, "Successfully !"))
+        return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
 
         // end the user callback calling and send response 
     } else {
