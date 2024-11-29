@@ -231,15 +231,37 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             }
 
             // banking api calling
-            axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then((data) => {
+            axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
                 let bankServerResp = data?.data;
+
+                if (bankServerResp?.status === 1) {
+                    let userCustomCallBackGen = {
+                        StatusCode: bankServerResp?.statusCode,
+                        Message: bankServerResp?.message,
+                        OrderId: bankServerResp?.orderId,
+                        Status: bankServerResp?.status,
+                        ClientOrderId: bankServerResp?.clientOrderId,
+                        PaymentMode: "IMPS",
+                        Amount: bankServerResp?.amount,
+                        Date: new Date().toString(),
+                        UTR: bankServerResp?.utr,
+                    }
+                    let postSelfURl = "http://localhost:5000/apiAdmin/v1/payout/payoutCallBackResponse";
+                    let selfApiHeadersOPT = {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': "application/json"
+                        }
+                    };
+                    axios.post(postSelfURl, userCustomCallBackGen, selfApiHeadersOPT);
+                }
+
                 let userRespSend = {
                     statusCode: bankServerResp?.statusCode,
                     status: bankServerResp?.status,
                     trxId: bankServerResp?.clientOrderId,
                     opt_msg: bankServerResp?.message
                 }
-
                 return res.status(200).json(new ApiResponse(200, userRespSend))
             }).catch((err) => {
                 return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
@@ -288,8 +310,6 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let callBackPayout = req.body;
-    console.log(callBackPayout, "callback")
-    console.log(req.body, "req.body")
     let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
     if (req.body.UTR) {
