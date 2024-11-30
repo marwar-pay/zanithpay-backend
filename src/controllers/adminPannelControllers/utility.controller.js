@@ -7,6 +7,26 @@ import ticketInModel from "../../models/supportTicket.model.js";
 import apiPayOutModel from "../../models/apiPayOutSwitch.model.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import axios from "axios";
+
+export const getBalanceFetch = asyncHandler(async (req, res) => {
+    let bankingApiURL = "https://api.waayupay.com/api/api/api-module/payout/balance";
+    let bankingSec = {
+        clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
+        secretKey: "6af59e5a-7f28-4670-99ae-826232b467be"
+    }
+    let optionsHead = {
+        Headers: {
+            "Content-Type": "application/json"
+        }
+    }
+    axios.post(bankingApiURL, bankingSec, optionsHead).then((result) => {
+        let balance = result?.data?.balance
+        return res.status(200).json(new ApiResponse(200, balance))
+    }).catch((err) => {
+        return res.status(400).json({ message: "Failed", data: "Balance Not Fetch Successfully !" })
+    })
+})
 
 export const getUserList = asyncHandler(async (req, res) => {
     let userInfo = await userDB.aggregate([{ $match: { memberType: "Users" } }, {
