@@ -287,11 +287,19 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             'Content-Type': 'application/json'
         };
 
-        axios.post(userCallBackURL, req.body, config).then((a) => {
-            return res.status(200).json(new ApiResponse(200, null, "Successfully"))
-        }).catch((err) => {
-            return res.status(500).json({ success: "Failed", message: "Error User Api calling !" })
-        })
+        let userRespSendApi = {
+            status: data?.status,
+            payerAmount: data?.payerAmount,
+            payerName: data?.payerName,
+            txnID: data?.txnID,
+            BankRRN: data?.BankRRN,
+            payerVA: data?.payerVA,
+            TxnInitDate: data?.TxnInitDate,
+            TxnCompletionDate: data?.TxnCompletionDate
+        }
+
+        await axios.post(userCallBackURL, userRespSendApi, config)
+        res.status(200).json(new ApiResponse(200, null, "Successfully"))
         // callback end to the user url
     } else {
         return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
