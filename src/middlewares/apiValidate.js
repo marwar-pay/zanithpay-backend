@@ -1,9 +1,8 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import userDB from "../models/user.model.js";
-import jwt from "jsonwebtoken";
 
-export const userPannelAuth = asyncHandler(async (req, res, next) => {
+export const apiValidate = asyncHandler(async (req, res, next) => {
     try {
         const userToken = req.cookies?.accessTokenUser || req.header("Authorization")?.replace("Bearer ", "")
         if (!userToken) {
