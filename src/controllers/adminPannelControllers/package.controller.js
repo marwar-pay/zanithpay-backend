@@ -88,6 +88,12 @@ export const updatePayInPackage = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, quaryFind))
 })
 
+export const deletePayInPackage = asyncHandler(async (req, res) => {
+    let packageId = req.params.id;
+    let quaryFind = await payInPackageModel.findByIdAndDelete(packageId);
+    res.status(200).json(new ApiResponse(200, quaryFind))
+})
+
 export const getPayOutPackage = asyncHandler(async (req, res) => {
     let quaryFind = await payOutPackageModel.find()
     if (!quaryFind) {
@@ -108,6 +114,12 @@ export const getSinglePayOutPackage = asyncHandler(async (req, res) => {
 export const addPayOutPackage = asyncHandler(async (req, res) => {
     let quaryFind = await payOutPackageModel.create(req.body)
     res.status(201).json(new ApiResponse(200, quaryFind))
+})
+
+export const deletePayOutPackage = asyncHandler(async (req, res) => {
+    let packageId = req.params.id;
+    let quaryFind = await payOutPackageModel.findByIdAndDelete(packageId);
+    res.status(200).json(new ApiResponse(200, quaryFind))
 })
 
 export const updatePayOutPackage = asyncHandler(async (req, res) => {

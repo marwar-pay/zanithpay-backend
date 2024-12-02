@@ -1,5 +1,5 @@
 import express from "express";
-import { addPackage, addPayInPackage, addPayOutPackage, deletePackage, getPackage, getPayInPackage, getPayOutPackage, getSinglePackage, getSinglePayInPackage, getSinglePayOutPackage, updatePackage, updatePayInPackage, updatePayOutPackage } from "../../controllers/adminPannelControllers/package.controller.js";
+import { addPackage, addPayInPackage, addPayOutPackage, deletePackage, deletePayInPackage, deletePayOutPackage, getPackage, getPayInPackage, getPayOutPackage, getSinglePackage, getSinglePayInPackage, getSinglePayOutPackage, updatePackage, updatePayInPackage, updatePayOutPackage } from "../../controllers/adminPannelControllers/package.controller.js";
 import { userVerify } from "../../middlewares/userAuth.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
@@ -71,6 +71,12 @@ router.post("/addPayInPackage", celebrate({
     })
 }), userVerify, addPayInPackage);
 
+router.post("/deletePayInPackage/:id", celebrate({
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, deletePayInPackage);
+
 router.post("/updatePayInPackage/:id", celebrate({
     body: Joi.object({
         payInPackageName: Joi.string().optional(),
@@ -97,6 +103,12 @@ router.post("/addPayOutPackage", celebrate({
         isActive: Joi.boolean().default(true),
     })
 }), userVerify, addPayOutPackage);
+
+router.post("/deletePayOutPackage/:id", celebrate({
+    params: Joi.object({
+        id: Joi.string().trim().length(24).required(),
+    })
+}), userVerify, deletePayOutPackage);
 
 router.post("/updatePayOutPackage/:id", celebrate({
     body: Joi.object({
