@@ -1,5 +1,6 @@
 import { ApiResponse } from "../../utils/ApiResponse.js"
 import QrGenerationModel from "../../models/qrGeneration.model.js"
+import userDB from "../../models/user.model.js"
 import payInModelSuccess from "../../models/payIn.model.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
 import { ApiError } from "../../utils/ApiError.js"
@@ -40,3 +41,29 @@ export const allPayInTransactionSuccess = asyncHandler(async (req, res) => {
         res.status(500).json({ message: "Failed", data: "Some Inter Server Error!" })
     })
 })
+
+export const userPaymentStatusCheckPayIn = asyncHandler(async (req, res) => {
+    let { userName, authToken, trxId } = req.body;
+
+    let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }]);
+
+    if (user.length === 0) {
+        return res.status(400).json({ message: "Failed", data: "User not valid or Inactive !" })
+    }
+
+    let pack = await QrGenerationModel.aggregate([{ $match: { $and: [{ trxId: trxId }, { memberId: new mongoDBObJ(user[0]._id) }] } }, { $lookup: { from: "payinrecodes", localField: "trxId", foreignField: "trxId", as: "trxInfo" } }, {
+        $unwind: {
+            path: "$trxInfo",
+            preserveNullAndEmptyArrays: true,
+        },
+    }, { $addFields: { rrn: "$trxInfo.bankRRN", chargeAmount: "$trxInfo.chargeAmount" } }, {
+        $project: { "trxId": 1, "amount": 1, "chargeAmount": 1, "name": 1, "callBackStatus": 1, "createdAt": 1, "_id": 0, "rrn": 1 }
+    }]);
+
+    if (!pack.length) {
+        return res.status(400).json({ message: "Failed", data: "No Transaction !" })
+    }
+
+    if (pack.length)
+        res.status(200).json(new ApiResponse(200, pack[0]))
+});
