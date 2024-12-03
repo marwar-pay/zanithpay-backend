@@ -62,7 +62,7 @@ export const waayupayCheckStatus = asyncHandler(async (req, res) => {
             }
             // GetData.isSuccess = 
         }).catch((err) => {
-            console.log("some error")
+            console.log(err.message)
         })
     })
 
