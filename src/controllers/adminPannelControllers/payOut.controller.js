@@ -443,6 +443,27 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
 
     if (getDocoment?.isSuccess === "Success") {
+        // callback response to the 
+        let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: userInfo[0]?._id } }]);
+
+        let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+        // Calling the user callback and send the response to the user 
+        const config = {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        };
+
+        let shareObjData = {
+            status: data?.status,
+            txnid: data?.txnid,
+            optxid: data?.optxid,
+            amount: data?.amount,
+            rrn: data?.rrn
+        }
+
+        await axios.post(payOutUserCallBackURL, shareObjData, config)
         return res.status(400).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
     }
 
