@@ -57,8 +57,36 @@ export const waayupayCheckStatus = asyncHandler(async (req, res) => {
 
         axios.post(uatUrl, postAdd, header).then(async (data) => {
             if (data?.data?.status !== 1) {
-                GetData.isSuccess = "Failed"
-                await GetData.save();
+                let update = await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }, { new: true })
+                console.log(data.data.status)
+                // console.log(update)
+            }
+
+            if (data?.data?.status === 1) {
+                let callURl = "http://localhost:5000/apiAdmin/v1/payout/payoutCallBackResponse";
+                let customData = {
+                    StatusCode: data?.data?.statusCode,
+                    Message: data?.data?.message,
+                    OrderId: data?.data?.orderId,
+                    Status: data?.data?.status,
+                    ClientOrderId: data?.data?.clientOrderId,
+                    PaymentMode: "IMPS",
+                    Amount: data?.data?.amount,
+                    Date: new Date().toString(),
+                    UTR: data?.data?.utr,
+                }
+
+                let optionsSend = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': "application/json"
+                    }
+                };
+                axios.post(callURl, customData, optionsSend).then((resu) => {
+                    console.log(resu?.data)
+                }).catch((err) => {
+                    console.log(err.message)
+                })
             }
             // GetData.isSuccess = 
         }).catch((err) => {
