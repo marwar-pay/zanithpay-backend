@@ -19,6 +19,10 @@ const EwalletSchema = new Schema({
         type: Number,
         required: [true, "Required Before transaction amount !"]
     },
+    chargeAmount: {
+        type: Number,
+        required: [true, "Required charge amount !"]
+    },
     afterAmount: {
         type: Number,
         required: [true, "Required After transaction amount !"]

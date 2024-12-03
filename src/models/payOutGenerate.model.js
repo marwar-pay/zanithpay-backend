@@ -26,6 +26,10 @@ const payOutSchemaGen = new Schema({
         type: Number,
         required: [true, "Required Amount !"]
     },
+    gatwayCharge: {
+        type: Number,
+        required: [true, "Required getway chage amount !"]
+    },
     afterChargeAmount: {
         type: Number,
         required: [true, "Required Amount !"]

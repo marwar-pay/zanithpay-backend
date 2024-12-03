@@ -169,11 +169,15 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         accountNumber: accountNumber,
         ifscCode: ifscCode,
         amount: amount,
+        gatwayCharge: userChargeApply,
         afterChargeAmount: finalAmountDeduct,
         trxId: trxId
     }
 
     let payOutModelGen = await payOutModelGenerate.create(userStoreData);
+
+    // ewallet balance deducted
+    let userEwalletBalance = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
 
     // Payout data store successfully and send to the banking side
     const payOutApi = user[0]?.payOutApi;
@@ -293,11 +297,43 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 clientOrderId: trxId
             }
 
+            let userEwalletBalanceBefore = userEwalletBalance.EwalletBalance;
+            userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance - finalAmountDeduct;
+            await userEwalletBalance.save();
+
+            // ewallet balance Store 
+            let walletModelDataStore = {
+                memberId: userEwalletBalance._id,
+                transactionType: "Dr.",
+                transactionAmount: amount,
+                beforeAmount: userEwalletBalanceBefore,
+                chargeAmount: userChargeApply,
+                afterAmount: userEwalletBalanceBefore - finalAmountDeduct,
+                description: `Successfully Dr. amount: ${finalAmountDeduct}`,
+                transactionStatus: "Success",
+            }
+
+            let storeTrx = await walletModel.create(walletModelDataStore)
+
             // banking api calling
             axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
                 let bankServerResp = data?.data;
 
+                // Banking side success resp
                 if (bankServerResp?.status === 1) {
+                    let payoutDataStore = {
+                        memberId: userEwalletBalance?._id,
+                        amount: amount,
+                        chargeAmount: userChargeApply,
+                        finalAmount: finalAmountDeduct,
+                        bankRRN: bankServerResp?.utr,
+                        trxId: trxId,
+                        optxId: bankServerResp?.orderId,
+                        isSuccess: "Success"
+                    }
+
+                    await payOutModel.create(payoutDataStore)
+
                     let userCustomCallBackGen = {
                         StatusCode: bankServerResp?.statusCode,
                         Message: bankServerResp?.message,
@@ -317,6 +353,26 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         }
                     };
                     axios.post(postSelfURl, userCustomCallBackGen, selfApiHeadersOPT);
+                }
+
+                // failed from bank side
+                if (bankServerResp?.status === 0 || 4) {
+
+                    await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
+
+                    // ewallet balance Store 
+                    let walletModelDataStoreCR = {
+                        memberId: userEwalletBalance._id,
+                        transactionType: "Cr.",
+                        transactionAmount: amount,
+                        beforeAmount: userEwalletBalance.EwalletBalance,
+                        chargeAmount: userChargeApply,
+                        afterAmount: userEwalletBalance.EwalletBalance + finalAmountDeduct,
+                        description: `Successfully Cr. amount: ${finalAmountDeduct}`,
+                        transactionStatus: "Success",
+                    }
+
+                    await walletModel.create()
                 }
 
                 let userRespSend = {
@@ -384,7 +440,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     }
 
     // get the trxid Data 
-    let getDocoment = await payOutModelGenerate.findOne({ trxId: data.txnid });
+    let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
 
     if (getDocoment?.isSuccess === "Success") {
         return res.status(400).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
