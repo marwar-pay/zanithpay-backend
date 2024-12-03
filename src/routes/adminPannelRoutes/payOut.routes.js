@@ -2,13 +2,16 @@ import express from "express";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
-import { allPayOutPayment, allPayOutPaymentSuccess, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate } from "../../controllers/adminPannelControllers/payOut.controller.js";
+import { allPayOutPayment, allPayOutPaymentSuccess, generatePayOut, payoutCallBackResponse, payoutStatusCheck, payoutStatusUpdate, waayupayCheckStatus } from "../../controllers/adminPannelControllers/payOut.controller.js";
 import multer from "multer";
+import { apiValidate } from "../../middlewares/apiValidate.js";
 const upload = multer();
 
 router.get("/allPayOutPayment", userVerify, allPayOutPayment);
 
 router.get("/allPayOutOnSuccess", userVerify, allPayOutPaymentSuccess);
+
+router.get("/waayupayCheckStatus", userVerify, waayupayCheckStatus);
 
 router.post("/generatePayOut", celebrate({
     body: Joi.object({

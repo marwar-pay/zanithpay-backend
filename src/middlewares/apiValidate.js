@@ -1,26 +1,31 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import userDB from "../models/user.model.js";
+import ipWhiteListDB from "../models/ipWhiteList.model.js"
 
 export const apiValidate = asyncHandler(async (req, res, next) => {
     try {
-        const userToken = req.cookies?.accessTokenUser || req.header("Authorization")?.replace("Bearer ", "")
-        if (!userToken) {
-            throw new ApiError(401, "Unauthorized request")
-        }
-        const decodedToken = jwt.verify(userToken, process.env.ACCESS_TOKEN_SECRET);
+        // const clientId = req.headers['x-client-id'];  // Get client ID from request header (or other method)
+        // const clientIp = req.ip || req.connection.remoteAddress;
+        // const formattedIp = clientIp.includes('::ffff:') ? clientIp.split(':').pop() : clientIp;
 
-        const user = await userDB.findById(decodedToken?._id).select("-password -refreshToken")
+        // let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }])
 
-        if (!user) {
-            throw new ApiError(401, "Invalid Access Token")
-        }
+        // if (user.length === 0) {
+        //     return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
+        // }
 
-        if (user?.memberType !== "Users") {
-            throw new ApiError(404, error?.message || "User Not Right Access !");
-        }
-        req.user = user;
-        next();
+        next()
+
+        // let ipWhiteListGet = await ipWhiteListDB.aggregate([$match:{}])
+
+        // Check if clientId exists and IP is in the whitelist
+        // if (clientIpWhitelist[clientId] && clientIpWhitelist[clientId].includes(formattedIp)) {
+        //     next();  // Allow request
+        // } else {
+        //     res.status(403).json({ error: 'Access denied. Your IP is not whitelisted.' });
+        // }
+
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid access token");
     }

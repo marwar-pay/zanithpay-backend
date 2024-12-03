@@ -59,7 +59,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
             path: "$payInApi",
             preserveNullAndEmptyArrays: true,
         }
-    }])
+    },])
 
     if (user.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })

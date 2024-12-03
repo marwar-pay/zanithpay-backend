@@ -34,6 +34,41 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, GetData))
 });
 
+export const waayupayCheckStatus = asyncHandler(async (req, res) => {
+    let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" });
+
+    if (GetData.length === 0) {
+        return res.status(200).json({ message: "Success", data: "Zero Pending Entry Avabile !" })
+    }
+
+    GetData.forEach((item, index) => {
+        let uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check"
+        let postAdd = {
+            clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
+            secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
+            clientOrderId: item.trxId
+        }
+        let header = {
+            header: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            }
+        }
+
+        axios.post(uatUrl, postAdd, header).then(async (data) => {
+            if (data?.data?.status !== 1) {
+                GetData.isSuccess = "Failed"
+                await GetData.save();
+            }
+            // GetData.isSuccess = 
+        }).catch((err) => {
+            console.log("some error")
+        })
+    })
+
+    res.status(200).json(new ApiResponse(200, GetData))
+});
+
 export const generatePayOut = asyncHandler(async (req, res) => {
     const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
 
