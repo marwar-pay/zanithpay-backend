@@ -286,6 +286,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         Date: new Date().toString(),
                         UTR: bankServerResp?.utr,
                     }
+
                     let postSelfURl = "http://localhost:5000/apiAdmin/v1/payout/payoutCallBackResponse";
                     let selfApiHeadersOPT = {
                         headers: {
