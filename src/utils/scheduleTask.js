@@ -1,7 +1,9 @@
 import cron from "node-cron";
 import axios from "axios";
 import payOutModelGenerate from "../models/payOutGenerate.model.js";
-
+import userDB from "../models/user.model.js";
+import walletModel from "../models/Ewallet.model.js";
+import payOutModel from "../models/payOutSuccess.model.js";
 
 export default function scheduleTask() {
     cron.schedule('*/30 * * * *', async () => {
@@ -24,38 +26,45 @@ export default function scheduleTask() {
 
                 axios.post(uatUrl, postAdd, header).then(async (data) => {
                     if (data?.data?.status !== 1) {
-                        let update = await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }, { new: true })
-                        // console.log(data.data.status)
-                        // console.log(update)
+                        await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" })
                     }
 
-                    if (data?.data?.status === 1) {
-                        let callURl = "http://localhost:5000/apiAdmin/v1/payout/payoutCallBackResponse";
-                        let customData = {
-                            StatusCode: data?.data?.statusCode,
-                            Message: data?.data?.message,
-                            OrderId: data?.data?.orderId,
-                            Status: data?.data?.status,
-                            ClientOrderId: data?.data?.clientOrderId,
-                            PaymentMode: "IMPS",
-                            Amount: data?.data?.amount,
-                            Date: new Date().toString(),
-                            UTR: data?.data?.utr,
+                    else if (data?.data?.status === 1) {
+                        let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
+                        let beforeAmountUser = userWalletInfo.EwalletBalance;
+                        let finalEwalletDeducted = mainAmount + chargePaymentGatway;
+
+                        let walletModelDataStore = {
+                            memberId: userWalletInfo._id,
+                            transactionType: "Dr.",
+                            transactionAmount: data?.amount,
+                            beforeAmount: beforeAmountUser,
+                            chargeAmount: chargePaymentGatway,
+                            afterAmount: beforeAmountUser - finalEwalletDeducted,
+                            description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
+                            transactionStatus: "Success",
                         }
 
-                        let optionsSend = {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': "application/json"
-                            }
-                        };
-                        axios.post(callURl, customData, optionsSend).then((resu) => {
-                            console.log(resu?.data)
-                        }).catch((err) => {
-                            console.log(err.message)
-                        })
+                        // update the user wallet balance 
+                        userWalletInfo.EwalletBalance -= finalEwalletDeducted
+                        await userWalletInfo.save();
+
+                        let storeTrx = await walletModel.create(walletModelDataStore)
+
+                        let payoutDataStore = {
+                            memberId: getDocoment?.memberId,
+                            amount: mainAmount,
+                            chargeAmount: chargePaymentGatway,
+                            finalAmount: finalEwalletDeducted,
+                            bankRRN: data?.rrn,
+                            trxId: data?.txnid,
+                            optxId: data?.optxid,
+                            isSuccess: "Success"
+                        }
+
+                        await payOutModel.create(payoutDataStore)
                     }
-                    // GetData.isSuccess = 
+
                 }).catch((err) => {
                     console.log(err.message)
                 })
