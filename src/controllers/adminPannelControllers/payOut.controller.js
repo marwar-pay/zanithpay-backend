@@ -274,6 +274,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     }
 
                     await payOutModel.create(payoutDataStore)
+                    await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Success" })
 
                     let userCustomCallBackGen = {
                         StatusCode: bankServerResp?.statusCode,
@@ -298,7 +299,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 }
 
                 // failed from bank side
-                if (bankServerResp?.status === 0 || 4) {
+                else if (bankServerResp?.status === 0 || 4) {
                     await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
                     userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance + finalAmountDeduct;
