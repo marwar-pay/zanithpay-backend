@@ -25,7 +25,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
             path: "$userInfo",
             preserveNullAndEmptyArrays: true,
         }
-    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
+    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "chargeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
     if (!pack) {
         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
     }
