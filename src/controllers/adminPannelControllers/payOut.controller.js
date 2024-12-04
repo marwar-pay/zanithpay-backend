@@ -410,8 +410,8 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     }
 
     if (getDocoment && data?.rrn) {
-        // getDocoment.isSuccess = "Success"
-        // await getDocoment.save();
+        getDocoment.isSuccess = "Success"
+        await getDocoment.save();
 
         let userInfo = await userDB.aggregate([{ $match: { _id: getDocoment?.memberId } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
             $unwind: {
