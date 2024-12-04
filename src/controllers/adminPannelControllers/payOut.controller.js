@@ -34,69 +34,6 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, GetData))
 });
 
-export const waayupayCheckStatus = asyncHandler(async (req, res) => {
-    let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" });
-
-    if (GetData.length === 0) {
-        return res.status(200).json({ message: "Success", data: "Zero Pending Entry Avabile !" })
-    }
-
-    GetData.forEach((item, index) => {
-        let uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check"
-        let postAdd = {
-            clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
-            secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
-            clientOrderId: item.trxId
-        }
-        let header = {
-            header: {
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            }
-        }
-
-        axios.post(uatUrl, postAdd, header).then(async (data) => {
-            if (data?.data?.status !== 1) {
-                let update = await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }, { new: true })
-                console.log(data.data.status)
-                // console.log(update)
-            }
-
-            if (data?.data?.status === 1) {
-                let callURl = "http://localhost:5000/apiAdmin/v1/payout/payoutCallBackResponse";
-                let customData = {
-                    StatusCode: data?.data?.statusCode,
-                    Message: data?.data?.message,
-                    OrderId: data?.data?.orderId,
-                    Status: data?.data?.status,
-                    ClientOrderId: data?.data?.clientOrderId,
-                    PaymentMode: "IMPS",
-                    Amount: data?.data?.amount,
-                    Date: new Date().toString(),
-                    UTR: data?.data?.utr,
-                }
-
-                let optionsSend = {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': "application/json"
-                    }
-                };
-                axios.post(callURl, customData, optionsSend).then((resu) => {
-                    console.log(resu?.data)
-                }).catch((err) => {
-                    console.log(err.message)
-                })
-            }
-            // GetData.isSuccess = 
-        }).catch((err) => {
-            console.log(err.message)
-        })
-    })
-
-    res.status(200).json(new ApiResponse(200, GetData))
-});
-
 export const generatePayOut = asyncHandler(async (req, res) => {
     const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
 
@@ -447,7 +384,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
 
     if (getDocoment?.isSuccess === "Success") {
         // callback response to the 
-        let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: userInfo[0]?._id } }]);
+        let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: getDocoment.memberId } }]);
 
         let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
         // Calling the user callback and send the response to the user 
@@ -467,12 +404,12 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
         }
 
         await axios.post(payOutUserCallBackURL, shareObjData, config)
-        return res.status(400).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
+        return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
     }
 
     if (getDocoment && data?.rrn) {
-        getDocoment.isSuccess = "Success"
-        await getDocoment.save();
+        // getDocoment.isSuccess = "Success"
+        // await getDocoment.save();
 
         let userInfo = await userDB.aggregate([{ $match: { _id: getDocoment?.memberId } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
             $unwind: {
@@ -483,24 +420,30 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
         }]);
 
-        let chargePaymentGatway = getDocoment?.afterChargeAmount - getDocoment?.amount;
+        if(true){
+            return res.status(200).json({data:userInfo})
+        }
+
+        let chargePaymentGatway = getDocoment?.gatwayCharge;
         let mainAmount = getDocoment?.amount;
 
         let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
         let beforeAmountUser = userWalletInfo.EwalletBalance;
+        let finalEwalletDeducted = data?.amount + chargePaymentGatway;
 
         let walletModelDataStore = {
             memberId: userWalletInfo._id,
             transactionType: "Dr.",
             transactionAmount: data?.amount,
             beforeAmount: beforeAmountUser,
-            afterAmount: beforeAmountUser - data.amount,
-            description: `Successfully Dr. amount: ${data?.amount}`,
+            chargeAmount: chargePaymentGatway,
+            afterAmount: beforeAmountUser - finalEwalletDeducted,
+            description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
             transactionStatus: "Success",
         }
 
         // update the user wallet balance 
-        userWalletInfo.EwalletBalance -= getDocoment?.afterChargeAmount
+        userWalletInfo.EwalletBalance -= finalEwalletDeducted
         await userWalletInfo.save();
 
         let storeTrx = await walletModel.create(walletModelDataStore)
@@ -509,7 +452,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             memberId: getDocoment?.memberId,
             amount: mainAmount,
             chargeAmount: chargePaymentGatway,
-            finalAmount: getDocoment?.afterChargeAmount,
+            finalAmount: finalEwalletDeducted,
             bankRRN: data?.rrn,
             trxId: data?.txnid,
             optxId: data?.optxid,

@@ -21,6 +21,7 @@ import callBackUrl from "./routes/userPannelRoutes/callBackUser.routes.js";
 import { errors } from "celebrate";
 import { ApiError } from "./utils/ApiError.js";
 import ErrorMiddleware from "./middlewares/ErrorMiddleware.js";
+import scheduleTask from "./utils/scheduleTask.js";
 
 // for use body data
 app.use(
@@ -28,6 +29,9 @@ app.use(
         limit: "16kb",
     })
 );
+
+// auto schedule Task
+// scheduleTask();
 
 const corsOptions = {
     origin: '*',
