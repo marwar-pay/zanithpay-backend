@@ -23,7 +23,7 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
         if (getUserIpList?.ipUserDev == "*") {
             next()
         }
-        else if (getUserIpList?.ipUser === clientIp || getUserIpList?.ipUserDev === clientIp) {
+        else if (getUserIpList?.ipUser == clientIp || getUserIpList?.ipUserDev == clientIp) {
             next()
         } else {
             return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
