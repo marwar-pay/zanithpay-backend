@@ -11,6 +11,13 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
 
         let user = await userDB.aggregate([{ $match: { $and: [{ userName: req?.body?.userName }, { trxAuthToken: req?.body?.authToken }, { isActive: true }] } }])
 
+        if (true) {
+            console.log(clientId, "clientId");
+            console.log(formattedIp, "formattedIp");
+            console.log(clientIp, "clientIp");
+            return res.status(200).json({ clientId, clientIp, formattedIp })
+        }
+
         if (user.length === 0) {
             return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
         }
