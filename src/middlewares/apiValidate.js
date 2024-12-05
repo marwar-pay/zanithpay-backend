@@ -9,11 +9,6 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
         const clientIp = requestIp.getClientIp(req);
         let user = await userDB.aggregate([{ $match: { $and: [{ userName: req?.body?.userName }, { trxAuthToken: req?.body?.authToken }, { isActive: true }] } }])
 
-        if (true) {
-            console.log(clientIp, "clientIp");
-            return res.status(200).json({ data: clientIp })
-        }
-
         if (user.length === 0) {
             return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
         }
@@ -21,17 +16,17 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
         let getUserIpList = await ipWhiteListDB.findOne({ memberId: user[0]._id });
 
         if (!getUserIpList) {
-            return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${formattedIp}` })
+            return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
         }
 
-        if (getUserIpList?.ipUserDev === "*") {
+        if (getUserIpList?.ipUserDev == "*") {
             next()
         }
-        else if (getUserIpList?.ipUser === formattedIp || getUserIpList?.ipUserDev === formattedIp) {
+        else if (getUserIpList?.ipUser === clientIp || getUserIpList?.ipUserDev === clientIp) {
             next()
         }
 
-        return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${formattedIp}` })
+        return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid Request !");
     }
