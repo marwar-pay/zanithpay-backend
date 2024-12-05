@@ -8,12 +8,17 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
     try {
         const clientIp = requestIp.getClientIp(req);
         let user = await userDB.aggregate([{ $match: { $and: [{ userName: req?.body?.userName }, { trxAuthToken: req?.body?.authToken }, { isActive: true }] } }])
-
+        console.log(typeof clientIp)
         if (user.length === 0) {
             return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
         }
 
+
         let getUserIpList = await ipWhiteListDB.findOne({ memberId: user[0]._id });
+
+        if (true) {
+            return res.status(200).json({ user, getUserIpList, get: getUserIpList?.ipUserDev == "*", getUpMatch: getUserIpList?.ipUser === clientIp || getUserIpList?.ipUserDev === clientIp })
+        }
 
         if (!getUserIpList) {
             return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
