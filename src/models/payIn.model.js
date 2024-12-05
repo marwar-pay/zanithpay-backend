@@ -13,6 +13,7 @@ const payInSchema = new Schema({
         type: String,
         trim: true,
         index: true,
+        unique:[true,"Trx Id should be Unique"],
         required: [true, "Required TrxId !"]
     },
     amount: {
