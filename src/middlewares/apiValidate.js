@@ -16,12 +16,8 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
 
         let getUserIpList = await ipWhiteListDB.findOne({ memberId: user[0]._id });
 
-        if (true) {
-            return res.status(200).json({ user, getUserIpList, get: getUserIpList?.ipUserDev == "*", getUpMatch: getUserIpList?.ipUser === clientIp || getUserIpList?.ipUserDev === clientIp })
-        }
-
         if (!getUserIpList) {
-            return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
+            return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}`, main: inside })
         }
 
         if (getUserIpList?.ipUserDev == "*") {
@@ -29,9 +25,10 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
         }
         else if (getUserIpList?.ipUser === clientIp || getUserIpList?.ipUserDev === clientIp) {
             next()
+        } else {
+            return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
         }
 
-        return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid Request !");
     }
