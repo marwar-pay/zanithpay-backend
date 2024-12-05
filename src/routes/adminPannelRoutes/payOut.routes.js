@@ -23,7 +23,7 @@ router.post("/generatePayOut", celebrate({
         trxId: Joi.string().min(10).max(25).required(),
         amount: Joi.number().required(),
     })
-}), generatePayOut);
+}), apiValidate, generatePayOut);
 
 router.get("/payoutStatusCheck/:trxId", celebrate({
     params: Joi.object({

@@ -14,7 +14,7 @@ router.get("/getSingleUserIp/:id", celebrate({
 
 router.post("/addUserIp", celebrate({
     body: Joi.object({
-        memberId: Joi.string().required(),
+        memberId: Joi.string().trim().length(24).required(),
         ipUser: Joi.string().required(),
         ipUserDev: Joi.string().optional(),
         isStatus: Joi.boolean().optional().default(true),

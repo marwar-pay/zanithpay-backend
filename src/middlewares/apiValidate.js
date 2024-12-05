@@ -5,28 +5,31 @@ import ipWhiteListDB from "../models/ipWhiteList.model.js"
 
 export const apiValidate = asyncHandler(async (req, res, next) => {
     try {
-        // const clientId = req.headers['x-client-id'];  // Get client ID from request header (or other method)
-        // const clientIp = req.ip || req.connection.remoteAddress;
-        // const formattedIp = clientIp.includes('::ffff:') ? clientIp.split(':').pop() : clientIp;
+        const clientId = req.headers['x-client-id'];  // Get client ID from request header (or other method)
+        const clientIp = req.ip || req.connection.remoteAddress;
+        const formattedIp = clientIp.includes('::ffff:') ? clientIp.split(':').pop() : clientIp;
 
-        // let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }])
+        let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }])
 
-        // if (user.length === 0) {
-        //     return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
-        // }
+        if (user.length === 0) {
+            return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
+        }
 
-        next()
+        let getUserIpList = await ipWhiteListDB.findOne({ memberId: user[0]._id });
 
-        // let ipWhiteListGet = await ipWhiteListDB.aggregate([$match:{}])
+        if (!getUserIpList) {
+            return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${formattedIp}` })
+        }
 
-        // Check if clientId exists and IP is in the whitelist
-        // if (clientIpWhitelist[clientId] && clientIpWhitelist[clientId].includes(formattedIp)) {
-        //     next();  // Allow request
-        // } else {
-        //     res.status(403).json({ error: 'Access denied. Your IP is not whitelisted.' });
-        // }
+        if (getUserIpList?.ipUserDev === "*") {
+            next()
+        }
+        else if (getUserIpList?.ipUser === formattedIp || getUserIpList?.ipUserDev === formattedIp) {
+            next()
+        }
 
+        return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${formattedIp}` })
     } catch (error) {
-        throw new ApiError(401, error?.message || "Invalid access token");
+        throw new ApiError(401, error?.message || "Invalid Request !");
     }
 });

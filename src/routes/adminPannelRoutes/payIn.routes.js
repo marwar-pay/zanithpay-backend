@@ -3,6 +3,7 @@ import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatus
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
+import { apiValidate } from "../../middlewares/apiValidate.js";
 
 router.get("/allPaymentGenerated", userVerify, allGeneratedPayment);
 
@@ -18,7 +19,7 @@ router.post("/generatePayment", celebrate({
         name: Joi.string().required(),
         mobileNumber: Joi.string().required(),
     })
-}), generatePayment);
+}),apiValidate, generatePayment);
 
 router.get("/paymentStatusCheck/:trxId", celebrate({
     params: Joi.object({
