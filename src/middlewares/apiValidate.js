@@ -9,7 +9,7 @@ export const apiValidate = asyncHandler(async (req, res, next) => {
         const clientIp = req.ip || req.connection.remoteAddress;
         const formattedIp = clientIp.includes('::ffff:') ? clientIp.split(':').pop() : clientIp;
 
-        let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }])
+        let user = await userDB.aggregate([{ $match: { $and: [{ userName: req?.body?.userName }, { trxAuthToken: req?.body?.authToken }, { isActive: true }] } }])
 
         if (user.length === 0) {
             return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
