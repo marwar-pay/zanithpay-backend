@@ -22,6 +22,8 @@ import { errors } from "celebrate";
 import { ApiError } from "./utils/ApiError.js";
 import ErrorMiddleware from "./middlewares/ErrorMiddleware.js";
 import scheduleTask from "./utils/scheduleTask.js";
+import Log from "./models/Logs.model.js";
+import morgan from "morgan";
 
 // for use body data
 app.use(
@@ -32,7 +34,33 @@ app.use(
 
 // auto schedule Task
 // scheduleTask();
+app.use(morgan('dev'));
 
+app.use((req, res, next) => {
+    const originalSend = res.send;
+
+    res.send = function (body) {
+        res.body = body; 
+        return originalSend.call(this, body);
+    };
+
+    next();
+});
+
+app.use(
+    morgan(':custom', {
+        stream: {
+            write: async (message) => {
+                try {
+                    const logEntry = JSON.parse(message);
+                    await Log.create(logEntry);
+                } catch (error) {
+                    console.error('Failed to save log:', error);
+                }
+            },
+        },
+    })
+);
 const corsOptions = {
     origin: '*',
     credentials: true,
