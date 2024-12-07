@@ -1,16 +1,35 @@
 import ipWhitelistModel from "../../models/ipWhiteList.model.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import mongoose from "mongoose";
+const mongoDBObJ = mongoose.Types.ObjectId;
 
 export const getUserIp = asyncHandler(async (req, res) => {
-    let allIpList = await ipWhitelistModel.find();
+    let allIpList = await ipWhitelistModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+    {
+        $unwind: {
+            path: "$userInfo",
+            preserveNullAndEmptyArrays: true,
+        }
+    }, {
+        $project: { "_id": 1, "ipUser": 1, "ipUserDev": 1, "isStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1, "userInfo.fullName": 1 }
+    }, { $sort: { createdAt: -1 } }
+    ]);
     res.status(200).json(new ApiResponse(200, allIpList))
 })
 
 export const getSingleUserIp = asyncHandler(async (req, res) => {
     let id = req.params.id;
-    let pack = await ipWhitelistModel.findById(id);
-    if (!pack) {
+    let pack = await ipWhitelistModel.aggregate([{ $match: { _id: new mongoDBObJ(id) } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+    {
+        $unwind: {
+            path: "$userInfo",
+            preserveNullAndEmptyArrays: true,
+        }
+    }, {
+        $project: { "_id": 1, "ipUser": 1, "ipUserDev": 1, "isStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1, "userInfo.fullName": 1 }
+    }]);
+    if (pack.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Not Found !" })
     }
     res.status(200).json(new ApiResponse(200, pack))
