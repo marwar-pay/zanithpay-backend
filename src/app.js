@@ -35,33 +35,6 @@ app.use(
 
 // auto schedule Task
 // scheduleTask();
-app.use(morgan('dev'));
-
-app.use((req, res, next) => {
-    const originalSend = res.send;
-
-    res.send = function (body) {
-        res.body = body; 
-        return originalSend.call(this, body);
-    };
-
-    next();
-});
-
-const postRequestLogger = morgan(':custom', {
-    stream: {
-        write: async (message) => {
-            try {
-                const logEntry = JSON.parse(message);
-                console.log("logEntry>>>", logEntry); // You can remove this for production
-                await Log.create(logEntry); // Save log entry to the DB
-            } catch (error) {
-                console.error('Failed to save log:', error);
-            }
-        },
-    },
-});
-
 morgan.token('custom', (req, res) => {
     return JSON.stringify({
         method: req.method,
@@ -72,6 +45,34 @@ morgan.token('custom', (req, res) => {
         timestamp: new Date().toISOString(),
     });
 });
+
+app.use((req, res, next) => {
+    const originalSend = res.send;
+
+    // Override res.send to capture the response body
+    res.send = function (body) {
+        res.body = body; // Store the response body in res.body
+        return originalSend.call(this, body); // Call the original send method
+    };
+
+    next();
+});
+
+const postRequestLogger = morgan(':custom', {
+    stream: {
+        write: async (message) => {
+            try {
+                const logEntry = JSON.parse(message);
+                console.log("logEntry>>>", logEntry); 
+                await Log.create(logEntry); 
+            } catch (error) {
+                console.error('Failed to save log:', error);
+            }
+        },
+    },
+});
+
+
 
 app.use('/apiAdmin/v1/payin/', (req, res, next) => {
     if (req.method === 'POST') {

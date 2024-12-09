@@ -62,6 +62,7 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
             transactionAmount: transactionAmount,
             beforeAmount: beforeAmountEwallet,
             afterAmount: userData.EwalletBalance,
+            chargeAmount: 0,
             description: `Successfully Cr. amount: ${transactionAmount}`,
             transactionStatus: "Success",
         }
