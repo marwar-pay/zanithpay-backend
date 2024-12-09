@@ -6,6 +6,7 @@ import userRoutes from "./routes/adminPannelRoutes/user.routes.js";
 import packageRoutes from "./routes/adminPannelRoutes/package.routes.js";
 import payinRoutes from "./routes/adminPannelRoutes/payIn.routes.js";
 import payOutRoutes from "./routes/adminPannelRoutes/payOut.routes.js";
+import onFinished from 'on-finished';
 import apiSwitchRoutes from "./routes/adminPannelRoutes/apiSwitch.routes.js";
 import callBackRoutes from "./routes/adminPannelRoutes/callBack.routes.js";
 import walletRoutes from "./routes/adminPannelRoutes/wallet.routes.js";
@@ -22,8 +23,8 @@ import { errors } from "celebrate";
 import { ApiError } from "./utils/ApiError.js";
 import ErrorMiddleware from "./middlewares/ErrorMiddleware.js";
 import scheduleTask from "./utils/scheduleTask.js";
-// import Log from "./models/Logs.model.js";
-// import morgan from "morgan";
+import Log from "./models/Logs.model.js";
+import morgan from "morgan";
 
 // for use body data
 app.use(
@@ -34,34 +35,68 @@ app.use(
 
 // auto schedule Task
 // scheduleTask();
+morgan.token('custom', (req, res) => {
+    return JSON.stringify({
+        method: req.method,
+        url: req.originalUrl,
+        status: res.statusCode || 500,
+        requestBody: req.body,
+        responseBody: res.body,
+        timestamp: new Date().toISOString(),
+    });
+});
 
-// app.use(morgan('dev'));
+app.use((req, res, next) => {
+    const originalSend = res.send;
 
-// app.use((req, res, next) => {
-//     const originalSend = res.send;
+    // Override res.send to capture the response body
+    res.send = function (body) {
+        res.body = body; // Store the response body in res.body
+        return originalSend.call(this, body); // Call the original send method
+    };
 
-//     res.send = function (body) {
-//         res.body = body; 
-//         return originalSend.call(this, body);
-//     };
+    next();
+});
 
-//     next();
-// });
+const postRequestLogger = morgan(':custom', {
+    stream: {
+        write: async (message) => {
+            try {
+                const logEntry = JSON.parse(message);
+                console.log("logEntry>>>", logEntry); 
+                await Log.create(logEntry); 
+            } catch (error) {
+                console.error('Failed to save log:', error);
+            }
+        },
+    },
+});
 
-// app.use(
-//     morgan(':custom', {
-//         stream: {
-//             write: async (message) => {
-//                 try {
-//                     const logEntry = JSON.parse(message);
-//                     await Log.create(logEntry);
-//                 } catch (error) {
-//                     console.error('Failed to save log:', error);
-//                 }
-//             },
-//         },
-//     })
-// );
+
+
+app.use('/apiAdmin/v1/payin/', (req, res, next) => {
+    if (req.method === 'POST') {
+        postRequestLogger(req, res, next); 
+    } else {
+        next();
+    }
+});
+
+app.use('/apiAdmin/v1/payout/', (req, res, next) => {
+    if (req.method === 'POST') {
+        postRequestLogger(req, res, next); 
+    } else {
+        next();
+    }
+});
+
+app.use("/apiAdmin/v1/wallet/", (req, res, next) => {
+    if (req.method === 'POST') {
+        postRequestLogger(req, res, next); 
+    } else {
+        next();
+    }
+})
 
 const corsOptions = {
     origin: '*',
@@ -107,6 +142,7 @@ app.use("/apiAdmin/v1/utility/", utilityRoutes);
 
 // api support Route -- Admin
 app.use("/apiAdmin/v1/support/", supportRoutes);
+
 
 // api support Route -- Admin
 app.use("/apiAdmin/v1/ipWhitelist/", ipWhiteListRoutes);

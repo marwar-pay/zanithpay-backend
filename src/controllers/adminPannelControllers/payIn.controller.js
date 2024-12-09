@@ -145,6 +145,50 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 }
             })
             break;
+        case "razorpayPayIn":
+            try { 
+                const paymentData = await qrGenerationModel.create({
+                    memberId: user[0]?._id,
+                    name,
+                    amount,
+                    trxId,
+                });
+ 
+                const options = {
+                    amount: amount * 100,
+                    currency: "INR", 
+                    receipt: trxId,
+                    notes: { 
+                        name,
+                        mobileNumber,
+                    },
+                    description: `Payment for transaction ${trxId}`,
+                    callback_url: "https://your-backend-domain.com/api/razorpay/verify-payment",
+                };
+
+                const paymentLink = await razorpay.paymentLink.create(options);
+ 
+                paymentData.qrData = paymentLink.short_url;
+                paymentData.refId = paymentLink.id;
+                await paymentData.save();
+ 
+                return res.status(200).json(new ApiResponse(200, {
+                    status_msg: "Payment link generated successfully",
+                    status: 200,
+                    qrImage: paymentLink.short_url,
+                    trxID: trxId,
+                }));
+            } catch (error) {
+                console.error("Error creating Razorpay payment link:", error);
+
+                if (error.code === 11000) {
+                    return res.status(500).json({ message: "Failed", data: "trx Id duplicate found!" });
+                } else {
+                    return res.status(500).json({ message: "Failed", data: "Internal Server Error!" });
+                }
+            }
+            break;
+
         default:
             let dataApiResponse = {
                 status_msg: "failed",
