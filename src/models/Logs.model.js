@@ -13,11 +13,11 @@ const logSchema = new mongoose.Schema({
         type:Number,
         default:0
     },
-    req:{
+    requestBody:{
         type:Object,
         default:{}
     },
-    res:{
+    responseBody:{
         type:Object,
         default:{}
     }

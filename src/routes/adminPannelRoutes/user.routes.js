@@ -31,7 +31,9 @@ router.post("/addUser", celebrate({
         minWalletBalance: Joi.number().required(),
         isActive: Joi.boolean().required(),
     })
-}), userVerify, addUser)
+}), 
+addUser)
+// userVerify, 
 
 router.post("/updateUser/:id", celebrate({
     body: Joi.object({

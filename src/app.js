@@ -6,6 +6,7 @@ import userRoutes from "./routes/adminPannelRoutes/user.routes.js";
 import packageRoutes from "./routes/adminPannelRoutes/package.routes.js";
 import payinRoutes from "./routes/adminPannelRoutes/payIn.routes.js";
 import payOutRoutes from "./routes/adminPannelRoutes/payOut.routes.js";
+import onFinished from 'on-finished';
 import apiSwitchRoutes from "./routes/adminPannelRoutes/apiSwitch.routes.js";
 import callBackRoutes from "./routes/adminPannelRoutes/callBack.routes.js";
 import walletRoutes from "./routes/adminPannelRoutes/wallet.routes.js";
@@ -47,20 +48,55 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(
-    morgan(':custom', {
-        stream: {
-            write: async (message) => {
-                try {
-                    const logEntry = JSON.parse(message);
-                    await Log.create(logEntry);
-                } catch (error) {
-                    console.error('Failed to save log:', error);
-                }
-            },
+const postRequestLogger = morgan(':custom', {
+    stream: {
+        write: async (message) => {
+            try {
+                const logEntry = JSON.parse(message);
+                console.log("logEntry>>>", logEntry); // You can remove this for production
+                await Log.create(logEntry); // Save log entry to the DB
+            } catch (error) {
+                console.error('Failed to save log:', error);
+            }
         },
-    })
-);
+    },
+});
+
+morgan.token('custom', (req, res) => {
+    return JSON.stringify({
+        method: req.method,
+        url: req.originalUrl,
+        status: res.statusCode || 500,
+        requestBody: req.body,
+        responseBody: res.body,
+        timestamp: new Date().toISOString(),
+    });
+});
+
+app.use('/apiAdmin/v1/payin/', (req, res, next) => {
+    if (req.method === 'POST') {
+        postRequestLogger(req, res, next); 
+    } else {
+        next();
+    }
+});
+
+app.use('/apiAdmin/v1/payout/', (req, res, next) => {
+    if (req.method === 'POST') {
+        postRequestLogger(req, res, next); 
+    } else {
+        next();
+    }
+});
+
+app.use("/apiAdmin/v1/wallet/", (req, res, next) => {
+    if (req.method === 'POST') {
+        postRequestLogger(req, res, next); 
+    } else {
+        next();
+    }
+})
+
 const corsOptions = {
     origin: '*',
     credentials: true,
@@ -105,6 +141,7 @@ app.use("/apiAdmin/v1/utility/", utilityRoutes);
 
 // api support Route -- Admin
 app.use("/apiAdmin/v1/support/", supportRoutes);
+
 
 // api support Route -- Admin
 app.use("/apiAdmin/v1/ipWhitelist/", ipWhiteListRoutes);
