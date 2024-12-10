@@ -400,8 +400,8 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
         }
 
         if (pack && data?.BankRRN) {
-            // pack.callBackStatus = "Success"
-            // await pack.save();
+            pack.callBackStatus = "Success"
+            await pack.save();
 
             let userInfo = await userDB.aggregate([{ $match: { _id: pack?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
                 $unwind: {
