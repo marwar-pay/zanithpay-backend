@@ -7,9 +7,11 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
-import { transactionQueue } from "../../utils/BullRedis.js";
 import fs from 'fs';
 import cron from "node-cron";
+import { Mutex } from "async-mutex";
+
+const transactionMutex = new Mutex();
 
 const jsonData = JSON.parse(fs.readFileSync('./public/matchZanithpayAndImpactSoftwarePayInAddedMb.json', 'utf-8'));
 
@@ -357,53 +359,49 @@ export const callBackResponse = asyncHandler(async (req, res) => {
 });
 
 export const testCallBackResponse = asyncHandler(async (req, res) => {
-    let callBackData = req.body;
+    const release = await transactionMutex.acquire();
+    try {
+        let callBackData = req.body;
+        if (Object.keys(req.body).length === 1) {
+            let key = Object.keys(req.body)
+            let stringfi = JSON.parse(key)
+            req.body = stringfi;
+            callBackData = stringfi;
+        }
 
-    console.log("in bankRRN if");
+        var data;
+        let switchApi;
+        if (req.body.partnerTxnId) {
+            switchApi = "neyopayPayIn"
+        }
+        if (req.body.txnID) {
+            switchApi = "marwarpayInSwitch"
+        }
+        switch (switchApi) {
+            case "neyopayPayIn":
+                data = { status: callBackData?.txnstatus == "Success" || "success" ? "200" : "400", payerAmount: callBackData?.amount, payerName: callBackData?.payerName, txnID: callBackData?.partnerTxnId, BankRRN: callBackData?.rrn, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+                break;
+            case "marwarpayInSwitch":
+                data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+                break;
+            default:
+                console.log("its default")
+                break;
+        }
 
-    if (Object.keys(req.body).length === 1) {
-        let key = Object.keys(req.body)
-        let stringfi = JSON.parse(key)
-        req.body = stringfi;
-        callBackData = stringfi;
-    }
+        if (data?.status != "200") {
+            return res.status(400).json({ message: "Failed", data: "trx is pending or not success" })
+        }
 
-    var data;
-    let switchApi;
-    if (req.body.partnerTxnId) {
-        switchApi = "neyopayPayIn"
-    }
-    if (req.body.txnID) {
-        switchApi = "marwarpayInSwitch"
-    }
-    switch (switchApi) {
-        case "neyopayPayIn":
-            data = { status: callBackData?.txnstatus == "Success" || "success" ? "200" : "400", payerAmount: callBackData?.amount, payerName: callBackData?.payerName, txnID: callBackData?.partnerTxnId, BankRRN: callBackData?.rrn, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
-            break;
-        case "marwarpayInSwitch":
-            data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
-            break;
-        default:
-            console.log("its default")
-            break;
-    }
+        let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
 
-    if (data?.status != "200") {
-        return res.status(400).json({ message: "Failed", data: "trx is pending or not success" })
-    }
+        if (pack?.callBackStatus !== "Pending") {
+            return res.status(400).json({ message: "Failed", data: `Trx already done status or not created : ${pack?.callBackStatus}` })
+        }
 
-    let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
-
-    if (pack?.callBackStatus !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status or not created : ${pack?.callBackStatus}` })
-    }
-
-    if (pack && data?.BankRRN) {
-
-        transactionQueue.process(async (job) => {
-            const callBackData = job.data;
-            pack.callBackStatus = "Success"
-            pack.save();
+        if (pack && data?.BankRRN) {
+            // pack.callBackStatus = "Success"
+            // await pack.save();
 
             let userInfo = await userDB.aggregate([{ $match: { _id: pack?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
                 $unwind: {
@@ -422,7 +420,7 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
             let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
             var chargeTypePayIn;
             var chargeAmoutPayIn;
-
+            
             chargeRange.forEach((value) => {
                 if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
                     chargeTypePayIn = value.chargeType
@@ -474,13 +472,16 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
             }
 
             await axios.post(userCallBackURL, userRespSendApi, config)
-        })
-        await transactionQueue.add({
-            data: req.body,
-        });
-        return res.status(200).json(new ApiResponse(200, null, "Successfully"))
-    } else {
-        return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
+            res.status(200).json(new ApiResponse(200, null, "Successfully"))
+            // callback end to the user url
+        } else {
+            return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
+        }
+
+    } catch (error) {
+        console.log("error==>", error.message);
+    } finally {
+        release()
     }
 
 });
