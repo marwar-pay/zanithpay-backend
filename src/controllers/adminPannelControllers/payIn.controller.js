@@ -358,7 +358,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
 
 export const testCallBackResponse = asyncHandler(async (req, res) => {
     let callBackData = req.body;
-    
+
     console.log("in bankRRN if");
 
     if (Object.keys(req.body).length === 1) {
@@ -399,7 +399,7 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
     }
 
     if (pack && data?.BankRRN) {
-        
+
         transactionQueue.process(async (job) => {
             const callBackData = job.data;
             pack.callBackStatus = "Success"
@@ -483,72 +483,4 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
         return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
     }
 
-});
-
-export const testDeleteRoute = asyncHandler(async (req, res) => {
-    let item = jsonData;
-    let date = new Date("2024-12-09T07:31:23.163Z")
-    console.log(date)
-    // arr.forEach(async(item)=>{
-    // let dd = await upiWalletModel.find({"createdAt" : { $gte : date }})
-
-    // let dd = await upiWalletModel.deleteMany({
-    //     "createdAt": { $gte: date }
-    // })
-    // console.log(dd)
-
-    // arr.forEach(async (item, index) => {
-    //     let pedning = await qrGenerationModel.findByIdAndUpdate(item._id, { callBackStatus: "Pending" }, { new: true })
-    //     console.log(pedning)
-    // })
-
-    // let GrGeneratePending = await payInModel.find({"createdAt" : { $gte : date }})
-    // let GrGeneratePending = await payInModel.deleteMany({ "createdAt": { $gte: date } })
-    // console.log(GrGeneratePending)
-
-    // let url = "http://localhost:5000/apiAdmin/v1/payin/testCallBackResponse"
-    // let options = {
-    //     Headers: {
-    //         "Content-Type": "application/json"
-    //     }
-    // }
-
-    // let bodyResp = {
-    //     status: "200",
-    //     payerAmount: parseInt(item.amount),
-    //     payerName: item.vpa,
-    //     txnID: item.trxId,
-    //     BankRRN: item.bankRRn,
-    //     payerVA: item.vpa,
-    //     TxnInitDate: "20220608131419",
-    //     TxnCompletionDate: "20220608131422"
-    // }
-
-    // cron.schedule('*/2 * * * * *', async () => {
-    //     console.log(bodyResp?.txnID)
-    // });
-    // await axios.post(url, bodyResp, options).then((data) => {
-    //     console.log(data, index)
-    // }).catch((err) => {
-    //     console.log(err.message)
-    // })
-    let val = 0;
-    setInterval(() => {
-        let bodyResp = {
-            status: "200",
-            payerAmount: parseInt(item[val].amount),
-            payerName: item[val].vpa,
-            txnID: item[val].trxId,
-            BankRRN: item[val].bankRRn,
-            payerVA: item[val].vpa,
-            TxnInitDate: "20220608131419",
-            TxnCompletionDate: "20220608131422"
-        }
-        console.log(bodyResp,val)
-        val+=1;
-    }, [100])
-
-    // })
-    // let data = await qrGenerationModel.find({})
-    res.status(200).json({ message: "success" })
 });

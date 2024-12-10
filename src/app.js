@@ -63,8 +63,7 @@ const postRequestLogger = morgan(':custom', {
         write: async (message) => {
             try {
                 const logEntry = JSON.parse(message);
-                console.log("logEntry>>>", logEntry); 
-                await Log.create(logEntry); 
+                await Log.create(logEntry);
             } catch (error) {
                 console.error('Failed to save log:', error);
             }
@@ -76,7 +75,7 @@ const postRequestLogger = morgan(':custom', {
 
 app.use('/apiAdmin/v1/payin/', (req, res, next) => {
     if (req.method === 'POST') {
-        postRequestLogger(req, res, next); 
+        postRequestLogger(req, res, next);
     } else {
         next();
     }
@@ -84,7 +83,7 @@ app.use('/apiAdmin/v1/payin/', (req, res, next) => {
 
 app.use('/apiAdmin/v1/payout/', (req, res, next) => {
     if (req.method === 'POST') {
-        postRequestLogger(req, res, next); 
+        postRequestLogger(req, res, next);
     } else {
         next();
     }
@@ -92,7 +91,7 @@ app.use('/apiAdmin/v1/payout/', (req, res, next) => {
 
 app.use("/apiAdmin/v1/wallet/", (req, res, next) => {
     if (req.method === 'POST') {
-        postRequestLogger(req, res, next); 
+        postRequestLogger(req, res, next);
     } else {
         next();
     }
