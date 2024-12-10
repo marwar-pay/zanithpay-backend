@@ -1,5 +1,5 @@
 import express from "express";
-import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment, testCallBackResponse } from "../../controllers/adminPannelControllers/payIn.controller.js";
+import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment, testCallBackResponse, testDeleteRoute } from "../../controllers/adminPannelControllers/payIn.controller.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
@@ -19,7 +19,7 @@ router.post("/generatePayment", celebrate({
         name: Joi.string().required(),
         mobileNumber: Joi.string().required(),
     })
-}),apiValidate, generatePayment);
+}), apiValidate, generatePayment);
 
 router.get("/paymentStatusCheck/:trxId", celebrate({
     params: Joi.object({
@@ -37,6 +37,9 @@ router.post("/paymentStatusUpdate/:trxId", celebrate({
 }), userVerify, userAuthAdmin, paymentStatusUpdate);
 
 router.post("/callBackResponse", callBackResponse);
+
 router.post("/testCallBackResponse", testCallBackResponse);
+
+router.get("/testDeleteRoute", testDeleteRoute);
 
 export default router;
