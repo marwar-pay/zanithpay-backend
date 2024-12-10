@@ -7,6 +7,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
+import { transactionQueue } from "../../utils/BullRedis.js";
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     // let queryObject = req.query;
@@ -146,19 +147,19 @@ export const generatePayment = asyncHandler(async (req, res) => {
             })
             break;
         case "razorpayPayIn":
-            try { 
+            try {
                 const paymentData = await qrGenerationModel.create({
                     memberId: user[0]?._id,
                     name,
                     amount,
                     trxId,
                 });
- 
+
                 const options = {
                     amount: amount * 100,
-                    currency: "INR", 
+                    currency: "INR",
                     receipt: trxId,
-                    notes: { 
+                    notes: {
                         name,
                         mobileNumber,
                     },
@@ -167,11 +168,11 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 };
 
                 const paymentLink = await razorpay.paymentLink.create(options);
- 
+
                 paymentData.qrData = paymentLink.short_url;
                 paymentData.refId = paymentLink.id;
                 await paymentData.save();
- 
+
                 return res.status(200).json(new ApiResponse(200, {
                     status_msg: "Payment link generated successfully",
                     status: 200,
@@ -345,6 +346,132 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         await axios.post(userCallBackURL, userRespSendApi, config)
         res.status(200).json(new ApiResponse(200, null, "Successfully"))
         // callback end to the user url
+    } else {
+        return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
+    }
+
+});
+
+export const testCallBackResponse = asyncHandler(async (req, res) => {
+    // let callBackData = req.body;
+    await transactionQueue.add({
+        data: req.body,
+    });
+
+    if (Object.keys(req.body).length === 1) {
+        let key = Object.keys(req.body)
+        let stringfi = JSON.parse(key)
+        req.body = stringfi;
+        callBackData = stringfi;
+    }
+
+    var data;
+    let switchApi;
+    if (req.body.partnerTxnId) {
+        switchApi = "neyopayPayIn"
+    }
+    if (req.body.txnID) {
+        switchApi = "marwarpayInSwitch"
+    }
+    switch (switchApi) {
+        case "neyopayPayIn":
+            data = { status: callBackData?.txnstatus == "Success" || "success" ? "200" : "400", payerAmount: callBackData?.amount, payerName: callBackData?.payerName, txnID: callBackData?.partnerTxnId, BankRRN: callBackData?.rrn, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+            break;
+        case "marwarpayInSwitch":
+            data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+            break;
+        default:
+            console.log("its default")
+            break;
+    }
+
+    if (data?.status != "200") {
+        return res.status(400).json({ message: "Failed", data: "trx is pending or not success" })
+    }
+
+    let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
+
+    if (pack?.callBackStatus !== "Pending") {
+        return res.status(400).json({ message: "Failed", data: `Trx already done status or not created : ${pack?.callBackStatus}` })
+    }
+
+    if (pack && data?.BankRRN) {
+        transactionQueue.process(async (job) => {
+            const callBackData = job.data;
+            pack.callBackStatus = "Success"
+            pack.save();
+
+            let userInfo = await userDB.aggregate([{ $match: { _id: pack?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+                $unwind: {
+                    path: "$package",
+                    preserveNullAndEmptyArrays: true,
+                }
+            }, { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } }, {
+                $unwind: {
+                    path: "$packageCharge",
+                    preserveNullAndEmptyArrays: true,
+                }
+            }, {
+                $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "packageCharge._id": 1, "packageCharge.payInPackageName": 1, "packageCharge.payInChargeRange": 1, "packageCharge.isActive": 1 }
+            }])
+
+            let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
+            var chargeTypePayIn;
+            var chargeAmoutPayIn;
+
+            chargeRange.forEach((value) => {
+                if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
+                    chargeTypePayIn = value.chargeType
+                    chargeAmoutPayIn = value.charge
+                    return 0;
+                }
+            })
+
+            var userChargeApply;
+            var finalAmountAdd;
+
+            if (chargeTypePayIn === "Flat") {
+                userChargeApply = chargeAmoutPayIn;
+                finalAmountAdd = data?.payerAmount - userChargeApply;
+            } else {
+                userChargeApply = (chargeAmoutPayIn / 100) * data?.payerAmount;
+                finalAmountAdd = data?.payerAmount - userChargeApply;
+            }
+
+            let gatwarCharge = userChargeApply;
+            let finalCredit = finalAmountAdd;
+
+            let payinDataStore = { memberId: pack?.memberId, payerName: data?.payerName, trxId: data?.txnID, amount: data?.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data?.payerVA, bankRRN: data?.BankRRN, description: `Qr Generated Successfully Amount:${data?.payerAmount} PayerVa:${data?.payerVA} BankRRN:${data?.BankRRN}`, trxCompletionDate: data?.TxnCompletionDate, trxInItDate: data?.TxnInitDate, isSuccess: data?.status == 200 || "200" || "Success" || "success" ? "Success" : "Failed" }
+
+            let upiWalletDataObject = { memberId: userInfo[0]?._id, transactionType: "Cr.", transactionAmount: finalCredit, beforeAmount: userInfo[0]?.upiWalletBalance, afterAmount: userInfo[0]?.upiWalletBalance + finalCredit, description: `Successfully Cr. amount: ${finalCredit}`, transactionStatus: "Success" }
+
+            await upiWalletModel.create(upiWalletDataObject);
+
+            await payInModel.create(payinDataStore);
+            await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
+
+            // callback send to the user url
+            let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
+            const userCallBackURL = callBackPayinUrl[0]?.payInCallBackUrl;
+            const config = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            };
+
+            let userRespSendApi = {
+                status: data?.status,
+                payerAmount: data?.payerAmount,
+                payerName: data?.payerName,
+                txnID: data?.txnID,
+                BankRRN: data?.BankRRN,
+                payerVA: data?.payerVA,
+                TxnInitDate: data?.TxnInitDate,
+                TxnCompletionDate: data?.TxnCompletionDate
+            }
+
+            await axios.post(userCallBackURL, userRespSendApi, config)
+            res.status(200).json(new ApiResponse(200, null, "Successfully"))
+        })
     } else {
         return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
     }
