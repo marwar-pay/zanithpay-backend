@@ -239,6 +239,8 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const callBackResponse = asyncHandler(async (req, res) => {
+    const release = await transactionMutex.acquire();
+    try {
     let callBackData = req.body;
     if (Object.keys(req.body).length === 1) {
         let key = Object.keys(req.body)
@@ -355,6 +357,11 @@ export const callBackResponse = asyncHandler(async (req, res) => {
     } else {
         return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
     }
+}catch(error){ 
+    return res.status(500).json({ succes: "Failed", message: "Internal server error!" })
+} finally {
+    release()
+}
 
 });
 
