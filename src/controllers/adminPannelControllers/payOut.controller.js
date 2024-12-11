@@ -128,11 +128,11 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
     switch (payOutApi?.apiName) {
         case "iServerEuApi":
-            const passKey = "ZDBJKROB5QEZKJ4MZ66G562ZTB4MTWDC7EXXU4GYASPXOJZMH4CQ";
-            const EncKey = "a6T8tOCYiSzDTrcqPvCbJfy0wSQOVcfaevH0gtwCtoU=";
+            const passKey = "Fv5S9m79z7rUq0LG7NE4VW4GIICNPaZYPnngonlvdkxNU902";
+            const EncKey = "8LWVEmyHYcJZjjB0WW2VQ+YDttzua5BGMnOX66Vi5KE=";
             let HeaderObj = {
-                client_id: "42Zuw71Ok7e2TGAgHPKttM7PFGMspJLLy3ewq15dhgjtGM9l",
-                client_secret: "MDB9krmA8OqYdgjTKflkXXU7BTNAJgVDEWBmhWjQ8YBvAPNKNPLbxnJGSKcKiEV9",
+                client_id: "ZYSEZxHszNlEzMuihWIltIqClSVFqqQeUbPYTfpjKMQiDXKJ",
+                client_secret: "r5kOP0Rdxj4qYjbRFHyUKHetEGTOH1ZaHUgz4p5xqFw3aYxVvGDuFrGcHDKKudFa",
                 epoch: String(Date.now())
             }
             let BodyObj = {
@@ -185,8 +185,14 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 }
 
                 return res.status(200).json(new ApiResponse(200, userRespPayOut))
-            }).catch((err) => {
-                return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+            }).catch(async (err) => {
+                payOutModelGen.isSuccess = "Failed";
+                await payOutModelGen.save();
+                let respSend = {
+                    statusCode: "400",
+                    txnID: trxId
+                }
+                return res.status(500).json({ message: "Failed", data: respSend})
             })
             //  banking side api call end 
             break;
