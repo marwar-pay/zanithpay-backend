@@ -4,8 +4,9 @@ import payOutModelGenerate from "../models/payOutGenerate.model.js";
 import userDB from "../models/user.model.js";
 import walletModel from "../models/Ewallet.model.js";
 import payOutModel from "../models/payOutSuccess.model.js";
+import LogModel from "../models/Logs.model.js";
 
-export default function scheduleTask() {
+function scheduleWayuPayOutCheck() {
     cron.schedule('*/30 * * * *', async () => {
         let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(100);
 
@@ -71,4 +72,17 @@ export default function scheduleTask() {
             })
         }
     });
+}
+
+function logsClearFunc() {
+    cron.schedule('* * */2 * *', async () => {
+        let date = new Date();
+        let DateComp = `${date.getFullYear()}-${(date.getMonth()) + 1}-${date.getDate() - 2}`
+        await LogModel.deleteMany({ createdAt: { $lt: new Date(DateComp) } });
+    });
+}
+
+export default function scheduleTask() {
+    // scheduleWayuPayOutCheck()
+    logsClearFunc()
 }

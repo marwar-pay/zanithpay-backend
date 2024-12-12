@@ -9,7 +9,6 @@ import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
 import { transactionQueue } from "../../utils/BullRedis.js";
 import fs from 'fs';
-import cron from "node-cron";
 
 const jsonData = JSON.parse(fs.readFileSync('./public/matchZanithpayAndImpactSoftwarePayInAddedMb.json', 'utf-8'));
 

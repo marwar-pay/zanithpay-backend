@@ -34,7 +34,8 @@ app.use(
 );
 
 // auto schedule Task
-// scheduleTask();
+scheduleTask();
+
 morgan.token('custom', (req, res) => {
     return JSON.stringify({
         method: req.method,
