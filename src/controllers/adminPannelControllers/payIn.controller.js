@@ -7,16 +7,9 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
-import fs from 'fs';
-<<<<<<< HEAD
-=======
-import cron from "node-cron";
 import { Mutex } from "async-mutex";
 
 const transactionMutex = new Mutex();
->>>>>>> 9c191ad1cc70c3d063a4e61aa204d565936383f7
-
-const jsonData = JSON.parse(fs.readFileSync('./public/matchZanithpayAndImpactSoftwarePayInAddedMb.json', 'utf-8'));
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     // let queryObject = req.query;
@@ -69,7 +62,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
             path: "$payInApi",
             preserveNullAndEmptyArrays: true,
         }
-    },])
+    }])
 
     if (user.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
@@ -123,7 +116,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
             // store database
             await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
                 // Banking Api
-                let API_URL = `https://impactpeaksoftware.in/portal/api/generateQrAuth?memberid=IMPSAPI837165&txnpwd=8156&name=${name}&amount=${amount}&txnid=${trxId}`
+                let API_URL = `https://impactpeaksoftware.in/portal/api/generateQrAuth?memberid=IMPSAPI837165&txnpwd=8156&name=${name}&mobile=${mobileNumber}&amount=${amount}&txnid=${trxId}`
                 let bank = await axios.get(API_URL);
 
                 let dataApiResponse = {
@@ -244,127 +237,127 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 export const callBackResponse = asyncHandler(async (req, res) => {
     const release = await transactionMutex.acquire();
     try {
-    let callBackData = req.body;
-    if (Object.keys(req.body).length === 1) {
-        let key = Object.keys(req.body)
-        let stringfi = JSON.parse(key)
-        req.body = stringfi;
-        callBackData = stringfi;
-    }
+        let callBackData = req.body;
+        if (Object.keys(req.body).length === 1) {
+            let key = Object.keys(req.body)
+            let stringfi = JSON.parse(key)
+            req.body = stringfi;
+            callBackData = stringfi;
+        }
 
-    var data;
-    let switchApi;
-    if (req.body.partnerTxnId) {
-        switchApi = "neyopayPayIn"
-    }
-    if (req.body.txnID) {
-        switchApi = "marwarpayInSwitch"
-    }
-    switch (switchApi) {
-        case "neyopayPayIn":
-            data = { status: callBackData?.txnstatus == "Success" || "success" ? "200" : "400", payerAmount: callBackData?.amount, payerName: callBackData?.payerName, txnID: callBackData?.partnerTxnId, BankRRN: callBackData?.rrn, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
-            break;
-        case "marwarpayInSwitch":
-            data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
-            break;
-        default:
-            console.log("its default")
-            break;
-    }
+        var data;
+        let switchApi;
+        if (req.body.partnerTxnId) {
+            switchApi = "neyopayPayIn"
+        }
+        if (req.body.txnID) {
+            switchApi = "marwarpayInSwitch"
+        }
+        switch (switchApi) {
+            case "neyopayPayIn":
+                data = { status: callBackData?.txnstatus == "Success" || "success" ? "200" : "400", payerAmount: callBackData?.amount, payerName: callBackData?.payerName, txnID: callBackData?.partnerTxnId, BankRRN: callBackData?.rrn, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+                break;
+            case "marwarpayInSwitch":
+                data = { status: callBackData?.status, payerAmount: callBackData?.payerAmount, payerName: callBackData?.payerName, txnID: callBackData?.txnID, BankRRN: callBackData?.BankRRN, payerVA: callBackData?.payerVA, TxnInitDate: callBackData?.TxnInitDate, TxnCompletionDate: callBackData?.TxnCompletionDate }
+                break;
+            default:
+                console.log("its default")
+                break;
+        }
 
-    if (data?.status != "200") {
-        return res.status(400).json({ message: "Failed", data: "trx is pending or not success" })
-    }
+        if (data?.status != "200") {
+            return res.status(400).json({ message: "Failed", data: "trx is pending or not success" })
+        }
 
-    let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
+        let pack = await qrGenerationModel.findOne({ trxId: data?.txnID });
 
-    if (pack?.callBackStatus !== "Pending") {
-        return res.status(400).json({ message: "Failed", data: `Trx already done status or not created : ${pack?.callBackStatus}` })
-    }
+        if (pack?.callBackStatus !== "Pending") {
+            return res.status(400).json({ message: "Failed", data: `Trx already done status or not created : ${pack?.callBackStatus}` })
+        }
 
-    if (pack && data?.BankRRN) {
-        pack.callBackStatus = "Success"
-        pack.save();
+        if (pack && data?.BankRRN) {
+            pack.callBackStatus = "Success"
+            pack.save();
 
-        let userInfo = await userDB.aggregate([{ $match: { _id: pack?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
-            $unwind: {
-                path: "$package",
-                preserveNullAndEmptyArrays: true,
+            let userInfo = await userDB.aggregate([{ $match: { _id: pack?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+                $unwind: {
+                    path: "$package",
+                    preserveNullAndEmptyArrays: true,
+                }
+            }, { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } }, {
+                $unwind: {
+                    path: "$packageCharge",
+                    preserveNullAndEmptyArrays: true,
+                }
+            }, {
+                $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "packageCharge._id": 1, "packageCharge.payInPackageName": 1, "packageCharge.payInChargeRange": 1, "packageCharge.isActive": 1 }
+            }])
+
+            let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
+            var chargeTypePayIn;
+            var chargeAmoutPayIn;
+
+            chargeRange.forEach((value) => {
+                if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
+                    chargeTypePayIn = value.chargeType
+                    chargeAmoutPayIn = value.charge
+                    return 0;
+                }
+            })
+
+            var userChargeApply;
+            var finalAmountAdd;
+
+            if (chargeTypePayIn === "Flat") {
+                userChargeApply = chargeAmoutPayIn;
+                finalAmountAdd = data?.payerAmount - userChargeApply;
+            } else {
+                userChargeApply = (chargeAmoutPayIn / 100) * data?.payerAmount;
+                finalAmountAdd = data?.payerAmount - userChargeApply;
             }
-        }, { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } }, {
-            $unwind: {
-                path: "$packageCharge",
-                preserveNullAndEmptyArrays: true,
+
+            let gatwarCharge = userChargeApply;
+            let finalCredit = finalAmountAdd;
+
+            let payinDataStore = { memberId: pack?.memberId, payerName: data?.payerName, trxId: data?.txnID, amount: data?.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data?.payerVA, bankRRN: data?.BankRRN, description: `Qr Generated Successfully Amount:${data?.payerAmount} PayerVa:${data?.payerVA} BankRRN:${data?.BankRRN}`, trxCompletionDate: data?.TxnCompletionDate, trxInItDate: data?.TxnInitDate, isSuccess: data?.status == 200 || "200" || "Success" || "success" ? "Success" : "Failed" }
+
+            let upiWalletDataObject = { memberId: userInfo[0]?._id, transactionType: "Cr.", transactionAmount: finalCredit, beforeAmount: userInfo[0]?.upiWalletBalance, afterAmount: userInfo[0]?.upiWalletBalance + finalCredit, description: `Successfully Cr. amount: ${finalCredit}`, transactionStatus: "Success" }
+
+            await upiWalletModel.create(upiWalletDataObject);
+
+            await payInModel.create(payinDataStore);
+            await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
+
+            // callback send to the user url
+            let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
+            const userCallBackURL = callBackPayinUrl[0]?.payInCallBackUrl;
+            const config = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            };
+
+            let userRespSendApi = {
+                status: data?.status,
+                payerAmount: data?.payerAmount,
+                payerName: data?.payerName,
+                txnID: data?.txnID,
+                BankRRN: data?.BankRRN,
+                payerVA: data?.payerVA,
+                TxnInitDate: data?.TxnInitDate,
+                TxnCompletionDate: data?.TxnCompletionDate
             }
-        }, {
-            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "packageCharge._id": 1, "packageCharge.payInPackageName": 1, "packageCharge.payInChargeRange": 1, "packageCharge.isActive": 1 }
-        }])
 
-        let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
-        var chargeTypePayIn;
-        var chargeAmoutPayIn;
-
-        chargeRange.forEach((value) => {
-            if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
-                chargeTypePayIn = value.chargeType
-                chargeAmoutPayIn = value.charge
-                return 0;
-            }
-        })
-
-        var userChargeApply;
-        var finalAmountAdd;
-
-        if (chargeTypePayIn === "Flat") {
-            userChargeApply = chargeAmoutPayIn;
-            finalAmountAdd = data?.payerAmount - userChargeApply;
+            await axios.post(userCallBackURL, userRespSendApi, config)
+            res.status(200).json(new ApiResponse(200, null, "Successfully"))
+            // callback end to the user url
         } else {
-            userChargeApply = (chargeAmoutPayIn / 100) * data?.payerAmount;
-            finalAmountAdd = data?.payerAmount - userChargeApply;
+            return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
         }
-
-        let gatwarCharge = userChargeApply;
-        let finalCredit = finalAmountAdd;
-
-        let payinDataStore = { memberId: pack?.memberId, payerName: data?.payerName, trxId: data?.txnID, amount: data?.payerAmount, chargeAmount: gatwarCharge, finalAmount: finalCredit, vpaId: data?.payerVA, bankRRN: data?.BankRRN, description: `Qr Generated Successfully Amount:${data?.payerAmount} PayerVa:${data?.payerVA} BankRRN:${data?.BankRRN}`, trxCompletionDate: data?.TxnCompletionDate, trxInItDate: data?.TxnInitDate, isSuccess: data?.status == 200 || "200" || "Success" || "success" ? "Success" : "Failed" }
-
-        let upiWalletDataObject = { memberId: userInfo[0]?._id, transactionType: "Cr.", transactionAmount: finalCredit, beforeAmount: userInfo[0]?.upiWalletBalance, afterAmount: userInfo[0]?.upiWalletBalance + finalCredit, description: `Successfully Cr. amount: ${finalCredit}`, transactionStatus: "Success" }
-
-        await upiWalletModel.create(upiWalletDataObject);
-
-        await payInModel.create(payinDataStore);
-        await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
-
-        // callback send to the user url
-        let callBackPayinUrl = await callBackResponseModel.find({ memberId: userInfo[0]?._id, isActive: true }).select("_id payInCallBackUrl isActive");
-        const userCallBackURL = callBackPayinUrl[0]?.payInCallBackUrl;
-        const config = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        };
-
-        let userRespSendApi = {
-            status: data?.status,
-            payerAmount: data?.payerAmount,
-            payerName: data?.payerName,
-            txnID: data?.txnID,
-            BankRRN: data?.BankRRN,
-            payerVA: data?.payerVA,
-            TxnInitDate: data?.TxnInitDate,
-            TxnCompletionDate: data?.TxnCompletionDate
-        }
-
-        await axios.post(userCallBackURL, userRespSendApi, config)
-        res.status(200).json(new ApiResponse(200, null, "Successfully"))
-        // callback end to the user url
-    } else {
-        return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
+    } catch (error) {
+        return res.status(500).json({ succes: "Failed", message: "Internal server error!" })
+    } finally {
+        release()
     }
-}catch(error){ 
-    return res.status(500).json({ succes: "Failed", message: "Internal server error!" })
-} finally {
-    release()
-}
 
 });
 
@@ -430,7 +423,7 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
             let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
             var chargeTypePayIn;
             var chargeAmoutPayIn;
-            
+
             chargeRange.forEach((value) => {
                 if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
                     chargeTypePayIn = value.chargeType
