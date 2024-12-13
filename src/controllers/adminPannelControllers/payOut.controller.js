@@ -389,7 +389,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    const release = await payoutCallbackMutex.acquire()
+    // const release = await payoutCallbackMutex.acquire()
     try {
         let callBackPayout = req.body;
         let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
@@ -513,7 +513,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: "Failed", data: "Internal server error !" })
     } finally {
-        release()
+        // release()
     }
 
 });
