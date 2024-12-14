@@ -8,6 +8,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { AESUtils } from "../../utils/CryptoEnc.js";
 import { Mutex } from "async-mutex";
+import { ApiError } from "../../utils/ApiError.js";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
@@ -38,7 +39,7 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, GetData))
 });
 
-export const generatePayOut = asyncHandler(async (req, res) => {
+export const generatePayOut = asyncHandler(async (req, res,next) => {
     const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
     const release = await genPayoutMutex.acquire()
     try {
@@ -349,12 +350,15 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 }
                 return res.status(400).json({ message: "Failed", data: respSend })
         }
-    } catch (error) {
-        return res.status(400).json({ message: "Failed", data: "Internal server error !" })
+    }
+    catch (error) {
+        if (error.code == 11000) {
+            next(new ApiError(error.statusCode, "Duplicate key error !"))
+        }
+        next(new ApiError(error.statusCode, error.message))
     } finally {
         release()
     }
-
 });
 
 export const payoutStatusCheck = asyncHandler(async (req, res) => {
