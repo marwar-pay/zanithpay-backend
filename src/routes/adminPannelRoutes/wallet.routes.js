@@ -27,6 +27,7 @@ router.post("/eWalletFundCredit/:id", celebrate({
     body: Joi.object({
         transactionType: Joi.string().valid("Cr.").required(),
         transactionAmount: Joi.number().required(),
+        description: Joi.string().optional(),
     }),
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
@@ -37,6 +38,7 @@ router.post("/eWalletFundDebit/:id", celebrate({
     body: Joi.object({
         transactionType: Joi.string().valid("Dr.").required(),
         transactionAmount: Joi.number().required(),
+        description: Joi.string().optional(),
     }),
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
