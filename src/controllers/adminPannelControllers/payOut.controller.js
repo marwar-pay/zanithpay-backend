@@ -13,31 +13,216 @@ import { ApiError } from "../../utils/ApiError.js";
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
 
+// export const allPayOutPayment = asyncHandler(async (req, res) => {
+//     let GetData = await payOutModelGenerate.aggregate([
+//         { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+//     {
+//         $unwind: {
+//             path: "$userInfo",
+//             preserveNullAndEmptyArrays: true,
+//         }
+//     }, {
+//         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+//     }, { $sort: { createdAt: -1 } }]);
+//     res.status(200).json(new ApiResponse(200, GetData))
+// });
+
 export const allPayOutPayment = asyncHandler(async (req, res) => {
-    let GetData = await payOutModelGenerate.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-    {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    try { 
+        let { keyword, startDate, endDate, page = 1, limit = 25 } = req.query;
+ 
+        page = Number(page) || 1;
+        limit = Number(limit) || 25;
+ 
+        const matchFilters = {};
+ 
+        if (keyword) {
+            const trimmedKeyword = keyword.trim(); 
+            matchFilters.$or = [
+                { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { accountHolderName: { $regex: trimmedKeyword, $options: "i" } },
+                { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                { "userInfo.fullName": { $regex: trimmedKeyword, $options: "i" } },
+            ];
         }
-    }, {
-        $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }, { $sort: { createdAt: -1 } }]);
-    res.status(200).json(new ApiResponse(200, GetData))
+ 
+        if (startDate || endDate) {
+            matchFilters.createdAt = {};
+            if (startDate) matchFilters.createdAt.$gte = new Date(startDate);
+            if (endDate) matchFilters.createdAt.$lte = new Date(endDate);
+        }
+ 
+        const pipeline = [ 
+            { $match: matchFilters },
+             
+            { 
+                $lookup: { 
+                    from: "users", 
+                    localField: "memberId", 
+                    foreignField: "_id", 
+                    as: "userInfo" 
+                } 
+            },
+             
+            { 
+                $unwind: { 
+                    path: "$userInfo", 
+                    preserveNullAndEmptyArrays: true 
+                } 
+            },
+             
+            { 
+                $project: { 
+                    "_id": 1, 
+                    "trxId": 1, 
+                    "accountHolderName": 1, 
+                    "optxId": 1, 
+                    "accountNumber": 1, 
+                    "ifscCode": 1, 
+                    "amount": 1, 
+                    "isSuccess": 1, 
+                    "chargeAmount": 1, 
+                    "finalAmount": 1, 
+                    "createdAt": 1, 
+                    "userInfo.userName": 1, 
+                    "userInfo.fullName": 1, 
+                    "userInfo.memberId": 1 
+                } 
+            },
+             
+            { 
+                $sort: { 
+                    createdAt: -1 
+                } 
+            },
+             
+            ...getPaginationArray(page, limit)
+        ];
+ 
+        const GetData = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
+ 
+        if (!GetData || GetData.length === 0) {
+            return res.status(400).json({
+                message: "Failed",
+                data: "No Transaction Available!",
+            });
+        }
+
+        res.status(200).json(new ApiResponse(200, GetData));
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed",
+            data: `Internal Server Error: ${err.message}`,
+        });
+    }
 });
 
+
+// export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
+//     let GetData = await payOutModel.aggregate([
+//         { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+//     {
+//         $unwind: {
+//             path: "$userInfo",
+//             preserveNullAndEmptyArrays: true,
+//         }
+//     }, {
+//         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "bankRRN": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+//     }, { $sort: { createdAt: -1 } }]);
+//     res.status(200).json(new ApiResponse(200, GetData))
+// });
+
 export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
-    let GetData = await payOutModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-    {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    try { 
+        let { keyword, startDate, endDate, page = 1, limit = 25 } = req.query;
+ 
+        page = Number(page) || 1;
+        limit = Number(limit) || 25;
+ 
+        const matchFilters = { isSuccess: true };  
+ 
+        if (keyword) {
+            const trimmedKeyword = keyword.trim();  
+            matchFilters.$or = [
+                { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { accountHolderName: { $regex: trimmedKeyword, $options: "i" } },
+                { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                { "userInfo.fullName": { $regex: trimmedKeyword, $options: "i" } },
+            ];
         }
-    }, {
-        $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "bankRRN": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }, { $sort: { createdAt: -1 } }]);
-    res.status(200).json(new ApiResponse(200, GetData))
+ 
+        if (startDate || endDate) {
+            matchFilters.createdAt = {};
+            if (startDate) matchFilters.createdAt.$gte = new Date(startDate);
+            if (endDate) matchFilters.createdAt.$lte = new Date(endDate);
+        }
+ 
+        const pipeline = [ 
+            { $match: matchFilters },
+ 
+            { 
+                $lookup: { 
+                    from: "users", 
+                    localField: "memberId", 
+                    foreignField: "_id", 
+                    as: "userInfo" 
+                } 
+            },
+             
+            { 
+                $unwind: { 
+                    path: "$userInfo", 
+                    preserveNullAndEmptyArrays: true 
+                } 
+            },
+             
+            { 
+                $project: { 
+                    "_id": 1, 
+                    "trxId": 1, 
+                    "accountHolderName": 1, 
+                    "optxId": 1, 
+                    "accountNumber": 1, 
+                    "ifscCode": 1, 
+                    "amount": 1, 
+                    "chargeAmount": 1, 
+                    "finalAmount": 1, 
+                    "bankRRN": 1, 
+                    "isSuccess": 1, 
+                    "createdAt": 1, 
+                    "userInfo.userName": 1, 
+                    "userInfo.fullName": 1, 
+                    "userInfo.memberId": 1 
+                } 
+            },
+             
+            { 
+                $sort: { 
+                    createdAt: -1 
+                } 
+            },
+             
+            ...getPaginationArray(page, limit)
+        ];
+ 
+        const GetData = await payOutModel.aggregate(pipeline).allowDiskUse(true);
+ 
+        if (!GetData || GetData.length === 0) {
+            return res.status(400).json({
+                message: "Failed",
+                data: "No Successful Transactions Available!",
+            });
+        }
+
+        res.status(200).json(new ApiResponse(200, GetData));
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed",
+            data: `Internal Server Error: ${err.message}`,
+        });
+    }
 });
+
 
 export const generatePayOut = asyncHandler(async (req, res,next) => {
     const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;

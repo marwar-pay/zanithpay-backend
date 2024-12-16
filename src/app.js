@@ -89,7 +89,8 @@ const corsOptions = {
     credentials: true,
     optionsSuccessStatus: 200,
 };
-app.use(cors(corsOptions));
+app.use(cors());
+// app.use(cors(corsOptions));
 
 // Middleware for parsing requests
 app.use(express.json({ limit: "16kb" }));
