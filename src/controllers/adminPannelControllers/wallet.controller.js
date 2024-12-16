@@ -21,82 +21,75 @@ import { getPaginationArray } from "../../utils/helpers.js";
 // });
 
 export const getAllTransactionUpi = asyncHandler(async (req, res) => {
-    try { 
-        let { keyword, startDate, endDate, page = 1, limit = 25 } = req.query;
- 
-        page = Number(page) || 1;
-        limit = Number(limit) || 25;
- 
-        const matchFilters = {};
- 
-        if (keyword) {
-            const trimmedKeyword = keyword.trim();  
-            matchFilters.$or = [
+    let { keyword = "", startDate, endDate, page = 1, limit = 25 } = req.query;
+    page = Number(page) || 1;
+    limit = Number(limit) || 25;
+    const trimmedKeyword = keyword.trim(); 
+    const skip = (page - 1) * limit;
+
+    let dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+
+    const matchFilters = {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(trimmedKeyword && {
+            $or: [
                 { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
                 { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
                 { transactionType: { $regex: trimmedKeyword, $options: "i" } },
                 { description: { $regex: trimmedKeyword, $options: "i" } },
-            ];
-        }
- 
-        if (startDate || endDate) {
-            matchFilters.createdAt = {};
-            if (startDate) matchFilters.createdAt.$gte = new Date(startDate);
-            if (endDate) matchFilters.createdAt.$lte = new Date(endDate);
-        }
- 
-        const pipeline = [ 
-            { $match: matchFilters },
- 
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "memberId",
-                    foreignField: "_id",
-                    as: "userInfo",
-                },
+            ]
+        })
+    };
+
+    const userQuery = [
+        { $match: matchFilters }, // Start with filtering
+        { $sort: { createdAt: -1 } }, // Then sort based on createdAt
+        { $skip: skip }, // Skip documents for pagination
+        { $limit: limit }, // Limit the number of documents
+        {
+            $lookup: {
+                from: "users",
+                localField: "memberId",
+                foreignField: "_id",
+                pipeline: [
+                    { $project: { userName: 1, fullName: 1, memberId: 1 } },
+                ],
+                as: "userInfo",
             },
- 
-            {
-                $unwind: {
-                    path: "$userInfo",
-                    preserveNullAndEmptyArrays: true,
-                },
+        },
+        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+        {
+            $project: {
+                "_id": 1,
+                "memberId": 1,
+                "transactionType": 1,
+                "transactionAmount": 1,
+                "beforeAmount": 1,
+                "afterAmount": 1,
+                "description": 1,
+                "transactionStatus": 1,
+                "createdAt": 1,
+                "updatedAt": 1,
+                "userInfo.userName": 1,
+                "userInfo.fullName": 1,
+                "userInfo.memberId": 1,
             },
- 
-            {
-                $project: {
-                    "_id": 1,
-                    "memberId": 1,
-                    "transactionType": 1,
-                    "transactionAmount": 1,
-                    "beforeAmount": 1,
-                    "afterAmount": 1,
-                    "description": 1,
-                    "transactionStatus": 1,
-                    "createdAt": 1,
-                    "updatedAt": 1,
-                    "userInfo._id": 1,
-                    "userInfo.userName": 1,
-                    "userInfo.memberId": 1,
-                },
-            },
- 
-            { $sort: { createdAt: -1 } },
- 
-            ...getPaginationArray(page, limit),
-        ];
- 
-        const pack = await upiWalletModel.aggregate(pipeline).allowDiskUse(true);
- 
-        if (!pack || pack.length === 0) {
+        },
+    ];
+
+    try {
+        let transactions = await upiWalletModel.aggregate(userQuery).allowDiskUse(true);
+
+        if (!transactions || transactions.length === 0) {
             return res.status(200).json({
                 message: "Success",
                 data: "No Transactions Available!",
             });
         }
 
-        res.status(200).json(new ApiResponse(200, pack));
+        res.status(200).json(new ApiResponse(200, transactions));
     } catch (err) {
         res.status(500).json({
             message: "Failed",
@@ -119,82 +112,76 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
 // });
 
 export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
-    try { 
-        let { keyword, startDate, endDate, page = 1, limit = 25 } = req.query;
- 
-        page = Number(page) || 1;
-        limit = Number(limit) || 25;
- 
-        const matchFilters = {};
- 
-        if (keyword) {
-            const trimmedKeyword = keyword.trim();  
-            matchFilters.$or = [
+    let { keyword = "", startDate, endDate, page = 1, limit = 25 } = req.query;
+    page = Number(page) || 1;
+    limit = Number(limit) || 25;
+    const trimmedKeyword = keyword.trim(); 
+    const skip = (page - 1) * limit;
+
+    let dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+
+    const matchFilters = {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(trimmedKeyword && {
+            $or: [
                 { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
                 { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
                 { transactionType: { $regex: trimmedKeyword, $options: "i" } },
                 { description: { $regex: trimmedKeyword, $options: "i" } },
-            ];
-        }
- 
-        if (startDate || endDate) {
-            matchFilters.createdAt = {};
-            if (startDate) matchFilters.createdAt.$gte = new Date(startDate);
-            if (endDate) matchFilters.createdAt.$lte = new Date(endDate);
-        }
- 
-        const pipeline = [ 
-            { $match: matchFilters },
- 
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "memberId",
-                    foreignField: "_id",
-                    as: "userInfo",
-                },
+            ]
+        })
+    };
+
+    const userQuery = [
+        { $match: matchFilters }, // Start with filtering
+        { $sort: { createdAt: -1 } }, // Then sort based on createdAt
+        { $skip: skip }, // Skip documents for pagination
+        { $limit: limit }, // Limit the number of documents
+        {
+            $lookup: {
+                from: "users",
+                localField: "memberId",
+                foreignField: "_id",
+                pipeline: [
+                    { $project: { userName: 1, fullName: 1, memberId: 1 } },
+                ],
+                as: "userInfo",
             },
- 
-            {
-                $unwind: {
-                    path: "$userInfo",
-                    preserveNullAndEmptyArrays: true,
-                },
+        },
+        { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+        {
+            $project: {
+                "_id": 1,
+                "memberId": 1,
+                "transactionType": 1,
+                "transactionAmount": 1,
+                "beforeAmount": 1,
+                "chargeAmount": 1,
+                "afterAmount": 1,
+                "description": 1,
+                "transactionStatus": 1,
+                "createdAt": 1,
+                "updatedAt": 1,
+                "userInfo.userName": 1,
+                "userInfo.fullName": 1,
+                "userInfo.memberId": 1,
             },
- 
-            {
-                $project: {
-                    "_id": 1,
-                    "memberId": 1,
-                    "transactionType": 1,
-                    "transactionAmount": 1,
-                    "beforeAmount": 1,
-                    "chargeAmount": 1,
-                    "afterAmount": 1,
-                    "description": 1,
-                    "transactionStatus": 1,
-                    "createdAt": 1,
-                    "updatedAt": 1,
-                    "userInfo._id": 1,
-                    "userInfo.userName": 1,
-                    "userInfo.memberId": 1,
-                },
-            },
- 
-            { $sort: { createdAt: -1 } },
- 
-            ...getPaginationArray(page, limit),
-        ]; 
-        const pack = await eWalletModel.aggregate(pipeline).allowDiskUse(true);
- 
-        if (!pack || pack.length === 0) {
+        },
+    ];
+
+    try {
+        let transactions = await eWalletModel.aggregate(userQuery).allowDiskUse(true);
+
+        if (!transactions || transactions.length === 0) {
             return res.status(200).json({
                 message: "Success",
                 data: "No Transactions Available!",
             });
         }
 
-        res.status(200).json(new ApiResponse(200, pack));
+        res.status(200).json(new ApiResponse(200, transactions));
     } catch (err) {
         res.status(500).json({
             message: "Failed",
