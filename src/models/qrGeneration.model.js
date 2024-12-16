@@ -38,6 +38,6 @@ const qrGenerationSchema = new Schema({
         enum:["Pending","Failed","Success"],
         default: "Pending"
     },
-}, { timestamps: true });
+}, { timestamps: true }); 
 
-export default new model("qrGenerationRecode", qrGenerationSchema);
+export default new model("qrGenerationRecode", qrGenerationSchema.index({createdAt:1}));

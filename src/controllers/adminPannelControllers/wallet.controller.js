@@ -6,30 +6,200 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import mongoose from "mongoose";
 
+// export const getAllTransactionUpi = asyncHandler(async (req, res) => {
+//     let pack = await upiWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+//         $unwind: {
+//             path: "$userInfo",
+//             preserveNullAndEmptyArrays: true,
+//         }
+//     }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
+//     if (!pack) {
+//         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
+//     }
+//     res.status(200).json(new ApiResponse(200, pack))
+// });
+
 export const getAllTransactionUpi = asyncHandler(async (req, res) => {
-    let pack = await upiWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    try { 
+        let { keyword, startDate, endDate, page = 1, limit = 25 } = req.query;
+ 
+        page = Number(page) || 1;
+        limit = Number(limit) || 25;
+ 
+        const matchFilters = {};
+ 
+        if (keyword) {
+            const trimmedKeyword = keyword.trim();  
+            matchFilters.$or = [
+                { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
+                { transactionType: { $regex: trimmedKeyword, $options: "i" } },
+                { description: { $regex: trimmedKeyword, $options: "i" } },
+            ];
         }
-    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
-    if (!pack) {
-        return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
+ 
+        if (startDate || endDate) {
+            matchFilters.createdAt = {};
+            if (startDate) matchFilters.createdAt.$gte = new Date(startDate);
+            if (endDate) matchFilters.createdAt.$lte = new Date(endDate);
+        }
+ 
+        const pipeline = [ 
+            { $match: matchFilters },
+ 
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "memberId",
+                    foreignField: "_id",
+                    as: "userInfo",
+                },
+            },
+ 
+            {
+                $unwind: {
+                    path: "$userInfo",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+ 
+            {
+                $project: {
+                    "_id": 1,
+                    "memberId": 1,
+                    "transactionType": 1,
+                    "transactionAmount": 1,
+                    "beforeAmount": 1,
+                    "afterAmount": 1,
+                    "description": 1,
+                    "transactionStatus": 1,
+                    "createdAt": 1,
+                    "updatedAt": 1,
+                    "userInfo._id": 1,
+                    "userInfo.userName": 1,
+                    "userInfo.memberId": 1,
+                },
+            },
+ 
+            { $sort: { createdAt: -1 } },
+ 
+            ...getPaginationArray(page, limit),
+        ];
+ 
+        const pack = await upiWalletModel.aggregate(pipeline).allowDiskUse(true);
+ 
+        if (!pack || pack.length === 0) {
+            return res.status(200).json({
+                message: "Success",
+                data: "No Transactions Available!",
+            });
+        }
+
+        res.status(200).json(new ApiResponse(200, pack));
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed",
+            data: `Internal Server Error: ${err.message}`,
+        });
     }
-    res.status(200).json(new ApiResponse(200, pack))
 });
 
+// export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
+//     let pack = await eWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
+//         $unwind: {
+//             path: "$userInfo",
+//             preserveNullAndEmptyArrays: true,
+//         }
+//     }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "chargeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
+//     if (!pack) {
+//         return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
+//     }
+//     res.status(200).json(new ApiResponse(200, pack))
+// });
+
 export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
-    let pack = await eWalletModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } }, {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    try { 
+        let { keyword, startDate, endDate, page = 1, limit = 25 } = req.query;
+ 
+        page = Number(page) || 1;
+        limit = Number(limit) || 25;
+ 
+        const matchFilters = {};
+ 
+        if (keyword) {
+            const trimmedKeyword = keyword.trim();  
+            matchFilters.$or = [
+                { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
+                { transactionType: { $regex: trimmedKeyword, $options: "i" } },
+                { description: { $regex: trimmedKeyword, $options: "i" } },
+            ];
         }
-    }, { $project: { "_id": 1, "memberId": 1, "transactionType": 1, "transactionAmount": 1, "beforeAmount": 1, "chargeAmount": 1, "afterAmount": 1, "description": 1, "transactionStatus": 1, "createdAt": 1, "updatedAt": 1, "userInfo._id": 1, "userInfo.userName": 1, "userInfo.memberId": 1 } }, { $sort: { createdAt: -1 } }]);
-    if (!pack) {
-        return res.status(200).json({ message: "Success", data: "No Transaction Avabile!" })
+ 
+        if (startDate || endDate) {
+            matchFilters.createdAt = {};
+            if (startDate) matchFilters.createdAt.$gte = new Date(startDate);
+            if (endDate) matchFilters.createdAt.$lte = new Date(endDate);
+        }
+ 
+        const pipeline = [ 
+            { $match: matchFilters },
+ 
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "memberId",
+                    foreignField: "_id",
+                    as: "userInfo",
+                },
+            },
+ 
+            {
+                $unwind: {
+                    path: "$userInfo",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+ 
+            {
+                $project: {
+                    "_id": 1,
+                    "memberId": 1,
+                    "transactionType": 1,
+                    "transactionAmount": 1,
+                    "beforeAmount": 1,
+                    "chargeAmount": 1,
+                    "afterAmount": 1,
+                    "description": 1,
+                    "transactionStatus": 1,
+                    "createdAt": 1,
+                    "updatedAt": 1,
+                    "userInfo._id": 1,
+                    "userInfo.userName": 1,
+                    "userInfo.memberId": 1,
+                },
+            },
+ 
+            { $sort: { createdAt: -1 } },
+ 
+            ...getPaginationArray(page, limit),
+        ]; 
+        const pack = await eWalletModel.aggregate(pipeline).allowDiskUse(true);
+ 
+        if (!pack || pack.length === 0) {
+            return res.status(200).json({
+                message: "Success",
+                data: "No Transactions Available!",
+            });
+        }
+
+        res.status(200).json(new ApiResponse(200, pack));
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed",
+            data: `Internal Server Error: ${err.message}`,
+        });
     }
-    res.status(200).json(new ApiResponse(200, pack))
 });
 
 export const getTransactionStatus = asyncHandler(async (req, res) => {

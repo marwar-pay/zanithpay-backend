@@ -7,52 +7,204 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
-import { Mutex } from "async-mutex";
+import { Mutex } from "async-mutex"; 
+import { getPaginationArray } from "../../utils/helpers.js";
 
 const transactionMutex = new Mutex();
 
+// export const allGeneratedPayment = asyncHandler(async (req, res) => {
+//     const {page, limit} = req.query
+//     let date = new Date();
+//     let DateComp = `${date.getFullYear()}-${(date.getMonth()) + 1}-${date.getDate()}`
+//     let userQuery = [{ $match: { createdAt: { $gte: new Date(DateComp) } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+//         {
+//             $unwind: {
+//                 path: "$userInfo",
+//                 preserveNullAndEmptyArrays: true,
+//             }
+//         }, {
+//             $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+//         }, { $sort: { createdAt: -1 } ,
+//         ...getPaginationArray(parseInt(page), limit)
+//     }
+//         ]
+//     let payment = await qrGenerationModel.aggregate(userQuery).then((result) => {
+//         if (result.length === 0) {
+//             return res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+//         }
+//         res.status(200).json(new ApiResponse(200, result))
+//     }).catch((err) => {
+//         res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
+//     })
+// });
+
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
-    // let queryObject = req.query;
-    let date = new Date();
-    let DateComp = `${date.getFullYear()}-${(date.getMonth()) + 1}-${date.getDate()}`
-    let payment = await qrGenerationModel.aggregate([{ $match: { createdAt: { $gte: new Date(DateComp) } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-    {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    const { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
+
+    const trimmedKeyword = keyword.trim(); 
+    const skip = (page - 1) * limit;
+
+    let dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+
+    let userQuery = [
+        { 
+            $match: { 
+                ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+                ...(trimmedKeyword && {
+                    $or: [
+                        { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                        { name: { $regex: trimmedKeyword, $options: "i" } },
+                        { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                    ]
+                })
+            } 
+        }, 
+        { $sort: { createdAt: -1 } }, 
+        { $skip: skip },
+        { $limit: limit }, 
+        { 
+            $lookup: { 
+                from: "users", 
+                localField: "memberId", 
+                foreignField: "_id", 
+                pipeline: [
+                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
+                ], 
+                as: "userInfo" 
+            } 
+        }, 
+        { 
+            $unwind: { 
+                path: "$userInfo", 
+                preserveNullAndEmptyArrays: true 
+            } 
+        }, 
+        { 
+            $project: { 
+                "_id": 1, 
+                "trxId": 1, 
+                "amount": 1, 
+                "name": 1, 
+                "callBackStatus": 1, 
+                "qrData": 1, 
+                "createdAt": 1, 
+                "userInfo.userName": 1, 
+                "userInfo.fullName": 1, 
+                "userInfo.memberId": 1 
+            } 
         }
-    }, {
-        $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }, { $sort: { createdAt: -1 } }
-    ]).then((result) => {
-        if (result.length === 0) {
-            return res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+    ];
+
+    try {
+        let payment = await qrGenerationModel.aggregate(userQuery).allowDiskUse(true);
+
+        if (!payment || payment.length === 0) {
+            return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
         }
-        res.status(200).json(new ApiResponse(200, result))
-    }).catch((err) => {
-        res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
-    })
+
+        res.status(200).json(new ApiResponse(200, payment));
+    } catch (err) {
+        res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
+    }
 });
 
+// export const allSuccessPayment = asyncHandler(async (req, res) => {
+//     let payment = await payInModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
+//     {
+//         $unwind: {
+//             path: "$userInfo",
+//             preserveNullAndEmptyArrays: true,
+//         }
+//     }, {
+//         $project: { "_id": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "payerName": 1, "isSuccess": 1, "vpaId": 1, "bankRRN": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
+//     }, { $sort: { createdAt: -1 } }
+//     ]).then((result) => {
+//         if (result.length === 0) {
+//             res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+//         }
+//         res.status(200).json(new ApiResponse(200, result))
+//     }).catch((err) => {
+//         res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
+//     })
+// });
+
 export const allSuccessPayment = asyncHandler(async (req, res) => {
-    let payment = await payInModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-    {
-        $unwind: {
-            path: "$userInfo",
-            preserveNullAndEmptyArrays: true,
+    const { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
+
+    const trimmedKeyword = keyword.trim(); 
+    const skip = (page - 1) * limit;
+
+    let dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+
+    let paymentQuery = [ 
+        { 
+            $match: {  
+                ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+                ...(trimmedKeyword && {
+                    $or: [
+                        { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                        { payerName: { $regex: trimmedKeyword, $options: "i" } },
+                        { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                    ]
+                })
+            } 
+        },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { 
+            $lookup: { 
+                from: "users", 
+                localField: "memberId", 
+                foreignField: "_id", 
+                pipeline: [
+                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
+                ], 
+                as: "userInfo" 
+            } 
+        },
+        { 
+            $unwind: { 
+                path: "$userInfo", 
+                preserveNullAndEmptyArrays: true 
+            } 
+        },
+        { 
+            $project: { 
+                "_id": 1, 
+                "trxId": 1, 
+                "amount": 1, 
+                "chargeAmount": 1, 
+                "finalAmount": 1, 
+                "payerName": 1, 
+                "isSuccess": 1, 
+                "vpaId": 1, 
+                "bankRRN": 1, 
+                "createdAt": 1, 
+                "userInfo.userName": 1, 
+                "userInfo.fullName": 1, 
+                "userInfo.memberId": 1 
+            } 
         }
-    }, {
-        $project: { "_id": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "payerName": 1, "isSuccess": 1, "vpaId": 1, "bankRRN": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-    }, { $sort: { createdAt: -1 } }
-    ]).then((result) => {
-        if (result.length === 0) {
-            res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
+    ];
+
+    try {
+        let payment = await payInModel.aggregate(paymentQuery).allowDiskUse(true);
+
+        if (!payment || payment.length === 0) {
+            return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
         }
-        res.status(200).json(new ApiResponse(200, result))
-    }).catch((err) => {
-        res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
-    })
+
+        res.status(200).json(new ApiResponse(200, payment));
+    } catch (err) {
+        res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
+    }
 });
+
 
 export const generatePayment = asyncHandler(async (req, res) => {
     const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
