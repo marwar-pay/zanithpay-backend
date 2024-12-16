@@ -304,7 +304,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
-        } 
+        }
 
         let totalDocs = await payInModel.countDocuments()
 
