@@ -72,7 +72,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
         const pipeline = [
             { $match: matchFilters },  // Apply the match filters for keyword, date, etc.
             { $sort: { createdAt: -1 } }, // Sort by createdAt descending
-            
+
             // Skip and Limit for pagination
             { $skip: skip },
             { $limit: limit },
@@ -254,7 +254,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
         }
 
-        if (user[0]?.payOutApi === "ServerMaintenance") {
+        const payOutMaintance = user[0]?.payOutApi;
+        if (payOutMaintance === "ServerMaintenance") {
             let serverResp = {
                 status_msg: "Server Under Maintenance !",
                 status: 400,
