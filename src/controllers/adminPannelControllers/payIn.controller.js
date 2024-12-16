@@ -458,7 +458,6 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 trxID: trxId,
             }
             return res.status(400).json({ message: "Failed", data: serverResp })
-
         default:
             let dataApiResponse = {
                 status_msg: "failed",
