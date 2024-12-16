@@ -254,7 +254,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
         }
 
-        const payOutMaintance = user[0]?.payOutApi;
+        const payOutMaintance = user[0]?.payOutApi?.apiName;
         if (payOutMaintance === "ServerMaintenance") {
             let serverResp = {
                 status_msg: "Server Under Maintenance !",
