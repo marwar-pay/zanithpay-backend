@@ -201,7 +201,7 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     }
 });
 
-export const generatePayOut = asyncHandler(async (req, res,next) => {
+export const generatePayOut = asyncHandler(async (req, res, next) => {
     const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
     const release = await genPayoutMutex.acquire()
     try {
@@ -230,6 +230,15 @@ export const generatePayOut = asyncHandler(async (req, res,next) => {
 
         if (user.length === 0) {
             return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
+        }
+
+        if (payOutApi?.apiName === "ServerMaintenance") {
+            let serverResp = {
+                status_msg: "Server Under Maintenance !",
+                status: 400,
+                trxID: trxId,
+            }
+            return res.status(400).json({ message: "Failed", data: serverResp })
         }
 
         let chargeRange = user[0]?.packageCharge?.payOutChargeRange;
@@ -555,7 +564,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
-    // const release = await payoutCallbackMutex.acquire()
+    const release = await payoutCallbackMutex.acquire()
     try {
         let callBackPayout = req.body;
         let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
@@ -677,9 +686,150 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
         }
     } catch (error) {
+        console.log(error)
         res.status(400).json({ message: "Failed", data: "Internal server error !" })
     } finally {
-        // release()
+        release()
+    }
+
+});
+
+export const payoutCallBackFunction = asyncHandler(async (req, res) => {
+    const release = await payoutCallbackMutex.acquire()
+    try {
+        let callBackPayout = req.body;
+        let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
+
+        if (req.body.UTR) {
+            data = { txnid: callBackPayout?.ClientOrderId, optxid: callBackPayout?.OrderId, amount: callBackPayout?.Amount, rrn: callBackPayout?.UTR, status: (callBackPayout?.Status == 1) ? "SUCCESS" : "Pending" }
+        }
+
+        if (data.status != "SUCCESS") {
+            return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
+        }
+
+        // get the trxid Data 
+        let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
+
+        // if (getDocoment?.isSuccess !== "Pending") {
+        //     console.log("Hello")
+        //     // callback response to the
+        //     // let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: getDocoment.memberId } }]);
+
+        //     // let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+        //     // // Calling the user callback and send the response to the user 
+        //     // const config = {
+        //     //     headers: {
+        //     //         'Accept': 'application/json',
+        //     //         'Content-Type': 'application/json'
+        //     //     }
+        //     // };
+
+        //     // let shareObjData = {
+        //     //     status: data?.status,
+        //     //     txnid: data?.txnid,
+        //     //     optxid: data?.optxid,
+        //     //     amount: data?.amount,
+        //     //     rrn: data?.rrn
+        //     // }
+
+        //     // await axios.post(payOutUserCallBackURL, shareObjData, config)
+        //     return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}`})
+        // }
+
+        if (getDocoment.isSuccess === "Pending") {
+            return res.status(200).json({ data: "hello" })
+        }
+
+        if (true) {
+            return res.status(200).json({ d: getDocoment.isSuccess })
+        }
+
+        if (getDocoment && data?.rrn) {
+            getDocoment.isSuccess = "Success"
+            await getDocoment.save();
+
+            let userInfo = await userDB.aggregate([{ $match: { _id: getDocoment?.memberId } }, { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } }, {
+                $unwind: {
+                    path: "$payOutApi",
+                    preserveNullAndEmptyArrays: true,
+                }
+            }, {
+                $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "EwalletBalance": 1, "createdAt": 1, "payOutApi._id": 1, "payOutApi.apiName": 1, "payOutApi.apiURL": 1, "payOutApi.isActive": 1 }
+            }]);
+
+            let chargePaymentGatway = getDocoment?.gatwayCharge;
+            let mainAmount = getDocoment?.amount;
+
+            let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
+            let beforeAmountUser = userWalletInfo.EwalletBalance;
+            let finalEwalletDeducted = mainAmount + chargePaymentGatway;
+
+            let walletModelDataStore = {
+                memberId: userWalletInfo._id,
+                transactionType: "Dr.",
+                transactionAmount: data?.amount,
+                beforeAmount: beforeAmountUser,
+                chargeAmount: chargePaymentGatway,
+                afterAmount: beforeAmountUser - finalEwalletDeducted,
+                description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
+                transactionStatus: "Success",
+            }
+
+            // update the user wallet balance 
+            userWalletInfo.EwalletBalance -= finalEwalletDeducted
+            await userWalletInfo.save();
+
+            let storeTrx = await walletModel.create(walletModelDataStore)
+
+            let payoutDataStore = {
+                memberId: getDocoment?.memberId,
+                amount: mainAmount,
+                chargeAmount: chargePaymentGatway,
+                finalAmount: finalEwalletDeducted,
+                bankRRN: data?.rrn,
+                trxId: data?.txnid,
+                optxId: data?.optxid,
+                isSuccess: "Success"
+            }
+
+            await payOutModel.create(payoutDataStore)
+            // callback response to the 
+            let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: userInfo[0]?._id } }]);
+
+            if (userCallBackResp.length !== 1) {
+                return res.status(400).json({ message: "Failed", data: "User have multiple callback Url or Not Found !" })
+            }
+
+            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+            // Calling the user callback and send the response to the user 
+            const config = {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            let shareObjData = {
+                status: data?.status,
+                txnid: data?.txnid,
+                optxid: data?.optxid,
+                amount: data?.amount,
+                rrn: data?.rrn
+            }
+
+            let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
+            return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
+
+            // end the user callback calling and send response 
+        } else {
+            res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
+        }
+    } catch (error) {
+        console.log(error.message)
+        res.status(400).json({ message: "Failed", data: "Internal server error !" })
+    } finally {
+        release()
     }
 
 });

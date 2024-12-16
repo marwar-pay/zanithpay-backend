@@ -7,7 +7,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
-import { Mutex } from "async-mutex"; 
+import { Mutex } from "async-mutex";
 import { getPaginationArray } from "../../utils/helpers.js";
 
 const transactionMutex = new Mutex();
@@ -42,7 +42,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim(); 
+    const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
 
     let dateFilter = {};
@@ -50,25 +50,25 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
     if (endDate) dateFilter.$lte = new Date(endDate);
 
     let userQuery = [
-        { 
-            $lookup: { 
-                from: "users", 
-                localField: "memberId", 
-                foreignField: "_id", 
+        {
+            $lookup: {
+                from: "users",
+                localField: "memberId",
+                foreignField: "_id",
                 pipeline: [
                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ], 
-                as: "userInfo" 
-            } 
+                ],
+                as: "userInfo"
+            }
         },
-        { 
-            $unwind: { 
-                path: "$userInfo", 
-                preserveNullAndEmptyArrays: true 
-            } 
+        {
+            $unwind: {
+                path: "$userInfo",
+                preserveNullAndEmptyArrays: true
+            }
         },
-        { 
-            $match: { 
+        {
+            $match: {
                 ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
                 ...(trimmedKeyword && {
                     $or: [
@@ -77,24 +77,24 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                         { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
                     ]
                 })
-            } 
-        }, 
-        { $sort: { createdAt: -1 } }, 
+            }
+        },
+        { $sort: { createdAt: -1 } },
         { $skip: skip },
-        { $limit: limit }, 
-        { 
-            $project: { 
-                "_id": 1, 
-                "trxId": 1, 
-                "amount": 1, 
-                "name": 1, 
-                "callBackStatus": 1, 
-                "qrData": 1, 
-                "createdAt": 1, 
-                "userInfo.userName": 1, 
-                "userInfo.fullName": 1, 
-                "userInfo.memberId": 1 
-            } 
+        { $limit: limit },
+        {
+            $project: {
+                "_id": 1,
+                "trxId": 1,
+                "amount": 1,
+                "name": 1,
+                "callBackStatus": 1,
+                "qrData": 1,
+                "createdAt": 1,
+                "userInfo.userName": 1,
+                "userInfo.fullName": 1,
+                "userInfo.memberId": 1
+            }
         }
     ];
 
@@ -135,16 +135,16 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim(); 
+    const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
 
     let dateFilter = {};
     if (startDate) dateFilter.$gte = new Date(startDate);
     if (endDate) dateFilter.$lte = new Date(endDate);
 
-    let paymentQuery = [ 
-        { 
-            $match: {  
+    let paymentQuery = [
+        {
+            $match: {
                 ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
                 ...(trimmedKeyword && {
                     $or: [
@@ -153,44 +153,44 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
                         { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
                     ]
                 })
-            } 
+            }
         },
         { $sort: { createdAt: -1 } },
         { $skip: skip },
         { $limit: limit },
-        { 
-            $lookup: { 
-                from: "users", 
-                localField: "memberId", 
-                foreignField: "_id", 
+        {
+            $lookup: {
+                from: "users",
+                localField: "memberId",
+                foreignField: "_id",
                 pipeline: [
                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ], 
-                as: "userInfo" 
-            } 
+                ],
+                as: "userInfo"
+            }
         },
-        { 
-            $unwind: { 
-                path: "$userInfo", 
-                preserveNullAndEmptyArrays: true 
-            } 
+        {
+            $unwind: {
+                path: "$userInfo",
+                preserveNullAndEmptyArrays: true
+            }
         },
-        { 
-            $project: { 
-                "_id": 1, 
-                "trxId": 1, 
-                "amount": 1, 
-                "chargeAmount": 1, 
-                "finalAmount": 1, 
-                "payerName": 1, 
-                "isSuccess": 1, 
-                "vpaId": 1, 
-                "bankRRN": 1, 
-                "createdAt": 1, 
-                "userInfo.userName": 1, 
-                "userInfo.fullName": 1, 
-                "userInfo.memberId": 1 
-            } 
+        {
+            $project: {
+                "_id": 1,
+                "trxId": 1,
+                "amount": 1,
+                "chargeAmount": 1,
+                "finalAmount": 1,
+                "payerName": 1,
+                "isSuccess": 1,
+                "vpaId": 1,
+                "bankRRN": 1,
+                "createdAt": 1,
+                "userInfo.userName": 1,
+                "userInfo.fullName": 1,
+                "userInfo.memberId": 1
+            }
         }
     ];
 
@@ -345,6 +345,13 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 }
             }
             break;
+        case "ServerMaintenance":
+            let serverResp = {
+                status_msg: "Server Under Maintenance !",
+                status: 400,
+                trxID: trxId,
+            }
+            return res.status(400).json({ message: "Failed", data: serverResp })
 
         default:
             let dataApiResponse = {
