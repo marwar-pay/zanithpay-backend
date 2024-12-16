@@ -38,78 +38,87 @@ const transactionMutex = new Mutex();
 //     })
 // });
 
-export const allGeneratedPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
-    page = Number(page) || 1;
-    limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim();
-    const skip = (page - 1) * limit;
+// export const allGeneratedPayment = asyncHandler(async (req, res) => {
+//     let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
+//     page = Number(page) || 1;
+//     limit = Number(limit) || 25;
+//     const trimmedKeyword = keyword.trim();
+//     const skip = (page - 1) * limit;
 
-    let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
+//     let dateFilter = {};
+//     if (startDate) dateFilter.$gte = new Date(startDate);
+//     if (endDate) dateFilter.$lte = new Date(endDate);
 
-    let userQuery = [
-        {
-            $lookup: {
-                from: "users",
-                localField: "memberId",
-                foreignField: "_id",
-                pipeline: [
-                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ],
-                as: "userInfo"
-            }
-        },
-        {
-            $unwind: {
-                path: "$userInfo",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $match: {
-                ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
-                ...(trimmedKeyword && {
-                    $or: [
-                        { trxId: { $regex: trimmedKeyword, $options: "i" } },
-                        { name: { $regex: trimmedKeyword, $options: "i" } },
-                        { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
-                    ]
-                })
-            }
-        },
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-            $project: {
-                "_id": 1,
-                "trxId": 1,
-                "amount": 1,
-                "name": 1,
-                "callBackStatus": 1,
-                "qrData": 1,
-                "createdAt": 1,
-                "userInfo.userName": 1,
-                "userInfo.fullName": 1,
-                "userInfo.memberId": 1
-            }
-        }
-    ];
+//     let userQuery = [
+//         {
+//             $match: {
+//                 ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+//                 ...(trimmedKeyword && {
+//                     $or: [
+//                         { trxId: { $regex: trimmedKeyword, $options: "i" } },
+//                         { name: { $regex: trimmedKeyword, $options: "i" } },
+//                         // { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+//                     ]
+//                 })
+//             }
+//         },
+//         { $sort: { createdAt: -1 } },
+//         { $skip: skip },
+//         { $limit: limit },
+//         {
+//             $lookup: {
+//                 from: "users",
+//                 localField: "memberId",
+//                 foreignField: "_id",
+//                 as: "userInfo",
+//                 pipeline: [
+//                     // Match userName if provided in the keyword
+//                     ...(trimmedKeyword ? [
+//                         {
+//                             $match: {
+//                                 userName: { $regex: trimmedKeyword, $options: "i" }
+//                             }
+//                         }
+//                     ] : []),
+//                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
+//                 ]
+//             }
+//         },
+//         {
+//             $unwind: {
+//                 path: "$userInfo",
+//                 preserveNullAndEmptyArrays: true
+//             }
+//         },
+//         {
+//             $project: {
+//                 "_id": 1,
+//                 "trxId": 1,
+//                 "amount": 1,
+//                 "name": 1,
+//                 "callBackStatus": 1,
+//                 "qrData": 1,
+//                 "refId": 1,
+//                 "createdAt": 1,
+//                 "userInfo.userName": 1,
+//                 "userInfo.fullName": 1,
+//                 "userInfo.memberId": 1
+//             }
+//         }
+//     ];
 
-    try {
-        let payment = await qrGenerationModel.aggregate(userQuery).allowDiskUse(true);
+//     try {
+//         let payment = await qrGenerationModel.aggregate(userQuery).allowDiskUse(true);
 
-        if (!payment || payment.length === 0) {
-            return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
-        }
+//         if (!payment || payment.length === 0) {
+//             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
+//         }
 
-        res.status(200).json(new ApiResponse(200, payment));
-    } catch (err) {
-        res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
-    }
-});
+//         res.status(200).json(new ApiResponse(200, payment));
+//     } catch (err) {
+//         res.status(500).json({ message: "Failed", data: `Internal Server Error: ${ err.message }` });
+//     }
+// });
 
 // export const allSuccessPayment = asyncHandler(async (req, res) => {
 //     let payment = await payInModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
@@ -131,31 +140,32 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 //     })
 // });
 
-export const allSuccessPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
+export const allGeneratedPayment = asyncHandler(async (req, res) => {
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim();
+    const trimmedMemberId = memberId ? memberId.trim() : "";
     const skip = (page - 1) * limit;
 
     let dateFilter = {};
     if (startDate) dateFilter.$gte = new Date(startDate);
     if (endDate) dateFilter.$lte = new Date(endDate);
 
-    let paymentQuery = [
-        {
-            $match: {
-                ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
-                ...(trimmedKeyword && {
-                    $or: [
-                        { trxId: { $regex: trimmedKeyword, $options: "i" } },
-                        { payerName: { $regex: trimmedKeyword, $options: "i" } },
-                        { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
-                    ]
-                })
-            }
-        },
+    let matchFilters = {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(trimmedKeyword && {
+            $or: [
+                { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { name: { $regex: trimmedKeyword, $options: "i" } }
+            ]
+        }),
+    };
+
+    let userQuery = [
+        { $match: matchFilters },
         { $sort: { createdAt: -1 } },
+
         { $skip: skip },
         { $limit: limit },
         {
@@ -163,18 +173,113 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
                 from: "users",
                 localField: "memberId",
                 foreignField: "_id",
+                as: "userInfo",
                 pipeline: [
+                    ...(trimmedMemberId ? [
+                        {
+                            $match: {
+                                userName: { $regex: trimmedMemberId, $options: "i" }
+                            }
+                        }
+                    ] : []),
                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ],
-                as: "userInfo"
+                ]
             }
         },
+
         {
             $unwind: {
                 path: "$userInfo",
-                preserveNullAndEmptyArrays: true
+                preserveNullAndEmptyArrays: false
             }
         },
+
+        {
+            $project: {
+                "_id": 1,
+                "trxId": 1,
+                "amount": 1,
+                "name": 1,
+                "callBackStatus": 1,
+                "qrData": 1,
+                "refId": 1,
+                "createdAt": 1,
+                "userInfo.userName": 1,
+                "userInfo.fullName": 1,
+                "userInfo.memberId": 1
+            }
+        }
+    ];
+
+    try {
+        let payment = await qrGenerationModel.aggregate(userQuery).allowDiskUse(true);
+
+        if (!payment || payment.length === 0) {
+            return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
+        }
+        let totalDocs = await qrGenerationModel.countDocuments()
+
+        res.status(200).json(new ApiResponse(200, payment, totalDocs));
+    } catch (err) {
+        res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
+    }
+});
+
+export const allSuccessPayment = asyncHandler(async (req, res) => {
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
+    page = Number(page) || 1;
+    limit = Number(limit) || 25;
+    const trimmedKeyword = keyword.trim();
+    const trimmedMemberId = memberId ? memberId.trim() : "";
+    const skip = (page - 1) * limit;
+
+    let dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+
+    let matchFilters = {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(trimmedKeyword && {
+            $or: [
+                { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { payerName: { $regex: trimmedKeyword, $options: "i" } },
+            ]
+        }),
+    };
+
+    let paymentQuery = [
+        { $match: matchFilters },
+        { $sort: { createdAt: -1 } },
+
+        { $skip: skip },
+        { $limit: limit },
+
+        {
+            $lookup: {
+                from: "users",
+                localField: "memberId",
+                foreignField: "_id",
+                as: "userInfo",
+                pipeline: [
+                    ...(trimmedMemberId ? [
+                        {
+                            $match: {
+                                userName: { $regex: trimmedMemberId, $options: "i" }
+                            }
+                        }
+                    ] : []),
+                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
+                ]
+            }
+        },
+
+        {
+            $unwind: {
+                path: "$userInfo",
+                preserveNullAndEmptyArrays: false
+            }
+        },
+
         {
             $project: {
                 "_id": 1,
@@ -199,14 +304,15 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
-        }
+        } 
 
-        res.status(200).json(new ApiResponse(200, payment));
+        let totalDocs = await payInModel.countDocuments()
+
+        res.status(200).json(new ApiResponse(200, payment, totalDocs));
     } catch (err) {
         res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
     }
 });
-
 
 export const generatePayment = asyncHandler(async (req, res) => {
     const { userName, authToken, name, amount, trxId, mobileNumber } = req.body

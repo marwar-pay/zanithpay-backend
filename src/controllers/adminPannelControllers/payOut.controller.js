@@ -43,83 +43,105 @@ const payoutCallbackMutex = new Mutex();
 // });
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
+    const trimmedKeyword = keyword.trim();
+    const trimmedMemberId = memberId ? memberId.trim() : "";
 
-    // Build date filter
     let dateFilter = {};
     if (startDate) dateFilter.$gte = new Date(startDate);
     if (endDate) dateFilter.$lte = new Date(endDate);
 
-    const pipeline = [
-        {
-            $match: {
-                ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
-                ...(trimmedKeyword && {
-                    $or: [
-                        { trxId: { $regex: trimmedKeyword, $options: "i" } },
-                        { accountHolderName: { $regex: trimmedKeyword, $options: "i" } },
-                        { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
-                        { "userInfo.fullName": { $regex: trimmedKeyword, $options: "i" } },
-                    ],
-                }),
-            },
-        },
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-            $lookup: {
-                from: "users",
-                localField: "memberId",
-                foreignField: "_id",
-                pipeline: [
-                    { $project: { userName: 1, fullName: 1, memberId: 1 } },
-                ],
-                as: "userInfo",
-            },
-        },
-        {
-            $unwind: {
-                path: "$userInfo",
-                preserveNullAndEmptyArrays: true,
-            },
-        },
-        {
-            $project: {
-                "_id": 1,
-                "trxId": 1,
-                "accountHolderName": 1,
-                "optxId": 1,
-                "accountNumber": 1,
-                "ifscCode": 1,
-                "amount": 1,
-                "isSuccess": 1,
-                "chargeAmount": 1,
-                "finalAmount": 1,
-                "createdAt": 1,
-                "userInfo.userName": 1,
-                "userInfo.fullName": 1,
-                "userInfo.memberId": 1,
-            },
-        },
-    ];
+    let matchFilters = {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(trimmedKeyword && {
+            $or: [
+                { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
+            ]
+        }),
+    };
 
     try {
-        const GetData = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
+        // Step 1: Get the total count of documents in the collection (unfiltered)
+        const totalDocs = await payOutModelGenerate.countDocuments();
 
-        if (!GetData || GetData.length === 0) {
+        // Step 2: Aggregation pipeline for filtering and data retrieval
+        const pipeline = [
+            { $match: matchFilters },  // Apply the match filters for keyword, date, etc.
+            { $sort: { createdAt: -1 } }, // Sort by createdAt descending
+            
+            // Skip and Limit for pagination
+            { $skip: skip },
+            { $limit: limit },
+
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "memberId",
+                    foreignField: "_id",
+                    as: "userInfo",
+                    pipeline: [
+                        ...(trimmedMemberId ? [
+                            {
+                                $match: {
+                                    userName: { $regex: trimmedMemberId, $options: "i" } // Match userName when filtered by memberId
+                                }
+                            }
+                        ] : []),
+                        { $project: { userName: 1, fullName: 1, memberId: 1 } }
+                    ],
+                },
+            },
+            {
+                $unwind: {
+                    path: "$userInfo",
+                    preserveNullAndEmptyArrays: false // Make sure only valid userInfo data is returned
+                },
+            },
+            {
+                $project: {
+                    "_id": 1,
+                    "trxId": 1,
+                    "accountHolderName": 1,
+                    "optxId": 1,
+                    "accountNumber": 1,
+                    "ifscCode": 1,
+                    "amount": 1,
+                    "isSuccess": 1,
+                    "chargeAmount": 1,
+                    "finalAmount": 1,
+                    "createdAt": 1,
+                    "userInfo.userName": 1,
+                    "userInfo.fullName": 1,
+                    "userInfo.memberId": 1,
+                },
+            }
+        ];
+
+        // Step 3: Execute aggregation query
+        const payment = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
+
+        if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
         }
 
-        res.status(200).json(new ApiResponse(200, GetData));
+        // Step 4: Add totalDocs in the response
+        const response = {
+            data: payment,
+            totalDocs: totalDocs,
+            totalPages: Math.ceil(totalDocs / limit),
+            currentPage: page
+        };
+
+        res.status(200).json(new ApiResponse(200, payment, totalDocs));
     } catch (err) {
         res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
     }
 });
+
 
 export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
@@ -478,7 +500,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                                 'Accept': "application/json"
                             }
                         };
-                        axios.post(postSelfURl, userCustomCallBackGen, selfApiHeadersOPT);
+                        await axios.post(postSelfURl, userCustomCallBackGen, selfApiHeadersOPT);
                     }
 
                     // failed from bank side
