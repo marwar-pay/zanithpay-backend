@@ -40,7 +40,8 @@ const transactionMutex = new Mutex();
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     const { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
-
+    page = Number(page) || 1;
+    limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim(); 
     const skip = (page - 1) * limit;
 
@@ -132,7 +133,8 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 
 export const allSuccessPayment = asyncHandler(async (req, res) => {
     const { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
-
+    page = Number(page) || 1;
+    limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim(); 
     const skip = (page - 1) * limit;
 
