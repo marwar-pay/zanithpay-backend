@@ -51,6 +51,23 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 
     let userQuery = [
         { 
+            $lookup: { 
+                from: "users", 
+                localField: "memberId", 
+                foreignField: "_id", 
+                pipeline: [
+                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
+                ], 
+                as: "userInfo" 
+            } 
+        },
+        { 
+            $unwind: { 
+                path: "$userInfo", 
+                preserveNullAndEmptyArrays: true 
+            } 
+        },
+        { 
             $match: { 
                 ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
                 ...(trimmedKeyword && {
@@ -65,23 +82,6 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
         { $sort: { createdAt: -1 } }, 
         { $skip: skip },
         { $limit: limit }, 
-        { 
-            $lookup: { 
-                from: "users", 
-                localField: "memberId", 
-                foreignField: "_id", 
-                pipeline: [
-                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ], 
-                as: "userInfo" 
-            } 
-        }, 
-        { 
-            $unwind: { 
-                path: "$userInfo", 
-                preserveNullAndEmptyArrays: true 
-            } 
-        }, 
         { 
             $project: { 
                 "_id": 1, 
