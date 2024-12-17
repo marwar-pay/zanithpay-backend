@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import axios from "axios";
-import payOutModelGenerate from "../models/payOutGenerate.model.js";
 import userDB from "../models/user.model.js";
+import payOutModelGenerate from "../models/payOutGenerate.model.js";
 import walletModel from "../models/Ewallet.model.js";
 import payOutModel from "../models/payOutSuccess.model.js";
 import LogModel from "../models/Logs.model.js";
@@ -12,7 +12,7 @@ function scheduleWayuPayOutCheck() {
     cron.schedule('*/30 * * * *', async () => {
         const release = await transactionMutex.acquire();
         try {
-            let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(20000);
+            let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(500);
             if (GetData.length !== 0) {
                 GetData.forEach((item) => {
                     let uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check"
@@ -29,21 +29,25 @@ function scheduleWayuPayOutCheck() {
                     }
 
                     axios.post(uatUrl, postAdd, header).then(async (data) => {
+                        // console.log(data?.data)
                         if (data?.data?.status !== 1) {
+                            // console.log("Failed")
                             await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" })
                         }
 
                         else if (data?.data?.status === 1) {
-                            let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
+                            // console.log("success")
+                            let userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance");
                             let beforeAmountUser = userWalletInfo.EwalletBalance;
-                            let finalEwalletDeducted = mainAmount + chargePaymentGatway;
+                            let finalEwalletDeducted = item?.afterChargeAmount;
+                            await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Success" })
 
                             let walletModelDataStore = {
                                 memberId: userWalletInfo._id,
                                 transactionType: "Dr.",
-                                transactionAmount: data?.amount,
+                                transactionAmount: item?.amount,
                                 beforeAmount: beforeAmountUser,
-                                chargeAmount: chargePaymentGatway,
+                                chargeAmount: item?.gatwayCharge,
                                 afterAmount: beforeAmountUser - finalEwalletDeducted,
                                 description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
                                 transactionStatus: "Success",
@@ -56,13 +60,13 @@ function scheduleWayuPayOutCheck() {
                             let storeTrx = await walletModel.create(walletModelDataStore)
 
                             let payoutDataStore = {
-                                memberId: getDocoment?.memberId,
-                                amount: mainAmount,
-                                chargeAmount: chargePaymentGatway,
+                                memberId: item?.memberId,
+                                amount: item?.amount,
+                                chargeAmount: item?.gatwayCharge,
                                 finalAmount: finalEwalletDeducted,
-                                bankRRN: data?.rrn,
-                                trxId: data?.txnid,
-                                optxId: data?.optxid,
+                                bankRRN: data?.data?.utr,
+                                trxId: data?.data?.clientOrderId,
+                                optxId: data?.data?.orderId,
                                 isSuccess: "Success"
                             }
 
@@ -91,6 +95,6 @@ function logsClearFunc() {
 }
 
 export default function scheduleTask() {
-    // scheduleWayuPayOutCheck()
+    scheduleWayuPayOutCheck()
     logsClearFunc()
 }
