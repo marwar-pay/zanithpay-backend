@@ -5,77 +5,85 @@ import userDB from "../models/user.model.js";
 import walletModel from "../models/Ewallet.model.js";
 import payOutModel from "../models/payOutSuccess.model.js";
 import LogModel from "../models/Logs.model.js";
+import { Mutex } from "async-mutex";
+const transactionMutex = new Mutex();
 
 function scheduleWayuPayOutCheck() {
     cron.schedule('*/30 * * * *', async () => {
-        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(100);
-
-        if (GetData.length !== 0) {
-            GetData.forEach((item) => {
-                let uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check"
-                let postAdd = {
-                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
-                    secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
-                    clientOrderId: item.trxId
-                }
-                let header = {
-                    header: {
-                        "Accept": "application/json",
-                        "Content-Type": "application/json"
+        const release = await transactionMutex.acquire();
+        try {
+            let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(20000);
+            if (GetData.length !== 0) {
+                GetData.forEach((item) => {
+                    let uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check"
+                    let postAdd = {
+                        clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
+                        secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
+                        clientOrderId: item.trxId
                     }
-                }
-
-                axios.post(uatUrl, postAdd, header).then(async (data) => {
-                    if (data?.data?.status !== 1) {
-                        await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" })
+                    let header = {
+                        header: {
+                            "Accept": "application/json",
+                            "Content-Type": "application/json"
+                        }
                     }
 
-                    else if (data?.data?.status === 1) {
-                        let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
-                        let beforeAmountUser = userWalletInfo.EwalletBalance;
-                        let finalEwalletDeducted = mainAmount + chargePaymentGatway;
-
-                        let walletModelDataStore = {
-                            memberId: userWalletInfo._id,
-                            transactionType: "Dr.",
-                            transactionAmount: data?.amount,
-                            beforeAmount: beforeAmountUser,
-                            chargeAmount: chargePaymentGatway,
-                            afterAmount: beforeAmountUser - finalEwalletDeducted,
-                            description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
-                            transactionStatus: "Success",
+                    axios.post(uatUrl, postAdd, header).then(async (data) => {
+                        if (data?.data?.status !== 1) {
+                            await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" })
                         }
 
-                        // update the user wallet balance 
-                        userWalletInfo.EwalletBalance -= finalEwalletDeducted
-                        await userWalletInfo.save();
+                        else if (data?.data?.status === 1) {
+                            let userWalletInfo = await userDB.findById(userInfo[0]?._id, "_id EwalletBalance");
+                            let beforeAmountUser = userWalletInfo.EwalletBalance;
+                            let finalEwalletDeducted = mainAmount + chargePaymentGatway;
 
-                        let storeTrx = await walletModel.create(walletModelDataStore)
+                            let walletModelDataStore = {
+                                memberId: userWalletInfo._id,
+                                transactionType: "Dr.",
+                                transactionAmount: data?.amount,
+                                beforeAmount: beforeAmountUser,
+                                chargeAmount: chargePaymentGatway,
+                                afterAmount: beforeAmountUser - finalEwalletDeducted,
+                                description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
+                                transactionStatus: "Success",
+                            }
 
-                        let payoutDataStore = {
-                            memberId: getDocoment?.memberId,
-                            amount: mainAmount,
-                            chargeAmount: chargePaymentGatway,
-                            finalAmount: finalEwalletDeducted,
-                            bankRRN: data?.rrn,
-                            trxId: data?.txnid,
-                            optxId: data?.optxid,
-                            isSuccess: "Success"
+                            // update the user wallet balance 
+                            userWalletInfo.EwalletBalance -= finalEwalletDeducted
+                            await userWalletInfo.save();
+
+                            let storeTrx = await walletModel.create(walletModelDataStore)
+
+                            let payoutDataStore = {
+                                memberId: getDocoment?.memberId,
+                                amount: mainAmount,
+                                chargeAmount: chargePaymentGatway,
+                                finalAmount: finalEwalletDeducted,
+                                bankRRN: data?.rrn,
+                                trxId: data?.txnid,
+                                optxId: data?.optxid,
+                                isSuccess: "Success"
+                            }
+
+                            await payOutModel.create(payoutDataStore)
                         }
 
-                        await payOutModel.create(payoutDataStore)
-                    }
-
-                }).catch((err) => {
-                    console.log(err.message)
+                    }).catch((err) => {
+                        console.log(err.message)
+                    })
                 })
-            })
+            }
+        } catch (error) {
+            console.log(error)
+        } finally {
+            release()
         }
     });
 }
 
 function logsClearFunc() {
-    cron.schedule('* * */2 * *', async () => {
+    cron.schedule('* * */7 * *', async () => {
         let date = new Date();
         let DateComp = `${date.getFullYear()}-${(date.getMonth()) + 1}-${date.getDate() - 2}`
         await LogModel.deleteMany({ createdAt: { $lt: new Date(DateComp) } });
