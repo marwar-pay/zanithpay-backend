@@ -447,7 +447,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 let userEwalletBalanceBefore = userEwalletBalance.EwalletBalance;
                 userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance - finalAmountDeduct;
                 await userEwalletBalance.save();
- 
+
                 let walletModelDataStore = {
                     memberId: userEwalletBalance._id,
                     transactionType: "Dr.",
@@ -501,7 +501,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             }
                         };
                         // await axios.post(postSelfURl, userCustomCallBackGen, selfApiHeadersOPT);
-                        await payoutCallBackResponse({body:userCustomCallBackGen})
+                        await payoutCallBackResponse({ body: userCustomCallBackGen })
                     }
 
                     // failed from bank side
@@ -548,9 +548,9 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
     }
     catch (error) {
         if (error.code == 11000) {
-            next(new ApiError(error.statusCode, "Duplicate key error !"))
+            return res.status(400).json({ message: "Failed", data: "Duplicate key error !" })
         }
-        next(new ApiError(error.statusCode, error.message))
+        return res.status(error.statusCode).json({ message: "Failed", data: error.message })
     } finally {
         release()
     }
@@ -659,7 +659,7 @@ export const payoutCallBackResponse = asyncHandler(async (req) => {
                 description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
                 transactionStatus: "Success",
             }
- 
+
             userWalletInfo.EwalletBalance -= finalEwalletDeducted
             await userWalletInfo.save();
 
@@ -676,14 +676,14 @@ export const payoutCallBackResponse = asyncHandler(async (req) => {
                 isSuccess: "Success"
             }
 
-            await payOutModel.create(payoutDataStore) 
+            await payOutModel.create(payoutDataStore)
             let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: userInfo[0]?._id } }]);
 
             if (userCallBackResp.length !== 1) {
                 return res.status(400).json({ message: "Failed", data: "User have multiple callback Url or Not Found !" })
             }
 
-            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl; 
+            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
             const config = {
                 headers: {
                     'Accept': 'application/json',
@@ -701,7 +701,7 @@ export const payoutCallBackResponse = asyncHandler(async (req) => {
 
             let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
             return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
- 
+
         } else {
             res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
         }
