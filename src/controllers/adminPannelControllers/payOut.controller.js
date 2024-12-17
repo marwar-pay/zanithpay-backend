@@ -463,7 +463,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 let storeTrx = await walletModel.create(walletModelDataStore)
 
                 // banking api calling
-                axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
+                await axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
                     let bankServerResp = data?.data;
 
                     // Banking side success resp
