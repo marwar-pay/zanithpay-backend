@@ -14,7 +14,7 @@ function scheduleWayuPayOutCheck() {
         try {
             let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(500);
             if (GetData.length !== 0) {
-                GetData.forEach((item) => {
+                GetData.forEach(async(item) => {
                     let uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check"
                     let postAdd = {
                         clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
@@ -28,15 +28,15 @@ function scheduleWayuPayOutCheck() {
                         }
                     }
 
-                    axios.post(uatUrl, postAdd, header).then(async (data) => {
-                        // console.log(data?.data)
+                    await axios.post(uatUrl, postAdd, header).then(async (data) => {
+                        console.log(data?.data)
                         if (data?.data?.status !== 1) {
-                            // console.log("Failed")
+                            console.log("Failed")
                             await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" })
                         }
 
                         else if (data?.data?.status === 1) {
-                            // console.log("success")
+                            console.log("success")
                             let userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance");
                             let beforeAmountUser = userWalletInfo.EwalletBalance;
                             let finalEwalletDeducted = item?.afterChargeAmount;
@@ -47,7 +47,7 @@ function scheduleWayuPayOutCheck() {
                                 transactionType: "Dr.",
                                 transactionAmount: item?.amount,
                                 beforeAmount: beforeAmountUser,
-                                chargeAmount: item?.gatwayCharge,
+                                chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
                                 afterAmount: beforeAmountUser - finalEwalletDeducted,
                                 description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
                                 transactionStatus: "Success",
@@ -62,7 +62,7 @@ function scheduleWayuPayOutCheck() {
                             let payoutDataStore = {
                                 memberId: item?.memberId,
                                 amount: item?.amount,
-                                chargeAmount: item?.gatwayCharge,
+                                chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
                                 finalAmount: finalEwalletDeducted,
                                 bankRRN: data?.data?.utr,
                                 trxId: data?.data?.clientOrderId,
