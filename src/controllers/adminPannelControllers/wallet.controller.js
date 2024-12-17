@@ -35,8 +35,8 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
         ...(trimmedKeyword && {
             $or: [
-                { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
-                { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
+                // { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                // { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
                 { transactionType: { $regex: trimmedKeyword, $options: "i" } },
                 { description: { $regex: trimmedKeyword, $options: "i" } },
             ]
@@ -143,8 +143,8 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
         ...(trimmedKeyword && {
             $or: [
-                { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
-                { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
+                // { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
+                // { "userInfo.memberId": { $regex: trimmedKeyword, $options: "i" } },
                 { transactionType: { $regex: trimmedKeyword, $options: "i" } },
                 { description: { $regex: trimmedKeyword, $options: "i" } },
             ]
