@@ -168,7 +168,6 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 
         { $skip: skip },
         { $limit: limit },
-
         {
             $lookup: {
                 from: "users",
@@ -305,7 +304,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
-        } 
+        }
 
         let totalDocs = await payInModel.countDocuments()
 
@@ -452,7 +451,13 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 }
             }
             break;
-
+        case "ServerMaintenance":
+            let serverResp = {
+                status_msg: "Server Under Maintenance !",
+                status: 400,
+                trxID: trxId,
+            }
+            return res.status(400).json({ message: "Failed", data: serverResp })
         default:
             let dataApiResponse = {
                 status_msg: "failed",
