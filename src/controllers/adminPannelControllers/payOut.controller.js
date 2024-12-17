@@ -43,12 +43,13 @@ const payoutCallbackMutex = new Mutex();
 // });
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
     const skip = (page - 1) * limit;
     const trimmedKeyword = keyword.trim();
     const trimmedMemberId = memberId ? memberId.trim() : "";
+    const trimmedStatus = status ? status.trim() : "";
 
     let dateFilter = {};
     if (startDate) dateFilter.$gte = new Date(startDate);
@@ -62,6 +63,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
             ]
         }),
+        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }) // Add Status filter
     };
 
     try {
@@ -70,7 +72,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
 
         // Step 2: Aggregation pipeline for filtering and data retrieval
         const pipeline = [
-            { $match: matchFilters },  // Apply the match filters for keyword, date, etc.
+            { $match: matchFilters }, // Apply the match filters for keyword, date, status, etc.
             { $sort: { createdAt: -1 } }, // Sort by createdAt descending
 
             // Skip and Limit for pagination
@@ -114,6 +116,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     "chargeAmount": 1,
                     "finalAmount": 1,
                     "createdAt": 1,
+                    "status": 1, // Include status in the projection
                     "userInfo.userName": 1,
                     "userInfo.fullName": 1,
                     "userInfo.memberId": 1,
@@ -141,7 +144,6 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
         res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
     }
 });
-
 
 export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
