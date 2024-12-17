@@ -224,8 +224,8 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 });
 
 export const generatePayOut = asyncHandler(async (req, res, next) => {
-    const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
     const release = await genPayoutMutex.acquire()
+    const { userName, authToken, mobileNumber, accountHolderName, accountNumber, ifscCode, trxId, amount, bankName } = req.body;
     try {
         if (amount < 1) {
             return res.status(400).json({ message: "Failed", data: `Amount 1 or More: ${amount}` })
@@ -445,17 +445,17 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 }
 
                 let userEwalletBalanceBefore = userEwalletBalance.EwalletBalance;
-                userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance - finalAmountDeduct;
+                userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance - Number(finalAmountDeduct);
                 await userEwalletBalance.save();
  
                 let walletModelDataStore = {
                     memberId: userEwalletBalance._id,
                     transactionType: "Dr.",
                     transactionAmount: amount,
-                    beforeAmount: userEwalletBalanceBefore,
+                    beforeAmount: Number(userEwalletBalanceBefore),
                     chargeAmount: userChargeApply,
-                    afterAmount: userEwalletBalanceBefore - finalAmountDeduct,
-                    description: `Successfully Dr. amount: ${finalAmountDeduct}`,
+                    afterAmount: Number(userEwalletBalanceBefore) - Number(finalAmountDeduct),
+                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)}`,
                     transactionStatus: "Success",
                 }
 
