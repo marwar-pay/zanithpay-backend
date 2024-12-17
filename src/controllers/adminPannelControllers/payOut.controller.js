@@ -532,8 +532,6 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         opt_msg: bankServerResp?.message
                     }
                     return res.status(200).json(new ApiResponse(200, userRespSend))
-                }).catch((err) => {
-                    return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
                 })
                 //  banking side api call end 
                 break;
