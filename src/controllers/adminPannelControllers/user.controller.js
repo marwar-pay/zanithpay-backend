@@ -34,7 +34,13 @@ const generateTrxAuthToken = (memberId, trxPassword) => {
 }
 
 export const getUser = asyncHandler(async (req, res) => {
-    let user = await userDB.aggregate([{ $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+    let user = await userDB.aggregate([
+        { $lookup: { 
+            from: "packages", 
+            localField: "package", 
+            foreignField: "_id", 
+            as: "package" } 
+        }, {
         $unwind: {
             path: "$package",
             preserveNullAndEmptyArrays: true,
