@@ -3,7 +3,7 @@ import { Schema, model } from "mongoose";
 const qrGenerationSchema = new Schema({
     memberId: {
         type: Schema.Types.ObjectId,
-        ref: "users",
+        ref: "user",
         required: [true, "Please Select Member Id !"]
     },
     trxId: {

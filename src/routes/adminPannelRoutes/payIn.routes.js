@@ -1,5 +1,5 @@
 import express from "express";
-import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment, testCallBackResponse } from "../../controllers/adminPannelControllers/payIn.controller.js";
+import { allGeneratedPayment, generatePayment, paymentStatusCheck, paymentStatusUpdate, callBackResponse, allSuccessPayment } from "../../controllers/adminPannelControllers/payIn.controller.js";
 const router = express.Router();
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
@@ -36,8 +36,6 @@ router.post("/paymentStatusUpdate/:trxId", celebrate({
     })
 }), userVerify, userAuthAdmin, paymentStatusUpdate);
 
-router.post("/callBackResponse", callBackResponse);
-
-router.post("/testCallBackResponse", testCallBackResponse);
+router.post("/callBackResponse", callBackResponse); 
 
 export default router;

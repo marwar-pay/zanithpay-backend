@@ -13,35 +13,7 @@ import { getPaginationArray } from "../../utils/helpers.js";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
-
-// export const allPayOutPayment = asyncHandler(async (req, res) => {
-//     let GetData = await payOutModelGenerate.aggregate([
-//         { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-//     {
-//         $unwind: {
-//             path: "$userInfo",
-//             preserveNullAndEmptyArrays: true,
-//         }
-//     }, {
-//         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-//     }, { $sort: { createdAt: -1 } }]);
-//     res.status(200).json(new ApiResponse(200, GetData))
-// });
-
-// export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
-//     let GetData = await payOutModel.aggregate([
-//         { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-//     {
-//         $unwind: {
-//             path: "$userInfo",
-//             preserveNullAndEmptyArrays: true,
-//         }
-//     }, {
-//         $project: { "_id": 1, "trxId": 1, "accountHolderName": 1, "optxId": 1, "accountNumber": 1, "ifscCode": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "bankRRN": 1, "isSuccess": 1, "chargeAmount": 1, "finalAmount": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-//     }, { $sort: { createdAt: -1 } }]);
-//     res.status(200).json(new ApiResponse(200, GetData))
-// });
-
+ 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status } = req.query;
     page = Number(page) || 1;

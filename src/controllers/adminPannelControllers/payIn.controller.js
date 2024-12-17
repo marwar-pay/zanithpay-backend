@@ -9,228 +9,19 @@ import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
 import { Mutex } from "async-mutex";
 import { getPaginationArray } from "../../utils/helpers.js";
+import mongoose from "mongoose";
 
-const transactionMutex = new Mutex();
-
-// export const allGeneratedPayment = asyncHandler(async (req, res) => {
-//     const {page, limit} = req.query
-//     let date = new Date();
-//     let DateComp = `${date.getFullYear()}-${(date.getMonth()) + 1}-${date.getDate()}`
-//     let userQuery = [{ $match: { createdAt: { $gte: new Date(DateComp) } } }, { $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-//         {
-//             $unwind: {
-//                 path: "$userInfo",
-//                 preserveNullAndEmptyArrays: true,
-//             }
-//         }, {
-//             $project: { "_id": 1, "trxId": 1, "amount": 1, "name": 1, "callBackStatus": 1, "qrData": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-//         }, { $sort: { createdAt: -1 } ,
-//         ...getPaginationArray(parseInt(page), limit)
-//     }
-//         ]
-//     let payment = await qrGenerationModel.aggregate(userQuery).then((result) => {
-//         if (result.length === 0) {
-//             return res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
-//         }
-//         res.status(200).json(new ApiResponse(200, result))
-//     }).catch((err) => {
-//         res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
-//     })
-// });
-
-// export const allGeneratedPayment = asyncHandler(async (req, res) => {
-//     let { page = 1, limit = 25, keyword = "", startDate, endDate } = req.query;
-//     page = Number(page) || 1;
-//     limit = Number(limit) || 25;
-//     const trimmedKeyword = keyword.trim();
-//     const skip = (page - 1) * limit;
-
-//     let dateFilter = {};
-//     if (startDate) dateFilter.$gte = new Date(startDate);
-//     if (endDate) dateFilter.$lte = new Date(endDate);
-
-//     let userQuery = [
-//         {
-//             $match: {
-//                 ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
-//                 ...(trimmedKeyword && {
-//                     $or: [
-//                         { trxId: { $regex: trimmedKeyword, $options: "i" } },
-//                         { name: { $regex: trimmedKeyword, $options: "i" } },
-//                         // { "userInfo.userName": { $regex: trimmedKeyword, $options: "i" } },
-//                     ]
-//                 })
-//             }
-//         },
-//         { $sort: { createdAt: -1 } },
-//         { $skip: skip },
-//         { $limit: limit },
-//         {
-//             $lookup: {
-//                 from: "users",
-//                 localField: "memberId",
-//                 foreignField: "_id",
-//                 as: "userInfo",
-//                 pipeline: [
-//                     // Match userName if provided in the keyword
-//                     ...(trimmedKeyword ? [
-//                         {
-//                             $match: {
-//                                 userName: { $regex: trimmedKeyword, $options: "i" }
-//                             }
-//                         }
-//                     ] : []),
-//                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
-//                 ]
-//             }
-//         },
-//         {
-//             $unwind: {
-//                 path: "$userInfo",
-//                 preserveNullAndEmptyArrays: true
-//             }
-//         },
-//         {
-//             $project: {
-//                 "_id": 1,
-//                 "trxId": 1,
-//                 "amount": 1,
-//                 "name": 1,
-//                 "callBackStatus": 1,
-//                 "qrData": 1,
-//                 "refId": 1,
-//                 "createdAt": 1,
-//                 "userInfo.userName": 1,
-//                 "userInfo.fullName": 1,
-//                 "userInfo.memberId": 1
-//             }
-//         }
-//     ];
-
-//     try {
-//         let payment = await qrGenerationModel.aggregate(userQuery).allowDiskUse(true);
-
-//         if (!payment || payment.length === 0) {
-//             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
-//         }
-
-//         res.status(200).json(new ApiResponse(200, payment));
-//     } catch (err) {
-//         res.status(500).json({ message: "Failed", data: `Internal Server Error: ${ err.message }` });
-//     }
-// });
-
-// export const allSuccessPayment = asyncHandler(async (req, res) => {
-//     let payment = await payInModel.aggregate([{ $lookup: { from: "users", localField: "memberId", foreignField: "_id", as: "userInfo" } },
-//     {
-//         $unwind: {
-//             path: "$userInfo",
-//             preserveNullAndEmptyArrays: true,
-//         }
-//     }, {
-//         $project: { "_id": 1, "trxId": 1, "amount": 1, "chargeAmount": 1, "finalAmount": 1, "payerName": 1, "isSuccess": 1, "vpaId": 1, "bankRRN": 1, "createdAt": 1, "userInfo.userName": 1, "userInfo.fullName": 1, "userInfo.memberId": 1 }
-//     }, { $sort: { createdAt: -1 } }
-//     ]).then((result) => {
-//         if (result.length === 0) {
-//             res.status(400).json({ message: "Failed", data: "No Transaction Avabile !" })
-//         }
-//         res.status(200).json(new ApiResponse(200, result))
-//     }).catch((err) => {
-//         res.status(400).json({ message: "Failed", data: `Internal Server Error ${err}` })
-//     })
-// });
+const transactionMutex = new Mutex(); 
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
+
     const trimmedKeyword = keyword.trim();
-    const trimmedMemberId = memberId ? memberId.trim() : "";
-    const skip = (page - 1) * limit;
-
-    let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
-
-    let matchFilters = {
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
-        ...(trimmedKeyword && {
-            $or: [
-                { trxId: { $regex: trimmedKeyword, $options: "i" } },
-                { name: { $regex: trimmedKeyword, $options: "i" } }
-            ]
-        }),
-    };
-
-    let userQuery = [
-        { $match: matchFilters },
-        { $sort: { createdAt: -1 } },
-
-        { $skip: skip },
-        { $limit: limit },
-        {
-            $lookup: {
-                from: "users",
-                localField: "memberId",
-                foreignField: "_id",
-                as: "userInfo",
-                pipeline: [
-                    ...(trimmedMemberId ? [
-                        {
-                            $match: {
-                                userName: { $regex: trimmedMemberId, $options: "i" }
-                            }
-                        }
-                    ] : []),
-                    { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ]
-            }
-        },
-
-        {
-            $unwind: {
-                path: "$userInfo",
-                preserveNullAndEmptyArrays: false
-            }
-        },
-
-        {
-            $project: {
-                "_id": 1,
-                "trxId": 1,
-                "amount": 1,
-                "name": 1,
-                "callBackStatus": 1,
-                "qrData": 1,
-                "refId": 1,
-                "createdAt": 1,
-                "userInfo.userName": 1,
-                "userInfo.fullName": 1,
-                "userInfo.memberId": 1
-            }
-        }
-    ];
-
-    try {
-        let payment = await qrGenerationModel.aggregate(userQuery).allowDiskUse(true);
-
-        if (!payment || payment.length === 0) {
-            return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
-        }
-        let totalDocs = await qrGenerationModel.countDocuments()
-
-        res.status(200).json(new ApiResponse(200, payment, totalDocs));
-    } catch (err) {
-        res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
-    }
-});
-
-export const allSuccessPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
-    page = Number(page) || 1;
-    limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim();
-    const trimmedMemberId = memberId ? memberId.trim() : "";
+    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
+        ? new mongoose.Types.ObjectId(memberId.trim())
+        : null;
     const skip = (page - 1) * limit;
 
     let dateFilter = {};
@@ -245,34 +36,119 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
+        ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
 
-    let paymentQuery = [
-        { $match: matchFilters },
-        { $sort: { createdAt: -1 } },
+    try { 
+        const aggregationPipeline = [ 
+            {
+                $match: matchFilters
+            },
+            { $sort: { createdAt: -1 } },
+     
+            { $skip: skip },
+            { $limit: limit },
+            
+            {
+                $lookup: {
+                    from: "users",  
+                    localField: "memberId", 
+                    foreignField: "_id", 
+                    pipeline: [
+                        { $project: { userName: 1, fullName: 1, memberId: 1 } }
+                    ],
+                    as: "userInfo"
+                }
+            },
+         
+            {
+                $unwind: {
+                    path: "$userInfo",
+                    preserveNullAndEmptyArrays: false  
+                }
+            },
+         
+            {
+                $project: {
+                    "_id": 1,
+                    "trxId": 1,
+                    "amount": 1,
+                    "name": 1,
+                    "callBackStatus": 1,
+                    "qrData": 1,
+                    "refId": 1,
+                    "createdAt": 1,
+                    "userInfo.userName": 1,
+                    "userInfo.fullName": 1,
+                    "userInfo.memberId": 1
+                }
+            }
+        ];
+        
+        let payments = await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
 
+        const totalDocs = await qrGenerationModel.countDocuments(matchFilters);
+
+        if (!payments || payments.length === 0) {
+            return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
+        }
+
+        res.status(200).json(new ApiResponse(200, payments, totalDocs));
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed",
+            data: `Internal Server Error: ${err.message}`,
+        });
+    }
+}); 
+
+export const allSuccessPayment = asyncHandler(async (req, res) => {
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
+    page = Number(page) || 1;
+    limit = Number(limit) || 25;
+    const trimmedKeyword = keyword.trim();
+    const skip = (page - 1) * limit;
+ 
+    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
+        ? new mongoose.Types.ObjectId(memberId.trim())
+        : null;
+ 
+    let dateFilter = {};
+    if (startDate) dateFilter.$gte = new Date(startDate);
+    if (endDate) dateFilter.$lte = new Date(endDate);
+ 
+    let matchFilters = {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(trimmedKeyword && {
+            $or: [
+                { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { payerName: { $regex: trimmedKeyword, $options: "i" } },
+            ]
+        }),
+        ...(trimmedMemberId && { memberId: trimmedMemberId })
+    };
+
+    let paymentQuery = [ 
+        { $match: matchFilters },
+ 
+        { $sort: { createdAt: -1 } },
+ 
         { $skip: skip },
         { $limit: limit },
-
+ 
         {
             $lookup: {
-                from: "users",
-                localField: "memberId",
-                foreignField: "_id",
-                as: "userInfo",
+                from: "users",  
+                localField: "memberId", 
+                foreignField: "_id", 
                 pipeline: [
-                    ...(trimmedMemberId ? [
-                        {
-                            $match: {
-                                userName: { $regex: trimmedMemberId, $options: "i" }
-                            }
-                        }
-                    ] : []),
                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
-                ]
+                ],
+                as: "userInfo"
             }
         },
 
+        
         {
             $unwind: {
                 path: "$userInfo",
@@ -280,6 +156,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             }
         },
 
+        
         {
             $project: {
                 "_id": 1,
@@ -300,19 +177,22 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     ];
 
     try {
-        let payment = await payInModel.aggregate(paymentQuery).allowDiskUse(true);
+        
+        let payments = await payInModel.aggregate(paymentQuery).allowDiskUse(true);
 
-        if (!payment || payment.length === 0) {
-            return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
+        if (!payments || payments.length === 0) {
+            return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
         }
 
-        let totalDocs = await payInModel.countDocuments()
+         
+        const totalDocs = await payInModel.countDocuments(matchFilters);
 
-        res.status(200).json(new ApiResponse(200, payment, totalDocs));
+        res.status(200).json(new ApiResponse(200, payments, totalDocs));
     } catch (err) {
         res.status(500).json({ message: "Failed", data: `Internal Server Error: ${err.message}` });
     }
 });
+
 
 export const generatePayment = asyncHandler(async (req, res) => {
     const { userName, authToken, name, amount, trxId, mobileNumber } = req.body

@@ -50,11 +50,11 @@ function scheduleWayuPayOutCheck() {
                                 transactionStatus: "Success",
                             }
 
-                            // update the user wallet balance 
-                            userWalletInfo.EwalletBalance -= finalEwalletDeducted
-                            await userWalletInfo.save();
+    //                         // update the user wallet balance 
+    //                         userWalletInfo.EwalletBalance -= finalEwalletDeducted
+    //                         await userWalletInfo.save();
 
-                            let storeTrx = await walletModel.create(walletModelDataStore)
+    //                         let storeTrx = await walletModel.create(walletModelDataStore)
 
                             let payoutDataStore = {
                                 memberId: item?.memberId,
@@ -67,20 +67,20 @@ function scheduleWayuPayOutCheck() {
                                 isSuccess: "Success"
                             }
 
-                            await payOutModel.create(payoutDataStore)
-                        }
+    //                         await payOutModel.create(payoutDataStore)
+    //                     }
 
-                    }).catch((err) => {
-                        console.log(err.message)
-                    })
-                })
-            }
-        } catch (error) {
-            console.log(error)
-        } finally {
-            release()
-        }
-    });
+    //                 }).catch((err) => {
+    //                     console.log(err.message)
+    //                 })
+    //             })
+    //         }
+    //     } catch (error) {
+    //         console.log(error)
+    //     } finally {
+    //         release()
+    //     }
+    // });
 }
 
 function logsClearFunc() {
