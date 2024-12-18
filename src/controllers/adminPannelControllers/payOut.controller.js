@@ -10,6 +10,7 @@ import { AESUtils } from "../../utils/CryptoEnc.js";
 import { Mutex } from "async-mutex";
 import { ApiError } from "../../utils/ApiError.js";
 import { getPaginationArray } from "../../utils/helpers.js";
+import mongoose from "mongoose";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
@@ -475,19 +476,19 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     }
  
                     else if (bankServerResp?.status === 0 || 4) {
+                        let updatedUser = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
-                        userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance + finalAmountDeduct;
-                        await userEwalletBalance.save()
-
-                        // ewallet balance Store 
+                        updatedUser.EwalletBalance = updatedUser.EwalletBalance + finalAmountDeduct;
+                        await updatedUser.save()
+ 
                         let walletModelDataStoreCR = {
-                            memberId: userEwalletBalance._id,
+                            memberId: updatedUser._id,
                             transactionType: "Cr.",
                             transactionAmount: amount,
-                            beforeAmount: userEwalletBalance.EwalletBalance,
+                            beforeAmount: updatedUser.EwalletBalance,
                             chargeAmount: userChargeApply,
-                            afterAmount: userEwalletBalance.EwalletBalance + finalAmountDeduct,
+                            afterAmount: updatedUser.EwalletBalance + finalAmountDeduct,
                             description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id:${trxId}`,
                             transactionStatus: "Success",
                         }
