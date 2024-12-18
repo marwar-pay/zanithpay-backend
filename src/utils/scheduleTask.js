@@ -46,7 +46,7 @@ function scheduleWayuPayOutCheck() {
                                 beforeAmount: beforeAmountUser,
                                 chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
                                 afterAmount: beforeAmountUser - finalEwalletDeducted,
-                                description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
+                                description: `Successfully Dr. amount: ${finalEwalletDeducted} with transaction Id: ${item?.trxId} `,
                                 transactionStatus: "Success",
                             }
 

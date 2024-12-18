@@ -22,8 +22,8 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
     const trimmedKeyword = keyword.trim();
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(String(memberId))
-            ? new mongoose.Types.ObjectId(String(memberId.trim()))
-            : null;
+        ? new mongoose.Types.ObjectId(String(memberId.trim()))
+        : null;
     const trimmedStatus = status ? status.trim() : "";
 
     let dateFilter = {};
@@ -32,8 +32,8 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     }
     if (endDate) {
         endDate = new Date(endDate);
-        endDate.setHours(23, 59, 59, 999);  
-        dateFilter.$lt = new Date(endDate);  
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.$lt = new Date(endDate);
     }
 
     let matchFilters = {
@@ -44,16 +44,16 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
             ]
         }),
-        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }) ,
-        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
+        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }),
+        ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
 
-    try { 
+    try {
         const totalDocs = await payOutModelGenerate.countDocuments();
         const pipeline = [
-            { $match: matchFilters },  
-            { $sort: { createdAt: -1 } },  
- 
+            { $match: matchFilters },
+            { $sort: { createdAt: -1 } },
+
             { $skip: skip },
             { $limit: limit },
 
@@ -63,7 +63,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     localField: "memberId",
                     foreignField: "_id",
                     as: "userInfo",
-                    pipeline: [ 
+                    pipeline: [
                         { $project: { userName: 1, fullName: 1, memberId: 1 } }
                     ],
                 },
@@ -71,7 +71,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             {
                 $unwind: {
                     path: "$userInfo",
-                    preserveNullAndEmptyArrays: false  
+                    preserveNullAndEmptyArrays: false
                 },
             },
             {
@@ -94,13 +94,13 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 },
             }
         ];
- 
+
         const payment = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
         }
- 
+
         const response = {
             data: payment,
             totalDocs: totalDocs,
@@ -228,7 +228,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
         if (user.length === 0) {
             return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
-        } 
+        }
         const payOutMaintance = user[0]?.payOutApi?.apiName;
         if (payOutMaintance === "ServerMaintenance") {
             let serverResp = {
@@ -272,7 +272,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         if (finalAmountDeduct > user[0]?.EwalletBalance) {
             return res.status(400).json({ message: "Failed", date: `Insufficient Fund usable Amount: ${userUseAbelBalance}` })
         }
- 
+
         if (finalAmountDeduct > userUseAbelBalance) {
             return res.status(400).json({ message: "Failed", data: `Insufficient Balance Holding Amount :${user[0]?.minWalletBalance} and Usable amount + charge amount less then ${userUseAbelBalance}` })
         }
@@ -427,7 +427,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     beforeAmount: Number(userEwalletBalanceBefore),
                     chargeAmount: userChargeApply,
                     afterAmount: Number(userEwalletBalanceBefore) - Number(finalAmountDeduct),
-                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id:${trxId}`,
+                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                     transactionStatus: "Success",
                 }
 
@@ -465,7 +465,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
                     }
- 
+
                     else if (bankServerResp?.status === 0 || 4) {
                         const updatedUser = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
@@ -476,10 +476,10 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             memberId: updatedUserAgain._id,
                             transactionType: "Cr.",
                             transactionAmount: amount,
-                            beforeAmount: Number(updatedUser.EwalletBalance)-Number(finalAmountDeduct),
+                            beforeAmount: Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct),
                             chargeAmount: userChargeApply,
                             afterAmount: Number(updatedUserAgain?.EwalletBalance),
-                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id:${trxId}`,
+                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
                             transactionStatus: "Success",
                         }
                         await walletModel.create(walletModelDataStoreCR)
@@ -740,7 +740,7 @@ export const payoutCallBackFunction = asyncHandler(async (req, res) => {
                 beforeAmount: beforeAmountUser,
                 chargeAmount: chargePaymentGatway,
                 afterAmount: beforeAmountUser - finalEwalletDeducted,
-                description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
+                description: `Successfully Dr. amount: ${finalEwalletDeducted} with transaction Id: ${data?.txnid}`,
                 transactionStatus: "Success",
             }
 
