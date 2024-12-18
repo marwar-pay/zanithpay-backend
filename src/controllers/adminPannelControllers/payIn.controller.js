@@ -20,9 +20,9 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 
     const trimmedKeyword = keyword.trim();
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
-        ? new mongoose.Types.ObjectId(memberId.trim())
+        ? new mongoose.Types.ObjectId(String(memberId.trim()))
         : null;
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit; 
 
     let dateFilter = {};
     if (startDate) {
@@ -42,8 +42,8 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
-        ...(trimmedMemberId && { memberId: trimmedMemberId })
-    };
+        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
+    }; 
 
     try {
         const aggregationPipeline = [
@@ -116,7 +116,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
-        ? new mongoose.Types.ObjectId(memberId.trim())
+        ? new mongoose.Types.ObjectId(String(memberId.trim()))
         : null;
 
     let dateFilter = {};

@@ -20,7 +20,9 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     limit = Number(limit) || 25;
     const skip = (page - 1) * limit;
     const trimmedKeyword = keyword.trim();
-    const trimmedMemberId = memberId ? memberId.trim() : "";
+    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
+            ? new mongoose.Types.ObjectId(String(memberId.trim()))
+            : null;
     const trimmedStatus = status ? status.trim() : "";
 
     let dateFilter = {};
@@ -29,8 +31,8 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     }
     if (endDate) {
         endDate = new Date(endDate);
-        endDate.setHours(23, 59, 59, 999); // Modify endDate in place
-        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+        endDate.setHours(23, 59, 59, 999);  
+        dateFilter.$lt = new Date(endDate);  
     }
 
     let matchFilters = {
@@ -41,19 +43,16 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
             ]
         }),
-        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }) // Add Status filter
+        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }) ,
+        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
     };
 
-    try {
-        // Step 1: Get the total count of documents in the collection (unfiltered)
+    try { 
         const totalDocs = await payOutModelGenerate.countDocuments();
-
-        // Step 2: Aggregation pipeline for filtering and data retrieval
         const pipeline = [
-            { $match: matchFilters }, // Apply the match filters for keyword, date, status, etc.
-            { $sort: { createdAt: -1 } }, // Sort by createdAt descending
-
-            // Skip and Limit for pagination
+            { $match: matchFilters },  
+            { $sort: { createdAt: -1 } },  
+ 
             { $skip: skip },
             { $limit: limit },
 
@@ -237,8 +236,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
         if (user.length === 0) {
             return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
-        }
-
+        } 
         const payOutMaintance = user[0]?.payOutApi?.apiName;
         if (payOutMaintance === "ServerMaintenance") {
             let serverResp = {
@@ -512,7 +510,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 break;
             default:
                 let respSend = {
-                    statusCode: "400",
+                    statusCode: 400,
                     txnID: trxId
                 }
                 return res.status(400).json({ message: "Failed", data: respSend })
@@ -522,7 +520,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         if (error.code == 11000) {
             return res.status(400).json({ message: "Failed", data: "Duplicate key error !" })
         }
-        return res.status(error.statusCode).json({ message: "Failed", data: error.message })
+        return res.status(400).json({ message: "Failed", data: error.message })
     } finally {
         release()
     }
