@@ -21,7 +21,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     limit = Number(limit) || 25;
     const skip = (page - 1) * limit;
     const trimmedKeyword = keyword.trim();
-    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
+    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(String(memberId))
             ? new mongoose.Types.ObjectId(String(memberId.trim()))
             : null;
     const trimmedStatus = status ? status.trim() : "";
@@ -480,7 +480,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
                         updatedUser.EwalletBalance = updatedUser.EwalletBalance + finalAmountDeduct;
-                        await updatedUser.save()
+                        updatedUser = await updatedUser.save()
  
                         let walletModelDataStoreCR = {
                             memberId: updatedUser._id,
