@@ -35,10 +35,11 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
         }),
         ...(user && { memberId: new mongoose.Types.ObjectId(user?._id) })
     };
+    const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
     const userQuery = [
         { $match: matchFilters },
-        { $sort: { createdAt: -1 } },
+        { $sort: { createdAt: sortDirection } },
         { $skip: skip },
         { $limit: limit },
         {
@@ -136,10 +137,11 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
 
     try {
         const totalDocs = await eWalletModel.countDocuments();
+        const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
         const userQuery = [
             { $match: matchFilters },
-            { $sort: { createdAt: -1 } },
+            { $sort: { createdAt: sortDirection } },
             { $skip: skip },
             { $limit: limit },
             {

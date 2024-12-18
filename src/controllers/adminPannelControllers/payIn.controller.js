@@ -46,11 +46,12 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
     }; 
 
     try {
+        const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const aggregationPipeline = [
             {
                 $match: matchFilters
             },
-            { $sort: { createdAt: -1 } },
+            { $sort: { createdAt: sortDirection } },
 
             { $skip: skip },
             { $limit: limit },
@@ -139,11 +140,12 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
+    const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
     let paymentQuery = [
         { $match: matchFilters },
 
-        { $sort: { createdAt: -1 } },
+        { $sort: { createdAt: sortDirection } },
 
         { $skip: skip },
         { $limit: limit },

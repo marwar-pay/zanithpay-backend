@@ -49,9 +49,10 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
 
     try { 
         const totalDocs = await payOutModelGenerate.countDocuments();
+        const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const pipeline = [
             { $match: matchFilters },  
-            { $sort: { createdAt: -1 } },  
+            { $sort: { createdAt: sortDirection } },  
  
             { $skip: skip },
             { $limit: limit },
