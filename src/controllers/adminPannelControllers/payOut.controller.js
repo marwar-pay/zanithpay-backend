@@ -290,11 +290,9 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         }
 
         let payOutModelGen = await payOutModelGenerate.create(userStoreData);
-
-        // ewallet balance deducted
+ 
         let userEwalletBalance = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
-
-        // Payout data store successfully and send to the banking side
+ 
         const payOutApi = user[0]?.payOutApi;
 
         var postApiOptions;
@@ -429,17 +427,15 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     beforeAmount: Number(userEwalletBalanceBefore),
                     chargeAmount: userChargeApply,
                     afterAmount: Number(userEwalletBalanceBefore) - Number(finalAmountDeduct),
-                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)}`,
+                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id:${trxId}`,
                     transactionStatus: "Success",
                 }
 
                 let storeTrx = await walletModel.create(walletModelDataStore)
-
-                // banking api calling
+ 
                 await axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
                     let bankServerResp = data?.data;
-
-                    // Banking side success resp
+ 
                     if (bankServerResp?.status === 1) {
                         let payoutDataStore = {
                             memberId: userEwalletBalance?._id,
@@ -467,14 +463,6 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             UTR: bankServerResp?.utr,
                         }
 
-                        // let postSelfURl = "http://localhost:5000/apiAdmin/v1/payout/payoutCallBackResponse";
-                        let selfApiHeadersOPT = {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': "application/json"
-                            }
-                        };
-                        // await axios.post(postSelfURl, userCustomCallBackGen, selfApiHeadersOPT);
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
                     }
 
@@ -493,7 +481,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             beforeAmount: userEwalletBalance.EwalletBalance,
                             chargeAmount: userChargeApply,
                             afterAmount: userEwalletBalance.EwalletBalance + finalAmountDeduct,
-                            description: `Successfully Cr. amount: ${finalAmountDeduct}`,
+                            description: `Successfully Cr. amount: ${finalAmountDeduct} with transaction id:${trx}`,
                             transactionStatus: "Success",
                         }
                         await walletModel.create(walletModelDataStoreCR)
@@ -509,8 +497,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 }).catch((err) => {
                     console.log(err)
                     return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-                })
-                //  banking side api call end 
+                }) 
                 break;
             default:
                 let respSend = {
@@ -574,16 +561,13 @@ export const payoutCallBackResponse = asyncHandler(async (req) => {
         if (data.status != "SUCCESS") {
             return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
         }
-
-        // get the trxid Data 
+ 
         let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
 
-        if (getDocoment?.isSuccess === "Success" || "Failed") {
-            // callback response to the 
+        if (getDocoment?.isSuccess === "Success" || "Failed") { 
             let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: getDocoment.memberId } }]);
 
-            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
-            // Calling the user callback and send the response to the user 
+            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl; 
             const config = {
                 headers: {
                     'Accept': 'application/json',
@@ -702,7 +686,6 @@ export const payoutCallBackFunction = asyncHandler(async (req, res) => {
             return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
         }
 
-        // get the trxid Data 
         let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
 
         if (getDocoment?.isSuccess !== "Pending") {
