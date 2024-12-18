@@ -63,14 +63,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     localField: "memberId",
                     foreignField: "_id",
                     as: "userInfo",
-                    pipeline: [
-                        ...(trimmedMemberId ? [
-                            {
-                                $match: {
-                                    userName: { $regex: trimmedMemberId, $options: "i" } // Match userName when filtered by memberId
-                                }
-                            }
-                        ] : []),
+                    pipeline: [ 
                         { $project: { userName: 1, fullName: 1, memberId: 1 } }
                     ],
                 },
@@ -78,7 +71,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             {
                 $unwind: {
                     path: "$userInfo",
-                    preserveNullAndEmptyArrays: false // Make sure only valid userInfo data is returned
+                    preserveNullAndEmptyArrays: false  
                 },
             },
             {
@@ -101,15 +94,13 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 },
             }
         ];
-
-        // Step 3: Execute aggregation query
+ 
         const payment = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
         }
-
-        // Step 4: Add totalDocs in the response
+ 
         const response = {
             data: payment,
             totalDocs: totalDocs,
