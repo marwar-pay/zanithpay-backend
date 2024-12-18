@@ -6,18 +6,24 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import mongoose, { Mongoose } from "mongoose";
 import { getPaginationArray } from "../../utils/helpers.js";
- 
+
 export const getAllTransactionUpi = asyncHandler(async (req, res) => {
     let { keyword = "", startDate, endDate, page = 1, limit = 25, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim(); 
-    const user = await userDB.findOne({memberId: memberId})
+    const trimmedKeyword = keyword.trim();
+    const user = await userDB.findOne({ memberId: memberId })
     const skip = (page - 1) * limit;
 
     let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate); 
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        endDate = new Date(endDate);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+    }
 
     let matchFilters = {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
@@ -41,7 +47,7 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
                 localField: "memberId",
                 foreignField: "_id",
                 as: "userInfo",
-                pipeline: [ 
+                pipeline: [
                     { $project: { userName: 1, fullName: 1, memberId: 1 } },
                 ],
             },
@@ -49,7 +55,7 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
         {
             $unwind: {
                 path: "$userInfo",
-                preserveNullAndEmptyArrays: false, 
+                preserveNullAndEmptyArrays: false,
             },
         },
         {
@@ -99,33 +105,39 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
     }
 });
 
- 
+
 export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
     let { keyword = "", startDate, endDate, page = 1, limit = 25, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
-    const user = await userDB.findOne({memberId: memberId})
+    const user = await userDB.findOne({ memberId: memberId })
 
     let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
- 
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        endDate = new Date(endDate);
+        endDate.setHours(23, 59, 59, 999);// Modify endDate in place
+        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+    }
+
     const matchFilters = {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
         ...(trimmedKeyword && {
-            $or: [ 
+            $or: [
                 { transactionType: { $regex: trimmedKeyword, $options: "i" } },
                 { description: { $regex: trimmedKeyword, $options: "i" } },
             ]
-        }), 
+        }),
         ...(user && { memberId: new mongoose.Types.ObjectId(user?._id) })
     };
 
-    try { 
+    try {
         const totalDocs = await eWalletModel.countDocuments();
- 
+
         const userQuery = [
             { $match: matchFilters },
             { $sort: { createdAt: -1 } },
@@ -136,7 +148,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
                     from: "users",
                     localField: "memberId",
                     foreignField: "_id",
-                    pipeline: [ 
+                    pipeline: [
                         { $project: { userName: 1, fullName: 1, memberId: 1 } },
                     ],
                     as: "userInfo",
@@ -162,7 +174,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
                 },
             },
         ];
- 
+
         let transactions = await eWalletModel.aggregate(userQuery).allowDiskUse(true);
 
         if (!transactions || transactions.length === 0) {
@@ -170,7 +182,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
                 message: "Success",
                 data: "No Transactions Available!",
             });
-        } 
+        }
         const response = {
             data: transactions,
             totalDocs: totalDocs,

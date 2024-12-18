@@ -11,7 +11,7 @@ import { Mutex } from "async-mutex";
 import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
 
-const transactionMutex = new Mutex(); 
+const transactionMutex = new Mutex();
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
@@ -25,8 +25,14 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        endDate = new Date(endDate);
+        endDate.setHours(23, 59, 59, 999); // Modify endDate in place
+        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+    }
 
     let matchFilters = {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
@@ -39,35 +45,35 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
         ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
 
-    try { 
-        const aggregationPipeline = [ 
+    try {
+        const aggregationPipeline = [
             {
                 $match: matchFilters
             },
             { $sort: { createdAt: -1 } },
-     
+
             { $skip: skip },
             { $limit: limit },
-            
+
             {
                 $lookup: {
-                    from: "users",  
-                    localField: "memberId", 
-                    foreignField: "_id", 
+                    from: "users",
+                    localField: "memberId",
+                    foreignField: "_id",
                     pipeline: [
                         { $project: { userName: 1, fullName: 1, memberId: 1 } }
                     ],
                     as: "userInfo"
                 }
             },
-         
+
             {
                 $unwind: {
                     path: "$userInfo",
-                    preserveNullAndEmptyArrays: false  
+                    preserveNullAndEmptyArrays: false
                 }
             },
-         
+
             {
                 $project: {
                     "_id": 1,
@@ -84,7 +90,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                 }
             }
         ];
-        
+
         let payments = await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
 
         const totalDocs = await qrGenerationModel.countDocuments(matchFilters);
@@ -100,7 +106,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             data: `Internal Server Error: ${err.message}`,
         });
     }
-}); 
+});
 
 export const allSuccessPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
@@ -108,15 +114,21 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
- 
+
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
         ? new mongoose.Types.ObjectId(memberId.trim())
         : null;
- 
+
     let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
- 
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        endDate = new Date(endDate);
+        endDate.setHours(23, 59, 59, 999); // Modify endDate in place
+        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+    }
+
     let matchFilters = {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
         ...(trimmedKeyword && {
@@ -128,19 +140,19 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
         ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
 
-    let paymentQuery = [ 
+    let paymentQuery = [
         { $match: matchFilters },
- 
+
         { $sort: { createdAt: -1 } },
- 
+
         { $skip: skip },
         { $limit: limit },
- 
+
         {
             $lookup: {
-                from: "users",  
-                localField: "memberId", 
-                foreignField: "_id", 
+                from: "users",
+                localField: "memberId",
+                foreignField: "_id",
                 pipeline: [
                     { $project: { userName: 1, fullName: 1, memberId: 1 } }
                 ],
@@ -148,7 +160,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             }
         },
 
-        
+
         {
             $unwind: {
                 path: "$userInfo",
@@ -156,7 +168,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             }
         },
 
-        
+
         {
             $project: {
                 "_id": 1,
@@ -177,14 +189,14 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     ];
 
     try {
-        
+
         let payments = await payInModel.aggregate(paymentQuery).allowDiskUse(true);
 
         if (!payments || payments.length === 0) {
             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
         }
 
-         
+
         const totalDocs = await payInModel.countDocuments(matchFilters);
 
         res.status(200).json(new ApiResponse(200, payments, totalDocs));

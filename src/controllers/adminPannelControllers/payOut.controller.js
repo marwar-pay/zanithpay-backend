@@ -13,7 +13,7 @@ import { getPaginationArray } from "../../utils/helpers.js";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
- 
+
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status } = req.query;
     page = Number(page) || 1;
@@ -24,8 +24,14 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     const trimmedStatus = status ? status.trim() : "";
 
     let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        endDate = new Date(endDate);
+        endDate.setHours(23, 59, 59, 999); // Modify endDate in place
+        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+    }
 
     let matchFilters = {
         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
@@ -124,10 +130,15 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
     const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
 
-    // Build date filter
     let dateFilter = {};
-    if (startDate) dateFilter.$gte = new Date(startDate);
-    if (endDate) dateFilter.$lte = new Date(endDate);
+    if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+    }
+    if (endDate) {
+        endDate = new Date(endDate);
+        endDate.setHours(23, 59, 59, 999); // Modify endDate in place
+        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+    }
 
     const pipeline = [
         {
@@ -290,9 +301,9 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         }
 
         let payOutModelGen = await payOutModelGenerate.create(userStoreData);
- 
+
         let userEwalletBalance = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
- 
+
         const payOutApi = user[0]?.payOutApi;
 
         var postApiOptions;
@@ -432,10 +443,10 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 }
 
                 let storeTrx = await walletModel.create(walletModelDataStore)
- 
+
                 await axios.post(payOutApi?.apiURL, payoutApiDataSend, postApiOptions).then(async (data) => {
                     let bankServerResp = data?.data;
- 
+
                     if (bankServerResp?.status === 1) {
                         let payoutDataStore = {
                             memberId: userEwalletBalance?._id,
@@ -497,7 +508,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 }).catch((err) => {
                     console.log(err)
                     return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-                }) 
+                })
                 break;
             default:
                 let respSend = {
@@ -561,13 +572,13 @@ export const payoutCallBackResponse = asyncHandler(async (req) => {
         if (data.status != "SUCCESS") {
             return res.status(400).json({ succes: "Failed", message: "Payment Failed Operator Side !" })
         }
- 
+
         let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
 
-        if (getDocoment?.isSuccess === "Success" || "Failed") { 
+        if (getDocoment?.isSuccess === "Success" || "Failed") {
             let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: getDocoment.memberId } }]);
 
-            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl; 
+            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
             const config = {
                 headers: {
                     'Accept': 'application/json',
