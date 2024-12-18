@@ -705,39 +705,32 @@ export const payoutCallBackFunction = asyncHandler(async (req, res) => {
         // get the trxid Data 
         let getDocoment = await payOutModelGenerate.findOne({ trxId: data?.txnid });
 
-        // if (getDocoment?.isSuccess !== "Pending") {
-        //     console.log("Hello")
-        //     // callback response to the
-        //     // let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: getDocoment.memberId } }]);
+        if (getDocoment?.isSuccess !== "Pending") {
+            console.log("Hello")
+            // callback response to the
+            let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: getDocoment.memberId } }]);
 
-        //     // let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
-        //     // // Calling the user callback and send the response to the user 
-        //     // const config = {
-        //     //     headers: {
-        //     //         'Accept': 'application/json',
-        //     //         'Content-Type': 'application/json'
-        //     //     }
-        //     // };
+            let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+            // Calling the user callback and send the response to the user 
+            const config = {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            };
 
-        //     // let shareObjData = {
-        //     //     status: data?.status,
-        //     //     txnid: data?.txnid,
-        //     //     optxid: data?.optxid,
-        //     //     amount: data?.amount,
-        //     //     rrn: data?.rrn
-        //     // }
+            let shareObjData = {
+                status: data?.status,
+                txnid: data?.txnid,
+                optxid: data?.optxid,
+                amount: data?.amount,
+                rrn: data?.rrn
+            }
 
-        //     // await axios.post(payOutUserCallBackURL, shareObjData, config)
-        //     return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}`})
-        // }
-
-        if (getDocoment.isSuccess === "Pending") {
-            return res.status(200).json({ data: "hello" })
+            await axios.post(payOutUserCallBackURL, shareObjData, config)
+            return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
         }
 
-        if (true) {
-            return res.status(200).json({ d: getDocoment.isSuccess })
-        }
 
         if (getDocoment && data?.rrn) {
             getDocoment.isSuccess = "Success"
