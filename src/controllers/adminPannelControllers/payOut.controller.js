@@ -479,7 +479,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         let updatedUser = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
-                        updatedUser.EwalletBalance = updatedUser.EwalletBalance + finalAmountDeduct;
+                        updatedUser.EwalletBalance = Number(updatedUser.EwalletBalance) + Number(finalAmountDeduct);
                         const updatedUserAgain = await updatedUser.save()
                         let walletModelDataStoreCR = {
                             memberId: updatedUserAgain._id,
