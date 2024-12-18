@@ -476,7 +476,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     }
  
                     else if (bankServerResp?.status === 0 || 4) {
-                        let updatedUser = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
+                        const updatedUser = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
                         updatedUser.EwalletBalance = Number(updatedUser.EwalletBalance) + Number(finalAmountDeduct);
