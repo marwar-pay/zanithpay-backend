@@ -6,11 +6,6 @@ const EwalletSchema = new Schema({
         ref: "user",
         required: [true, "Please Select Member Id !"]
     },
-    trxId: {
-        type: String,
-        ref: "user",
-        required: [true, "Please Select Member Id !"]
-    },
     transactionType: {
         type: String,
         enum: ["Dr.", "Cr."],

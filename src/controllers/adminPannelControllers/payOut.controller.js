@@ -280,8 +280,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         if (finalAmountDeduct > user[0]?.EwalletBalance) {
             return res.status(400).json({ message: "Failed", date: `Insufficient Fund usable Amount: ${userUseAbelBalance}` })
         }
-
-        // if the data is lese then the amount the data
+ 
         if (finalAmountDeduct > userUseAbelBalance) {
             return res.status(400).json({ message: "Failed", data: `Insufficient Balance Holding Amount :${user[0]?.minWalletBalance} and Usable amount + charge amount less then ${userUseAbelBalance}` })
         }
@@ -474,8 +473,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
                     }
-
-                    // failed from bank side
+ 
                     else if (bankServerResp?.status === 0 || 4) {
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
@@ -490,7 +488,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             beforeAmount: userEwalletBalance.EwalletBalance,
                             chargeAmount: userChargeApply,
                             afterAmount: userEwalletBalance.EwalletBalance + finalAmountDeduct,
-                            description: `Successfully Cr. amount: ${finalAmountDeduct} with transaction id:${trx}`,
+                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id:${trxId}`,
                             transactionStatus: "Success",
                         }
                         await walletModel.create(walletModelDataStoreCR)
