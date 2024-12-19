@@ -6,6 +6,9 @@ import walletModel from "../models/Ewallet.model.js";
 import payOutModel from "../models/payOutSuccess.model.js";
 import LogModel from "../models/Logs.model.js";
 import { Mutex } from "async-mutex";
+import qrGenerationModel from "../models/qrGeneration.model.js";
+import oldQrGenerationModel from "../models/oldQrGeneration.model.js";
+import mongoose from "mongoose";
 const transactionMutex = new Mutex();
 
 // function scheduleWayuPayOutCheck() {
@@ -82,42 +85,38 @@ const transactionMutex = new Mutex();
 //         }
 //     });
 // }
- 
+
 
 function scheduleWayuPayOutCheck() {
-    cron.schedule(' */30 * * * *', async () => {
-        const release = await transactionMutex.acquire();
-        try {
-            // Step 1: Fetch up to 10,000 records marked as "Pending" and mark them as "Processing".
-            const GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(10000);
-            const idsToUpdate = GetData.map(item => item._id);
-            
-            if (idsToUpdate.length === 0) return;
+    // cron.schedule('*/20 * * * * *', async () => {
+    //     const release = await transactionMutex.acquire();
+    //     try {
+    //         const GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(100);
+    //         const idsToUpdate = GetData.map(item => item._id);
 
-            // Mark records as "Processing" to avoid reprocessing
-            await payOutModelGenerate.updateMany(
-                { _id: { $in: idsToUpdate } },
-                { $set: { isSuccess: "Processing" } }
-            );
+    //         if (idsToUpdate.length === 0) return;
 
-            // Step 2: Process items in batches with controlled concurrency.
-            const batchSize = 100; // Number of items processed in parallel
-            for (let i = 0; i < GetData.length; i += batchSize) {
-                const batch = GetData.slice(i, i + batchSize);
+    //         await payOutModelGenerate.updateMany(
+    //             { _id: { $in: idsToUpdate } },
+    //             { $set: { isSuccess: "Pending" } }
+    //         );
 
-                // Parallel processing of the batch
-                batch.map(item=>setTimeout(()=>{
-                    processPayoutItem(item)
-                },[500]))
-                
-                // await Promise.all(batch.map(item => processPayoutItem(item)));
-            }
-        } catch (error) {
-            console.error('Error during payout check:', error.message);
-        } finally {
-            release(); // Always release the mutex
-        }
-    });
+
+    //         const batchSize = 100;
+    //         for (let i = 0; i < GetData.length; i += batchSize) {
+    //             const batch = GetData.slice(i, i + batchSize);
+
+    //             batch.map(item => setTimeout(async () => {
+    //                 await processPayoutItem(item)
+    //             }, [2000]))
+
+    //         }
+    //     } catch (error) {
+    //         console.error('Error during payout check:', error.message);
+    //     } finally {
+    //         release();
+    //     }
+    // });
 }
 
 async function processPayoutItem(item) {
@@ -137,24 +136,20 @@ async function processPayoutItem(item) {
 
         const { data } = await axios.post(uatUrl, postAdd, header);
         console.log("data>>", data);
-        
+
         if (data?.status !== 1) {
             console.log("failed");
-            // Mark as failed
             await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" });
         } else {
             console.log("success");
-            
-            // Step 1: Fetch the user's wallet details
+
             let userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance");
             const beforeAmountUser = userWalletInfo.EwalletBalance;
             const finalEwalletDeducted = item?.afterChargeAmount;
 
-            // Step 2: Deduct the wallet balance
             userWalletInfo.EwalletBalance -= finalEwalletDeducted;
             await userWalletInfo.save();
 
-            // Step 3: Create wallet transaction
             const walletModelDataStore = {
                 memberId: userWalletInfo._id,
                 transactionType: "Dr.",
@@ -167,7 +162,6 @@ async function processPayoutItem(item) {
             };
             await walletModel.create(walletModelDataStore);
 
-            // Step 4: Mark payout as successful
             const payoutDataStore = {
                 memberId: item?.memberId,
                 amount: item?.amount,
@@ -180,7 +174,6 @@ async function processPayoutItem(item) {
             };
             await payOutModel.create(payoutDataStore);
 
-            // Mark record as success
             await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Success" });
         }
     } catch (error) {
@@ -188,6 +181,45 @@ async function processPayoutItem(item) {
     }
 }
 
+function migrateData() {
+    cron.schedule('*/20 * * * * *', async () => {
+        const release = await transactionMutex.acquire();
+        try {
+            console.log("Running cron job to migrate old data...");
+
+            const oneDayAgo = new Date();
+            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+            const oldData = await qrGenerationModel.find({ createdAt: { $lt: oneDayAgo } }).sort({createdAt:1}).limit(100);
+            console.log("oldataaaa", oldData);
+            
+            if (oldData.length > 0) { 
+                const newData = oldData.map(item => ({
+                    ...item,
+                    memberId:new mongoose.Types.ObjectId((String(item?.memberId))),
+                    name: String(item?.name),
+                    amount: Number(item?.amount),
+                    trxId: String(item?.trxId),
+                    migratedAt: new Date(),
+                }));
+
+                await oldQrGenerationModel.insertMany(newData);
+ 
+                const oldDataIds = oldData.map(item => item._id);
+                await OldTable.deleteMany({ _id: { $in: oldDataIds } });
+
+                console.log(`Successfully migrated ${oldData.length} records.`);
+            } else {
+                console.log("No data older than 1 day to migrate.");
+            }
+        } catch (error) {
+            console.log("error=>", error.message);
+        } finally {
+            release()
+        }
+    }
+    )
+}
 
 function logsClearFunc() {
     cron.schedule('* * */7 * *', async () => {
@@ -197,7 +229,10 @@ function logsClearFunc() {
     });
 }
 
+
+
 export default function scheduleTask() {
     scheduleWayuPayOutCheck()
     logsClearFunc()
+    // migrateData()
 }
