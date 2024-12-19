@@ -10,6 +10,7 @@ import { AESUtils } from "../../utils/CryptoEnc.js";
 import { Mutex } from "async-mutex";
 import { ApiError } from "../../utils/ApiError.js";
 import { getPaginationArray } from "../../utils/helpers.js";
+import mongoose from "mongoose";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
@@ -20,9 +21,9 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     limit = Number(limit) || 25;
     const skip = (page - 1) * limit;
     const trimmedKeyword = keyword.trim();
-    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
-            ? new mongoose.Types.ObjectId(String(memberId.trim()))
-            : null;
+    const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(String(memberId))
+        ? new mongoose.Types.ObjectId(String(memberId.trim()))
+        : null;
     const trimmedStatus = status ? status.trim() : "";
 
     let dateFilter = {};
@@ -31,8 +32,8 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     }
     if (endDate) {
         endDate = new Date(endDate);
-        endDate.setHours(23, 59, 59, 999);  
-        dateFilter.$lt = new Date(endDate);  
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.$lt = new Date(endDate);
     }
 
     let matchFilters = {
@@ -43,11 +44,11 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
             ]
         }),
-        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }) ,
-        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
+        ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }),
+        ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
 
-    try { 
+    try {
         const totalDocs = await payOutModelGenerate.countDocuments();
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const pipeline = [
@@ -64,13 +65,6 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     foreignField: "_id",
                     as: "userInfo",
                     pipeline: [
-                        ...(trimmedMemberId ? [
-                            {
-                                $match: {
-                                    userName: { $regex: trimmedMemberId, $options: "i" } // Match userName when filtered by memberId
-                                }
-                            }
-                        ] : []),
                         { $project: { userName: 1, fullName: 1, memberId: 1 } }
                     ],
                 },
@@ -78,7 +72,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             {
                 $unwind: {
                     path: "$userInfo",
-                    preserveNullAndEmptyArrays: false // Make sure only valid userInfo data is returned
+                    preserveNullAndEmptyArrays: false
                 },
             },
             {
@@ -102,14 +96,12 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             }
         ];
 
-        // Step 3: Execute aggregation query
         const payment = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
         }
 
-        // Step 4: Add totalDocs in the response
         const response = {
             data: payment,
             totalDocs: totalDocs,
@@ -237,7 +229,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
         if (user.length === 0) {
             return res.status(401).json({ message: "Failed", date: "Invalid Credentials or User Deactive !" })
-        } 
+        }
         const payOutMaintance = user[0]?.payOutApi?.apiName;
         if (payOutMaintance === "ServerMaintenance") {
             let serverResp = {
@@ -281,7 +273,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         if (finalAmountDeduct > user[0]?.EwalletBalance) {
             return res.status(400).json({ message: "Failed", date: `Insufficient Fund usable Amount: ${userUseAbelBalance}` })
         }
- 
+
         if (finalAmountDeduct > userUseAbelBalance) {
             return res.status(400).json({ message: "Failed", data: `Insufficient Balance Holding Amount :${user[0]?.minWalletBalance} and Usable amount + charge amount less then ${userUseAbelBalance}` })
         }
@@ -436,7 +428,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     beforeAmount: Number(userEwalletBalanceBefore),
                     chargeAmount: userChargeApply,
                     afterAmount: Number(userEwalletBalanceBefore) - Number(finalAmountDeduct),
-                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id:${trxId}`,
+                    description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                     transactionStatus: "Success",
                 }
 
@@ -474,22 +466,21 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
                     }
- 
+
                     else if (bankServerResp?.status === 0 || 4) {
+                        const updatedUser = await userDB.findById(user[0]._id, { EwalletBalance: 1 })
                         await payOutModelGenerate.findByIdAndUpdate(payOutModelGen._id, { isSuccess: "Failed" })
 
-                        userEwalletBalance.EwalletBalance = userEwalletBalance.EwalletBalance + finalAmountDeduct;
-                        await userEwalletBalance.save()
-
-                        // ewallet balance Store 
+                        updatedUser.EwalletBalance = Number(updatedUser.EwalletBalance) + Number(finalAmountDeduct);
+                        const updatedUserAgain = await updatedUser.save()
                         let walletModelDataStoreCR = {
-                            memberId: userEwalletBalance._id,
+                            memberId: updatedUserAgain._id,
                             transactionType: "Cr.",
                             transactionAmount: amount,
-                            beforeAmount: userEwalletBalance.EwalletBalance,
+                            beforeAmount: Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct),
                             chargeAmount: userChargeApply,
-                            afterAmount: userEwalletBalance.EwalletBalance + finalAmountDeduct,
-                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id:${trxId}`,
+                            afterAmount: Number(updatedUserAgain?.EwalletBalance),
+                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
                             transactionStatus: "Success",
                         }
                         await walletModel.create(walletModelDataStoreCR)
@@ -750,7 +741,7 @@ export const payoutCallBackFunction = asyncHandler(async (req, res) => {
                 beforeAmount: beforeAmountUser,
                 chargeAmount: chargePaymentGatway,
                 afterAmount: beforeAmountUser - finalEwalletDeducted,
-                description: `Successfully Dr. amount: ${finalEwalletDeducted}`,
+                description: `Successfully Dr. amount: ${finalEwalletDeducted} with transaction Id: ${data?.txnid}`,
                 transactionStatus: "Success",
             }
 

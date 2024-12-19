@@ -20,6 +20,7 @@ const oldQrGenerationSchema = new Schema({
         type: Number,
         required: [true, "Required Amount !"]
     },
+    migratedAt: { type: Date, default: Date.now },
     name: {
         type: String,
         required: [true, "Required Name !"]

@@ -105,7 +105,7 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
         });
     }
 });
- 
+
 export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
     let { keyword = "", startDate, endDate, page = 1, limit = 25, memberId } = req.query;
     page = Number(page) || 1;
@@ -231,7 +231,7 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
             beforeAmount: beforeAmountEwallet,
             afterAmount: userData.EwalletBalance,
             chargeAmount: 0,
-            description: `#Settlement Successfully Cr. amount: ${transactionAmount}`,
+            description: `#Settlement Amount Successfully Cr. amount: ${transactionAmount}`,
             transactionStatus: "Success",
         }
         let trxStoreUpiWallet = {
@@ -240,7 +240,7 @@ export const upiToEwallet = asyncHandler(async (req, res) => {
             transactionAmount: transactionAmount,
             beforeAmount: beforeAmountUpiWallet,
             afterAmount: userData.upiWalletBalance,
-            description: `#Settlement Successfully Dr. amount: ${transactionAmount}`,
+            description: `#Settlement Amount Successfully Dr. amount: ${transactionAmount}`,
             transactionStatus: "Success",
         }
         let eWalletStore = await eWalletModel.create(trxStoreEwallet);
@@ -264,7 +264,7 @@ export const eWalletFundCredit = asyncHandler(async (req, res) => {
     userData.EwalletBalance = updateUserWallet;
     await userData.save();
 
-    let Ewallet = await eWalletModel.create({ memberId: userData?._id, transactionType: transactionType, transactionAmount: transactionAmount, beforeAmount: beforeAmount, chargeAmount: 0, afterAmount: updateUserWallet, description: `SuccessFully ${transactionType} Amount : ${transactionAmount}`, transactionStatus: "Success" })
+    let Ewallet = await eWalletModel.create({ memberId: userData?._id, transactionType: transactionType, transactionAmount: transactionAmount, beforeAmount: beforeAmount, chargeAmount: 0, afterAmount: updateUserWallet, description: `#By Admin Credit SuccessFully ${transactionType} Amount : ${transactionAmount}`, transactionStatus: "Success" })
 
     res.status(200).json(new ApiResponse(200, Ewallet))
 });
@@ -284,7 +284,7 @@ export const eWalletFundDebit = asyncHandler(async (req, res) => {
     userData.EwalletBalance = updateUserWallet;
     await userData.save();
 
-    let Ewallet = await eWalletModel.create({ memberId: userData?._id, transactionType: transactionType, transactionAmount: transactionAmount, beforeAmount: beforeAmount, chargeAmount: 0, afterAmount: updateUserWallet, description: `SuccessFully ${transactionType} Amount : ${transactionAmount}`, transactionStatus: "Success" })
+    let Ewallet = await eWalletModel.create({ memberId: userData?._id, transactionType: transactionType, transactionAmount: transactionAmount, beforeAmount: beforeAmount, chargeAmount: 0, afterAmount: updateUserWallet, description: `#By Admin Debit SuccessFully ${transactionType} Amount : ${transactionAmount}`, transactionStatus: "Success" })
     res.status(200).json(new ApiResponse(200, Ewallet))
 });
 

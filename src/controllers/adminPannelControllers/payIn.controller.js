@@ -10,6 +10,7 @@ import FormData from "form-data";
 import { Mutex } from "async-mutex";
 import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
+import razorpay from "../../utils/RazorPay.js";
 
 const transactionMutex = new Mutex();
 
@@ -113,7 +114,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim();
+    const trimmedKeyword = keyword.trim(); 
     const skip = (page - 1) * limit;
 
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
@@ -136,9 +137,10 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             $or: [
                 { trxId: { $regex: trimmedKeyword, $options: "i" } },
                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
+                { bankRRN: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
-        ...(trimmedMemberId && { memberId: trimmedMemberId })
+        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
     };
     const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
