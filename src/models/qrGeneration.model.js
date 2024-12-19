@@ -8,7 +8,7 @@ const qrGenerationSchema = new Schema({
     },
     trxId: {
         type: String,
-        trim: true,
+        // trim: true,
         index: true,
         unique:[true,"Trx Id should be Unique"],
         required: [true, "Required TrxId !"]
@@ -39,5 +39,5 @@ const qrGenerationSchema = new Schema({
         default: "Pending"
     },
 }, { timestamps: true }); 
-
-export default new model("qrGenerationRecode", qrGenerationSchema.index({createdAt:1}));
+qrGenerationSchema.index({createdAt:1, trxId:1}, { unique: true }) 
+export default new model("qrGenerationRecode", qrGenerationSchema);
