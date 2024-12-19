@@ -16,7 +16,7 @@ const userSchema = new Schema({
     },
     memberType: {
         type: String,
-        enum: ["Admin", "Manager", "Users"],
+        enum: ["Admin", "Manager", "Users","Retailer","TeamMember"],
         required: [true, "Please Select member Type !"]
     },
     fullName: {

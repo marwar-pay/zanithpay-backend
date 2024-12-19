@@ -17,7 +17,7 @@ router.post("/generatePayOut", celebrate({
         authToken: Joi.string().required(),
         mobileNumber: Joi.number().required(),
         accountHolderName: Joi.string().required(),
-        accountNumber: Joi.number().required(),
+        accountNumber: Joi.string().required(),
         ifscCode: Joi.string().required(),
         bankName: Joi.string().required(),
         trxId: Joi.string().min(10).max(25).required(),
