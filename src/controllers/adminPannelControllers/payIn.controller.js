@@ -112,7 +112,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim();
+    const trimmedKeyword = keyword.trim(); 
     const skip = (page - 1) * limit;
 
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
@@ -135,9 +135,10 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             $or: [
                 { trxId: { $regex: trimmedKeyword, $options: "i" } },
                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
+                { bankRRN: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
-        ...(trimmedMemberId && { memberId: trimmedMemberId })
+        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
     };
 
     let paymentQuery = [
