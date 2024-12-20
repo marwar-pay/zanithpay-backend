@@ -6,13 +6,16 @@ import ipWhiteListDB from "../models/ipWhiteList.model.js"
 
 export const apiValidate = asyncHandler(async (req, res, next) => {
     try {
+        const userName = req?.body?.userName ? req?.body?.userName.trim() : null
+        const authToken = req?.body?.authToken ? req?.body?.authToken.trim() : null
         const clientIp = requestIp.getClientIp(req);
-        let user = await userDB.aggregate([{ $match: { $and: [{ userName: req?.body?.userName }, { trxAuthToken: req?.body?.authToken }, { isActive: true }] } }])
-        if (user.length === 0) {
+        let user = await userDB.findOne({ userName: userName , trxAuthToken: authToken, isActive: true }) 
+        
+        if (!user) {
             return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
         }
 
-        let getUserIpList = await ipWhiteListDB.findOne({ memberId: user[0]._id });
+        let getUserIpList = await ipWhiteListDB.findOne({ memberId: user._id });
 
         if (!getUserIpList) {
             return res.status(400).json({ message: "Failed", data: `Please required IP Whitelist Your Current IP : ${clientIp}` })
