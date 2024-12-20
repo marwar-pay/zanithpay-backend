@@ -678,7 +678,7 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
 
             if (!qrGenDoc || reqPaymentLinkObj.entity.status !== "paid") return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" });;
 
-            qrGenDoc.isSuccess = "Success";
+            qrGenDoc.callBackStatus = "Success";
 
             const [userInfo] = await userDB.aggregate([
                 { $match: { _id: qrGenDoc?.memberId } },
@@ -763,6 +763,8 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
                 TxnInitDate: reqPaymentLinkObj.entity.created_at,
                 TxnCompletionDate: reqPaymentLinkObj.entity.updated_at
             }; 
+            console.log("error logging", upiWalletDataObject, qrGenDoc, payinDataStore,userCallBackURL, userRespSendApi);
+            
 
             await Promise.all([
                 qrGenDoc.save(),
