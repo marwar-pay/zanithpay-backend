@@ -182,21 +182,21 @@ async function processPayoutItem(item) {
 }
 
 function migrateData() {
-    cron.schedule('*/20 * * * * *', async () => {
+    cron.schedule('0,30 * * * *', async () => {
         const release = await transactionMutex.acquire();
         try {
             console.log("Running cron job to migrate old data...");
 
-            const oneDayAgo = new Date();
-            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+            const threeHoursAgo = new Date();
+            threeHoursAgo.setHours(threeHoursAgo.getHours() - 3)
 
-            const oldData = await qrGenerationModel.find({ createdAt: { $lt: oneDayAgo } }).sort({createdAt:1}).limit(100);
+            const oldData = await qrGenerationModel.find({ createdAt: { $lt: threeHoursAgo } }).sort({ createdAt: 1 }).limit(100);
             console.log("oldataaaa", oldData);
-            
-            if (oldData.length > 0) { 
+
+            if (oldData.length > 0) {
                 const newData = oldData.map(item => ({
                     ...item,
-                    memberId:new mongoose.Types.ObjectId((String(item?.memberId))),
+                    memberId: new mongoose.Types.ObjectId((String(item?.memberId))),
                     name: String(item?.name),
                     amount: Number(item?.amount),
                     trxId: String(item?.trxId),
@@ -204,9 +204,9 @@ function migrateData() {
                 }));
 
                 await oldQrGenerationModel.insertMany(newData);
- 
+
                 const oldDataIds = oldData.map(item => item._id);
-                await OldTable.deleteMany({ _id: { $in: oldDataIds } });
+                await qrGenerationModel.deleteMany({ _id: { $in: oldDataIds } });
 
                 console.log(`Successfully migrated ${oldData.length} records.`);
             } else {
@@ -234,5 +234,5 @@ function logsClearFunc() {
 export default function scheduleTask() {
     scheduleWayuPayOutCheck()
     logsClearFunc()
-    // migrateData()
+    migrateData()
 }
