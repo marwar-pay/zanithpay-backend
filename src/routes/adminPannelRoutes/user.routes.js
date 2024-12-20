@@ -14,7 +14,7 @@ router.get("/userProfile/:id", celebrate({
 
 router.post("/addUser", celebrate({
     body: Joi.object({
-        memberType: Joi.string().valid("Admin", "Manager", "Users").required(),
+        memberType: Joi.string().valid("Admin", "Manager", "Users", "Retailer", "TeamMember").required(),
         fullName: Joi.string().required(),
         email: Joi.string().required(),
         mobileNumber: Joi.string().required(),

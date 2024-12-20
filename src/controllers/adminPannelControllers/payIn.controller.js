@@ -11,6 +11,7 @@ import { Mutex } from "async-mutex";
 import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
 import razorpay from "../../utils/RazorPay.js";
+import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.js";
 
 const transactionMutex = new Mutex();
 
@@ -23,7 +24,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
         ? new mongoose.Types.ObjectId(String(memberId.trim()))
         : null;
-    const skip = (page - 1) * limit; 
+    const skip = (page - 1) * limit;
 
     let dateFilter = {};
     if (startDate) {
@@ -43,8 +44,8 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
-        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
-    }; 
+        ...(trimmedMemberId && { memberId: trimmedMemberId })
+    };
 
     try {
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
@@ -114,7 +115,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-    const trimmedKeyword = keyword.trim(); 
+    const trimmedKeyword = keyword.trim();
     const skip = (page - 1) * limit;
 
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
@@ -140,7 +141,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
                 { bankRRN: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
-        ...(trimmedMemberId && { memberId: trimmedMemberId }) 
+        ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
     const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
@@ -305,7 +306,11 @@ export const generatePayment = asyncHandler(async (req, res) => {
             })
             break;
         case "razorpayPayIn":
+
+
             try {
+                const tempPayment = await qrGenerationModel.findOne({ trxId })
+                if (tempPayment) return res.status(400).json({ message: "Failed", data: "Transaction Id already exists." })
                 const paymentData = await qrGenerationModel.create({
                     memberId: user[0]?._id,
                     name,
@@ -313,19 +318,33 @@ export const generatePayment = asyncHandler(async (req, res) => {
                     trxId,
                 });
 
-                const options = {
-                    amount: amount * 100,
-                    currency: "INR",
-                    receipt: trxId,
-                    notes: {
-                        name,
-                        mobileNumber,
+                const rzOptions = {
+                    "amount": amount * 100,
+                    "currency": "INR",
+                    "accept_partial": false,
+                    "first_min_partial_amount": 100,
+                    "expire_by": 1733838891267,
+                    "reference_id": trxId,
+                    "description": "Payment for policy no #23456",
+                    "customer": {
+                        "name": name,
+                        "contact": mobileNumber,
                     },
-                    description: `Payment for transaction ${trxId}`,
-                    callback_url: "https://your-backend-domain.com/api/razorpay/verify-payment",
-                };
-
-                const paymentLink = await razorpay.paymentLink.create(options);
+                    "notify": {
+                        "sms": true,
+                        "email": true
+                    },
+                    "reminder_enable": true,
+                    "notes": {
+                        "policy_name": "Jeevan Bima"
+                    },
+                    "callback_url": ``,
+                    // "redirect": false, 
+                    // "callback_url": `${process.env.BASE_URL}apiAdmin/v1/payin/callBack`,
+                    "callback_method": "get"
+                }
+                console.log("options>>>>", rzOptions);
+                const paymentLink = await razorpay.paymentLink.create(rzOptions);
 
                 paymentData.qrData = paymentLink.short_url;
                 paymentData.refId = paymentLink.id;
@@ -650,3 +669,92 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
     }
 
 });
+
+export const rezorPayCallback = asyncHandler(async (req, res) => {
+    if (req.event == "payment_link.paid") {
+        const reqPaymentLinkObj = req.payload.payment_link
+        const reqPaymentObj = req.payload.payment
+        const qrGenDoc = qrGenerationModel.findOne({ refId: `${reqPaymentLinkObj.entity.id}` }) 
+        let userInfo = await userDB.aggregate([{ $match: { _id: qrGenDoc?.memberId } }, { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } }, {
+            $unwind: {
+                path: "$package",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } }, {
+            $unwind: {
+                path: "$packageCharge",
+                preserveNullAndEmptyArrays: true,
+            }
+        }, {
+            $project: { "_id": 1, "userName": 1, "memberId": 1, "fullName": 1, "trxPassword": 1, "upiWalletBalance": 1, "createdAt": 1, "packageCharge._id": 1, "packageCharge.payInPackageName": 1, "packageCharge.payInChargeRange": 1, "packageCharge.isActive": 1 }
+        }])
+        let chargeRange = userInfo[0]?.packageCharge?.payInChargeRange;
+        var chargeTypePayIn;
+        var chargeAmoutPayIn;
+
+        chargeRange.forEach((value) => {
+            if (value.lowerLimit <= data?.payerAmount && value.upperLimit > data?.payerAmount) {
+                chargeTypePayIn = value.chargeType
+                chargeAmoutPayIn = value.charge
+                return 0;
+            }
+        })
+
+        var userChargeApply;
+        var finalAmountAdd;
+
+        if (chargeTypePayIn === "Flat") {
+            userChargeApply = chargeAmoutPayIn;
+            finalAmountAdd = data?.payerAmount - userChargeApply;
+        } else {
+            userChargeApply = (chargeAmoutPayIn / 100) * data?.payerAmount;
+            finalAmountAdd = data?.payerAmount - userChargeApply;
+        }
+
+        let gatwarCharge = userChargeApply;
+        let finalCredit = finalAmountAdd;
+        if (qrGenDoc) {
+            if (req.payload.order.entity.status == "paid") {
+                qrGenDoc.isSuccess = "Success"
+                await qrGenDoc.save()
+                if (reqPaymentObj.entity.acquirer_data.rrn) { 
+                    let payinDataStore = { 
+                        memberId: qrGenDoc?.memberId, 
+                        payerName: qrGenDoc?.name, 
+                        trxId: qrGenDoc?.trxId, 
+                        amount: qrGenDoc?.amount, 
+                        chargeAmount: gatwarCharge, 
+                        finalAmount: finalCredit, 
+                        vpaId: data?.payerVA, 
+                        bankRRN: reqPaymentObj.entity.acquirer_data.rrn, 
+                        description: `Qr Generated Successfully Amount:${qrGenDoc?.amount} PayerVa:${data?.payerVA} BankRRN:${reqPaymentObj.entity.acquirer_data.rrn}`, 
+                        trxCompletionDate: data?.TxnCompletionDate, 
+                        trxInItDate: data?.TxnInitDate, 
+                        isSuccess: "Success" 
+                    }
+
+                    let upiWalletDataObject = { memberId: userInfo[0]?._id, transactionType: "Cr.", transactionAmount: finalCredit, beforeAmount: userInfo[0]?.upiWalletBalance, afterAmount: userInfo[0]?.upiWalletBalance + finalCredit, description: `Successfully Cr. amount: ${finalCredit} with transaction Id: ${data?.txnID}`, transactionStatus: "Success" }
+
+                    await upiWalletModel.create(upiWalletDataObject);
+
+                    await payInModel.create(payinDataStore);
+                    await userDB.findByIdAndUpdate(userInfo[0]?._id, { upiWalletBalance: userInfo[0]?.upiWalletBalance + finalCredit })
+                }
+            }
+        }
+    }
+
+    // validatePaymentVerification({
+    //     "payment_link_id": PaymentlinkId,
+    //     "payment_id": PaymentId,
+    //     "payment_link_reference_id": PaymentLinkReferenceId,
+    //     "payment_link_status": PaymentLinkStatus,
+    //   }, signature , secret);
+    if (payment_status === "success") {
+        console.log("Payment successful:", razorpay_payment_id);
+        res.send("Payment was successful!");
+    } else {
+        console.log("Payment failed");
+        res.send("Payment failed. Please try again.");
+    }
+})

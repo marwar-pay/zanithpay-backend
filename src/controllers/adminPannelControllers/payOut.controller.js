@@ -547,7 +547,7 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, pack))
 });
 
-export const payoutCallBackResponse = asyncHandler(async (req) => {
+export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     // const release = await payoutCallbackMutex.acquire()
     try {
         let callBackPayout = req.body;
