@@ -213,7 +213,8 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 
 export const generatePayment = asyncHandler(async (req, res) => {
     const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
-
+    const tempTransaction = await qrGenerationModel.findOne({trxId})
+    if(tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
     let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
         $unwind: {
             path: "$payInApi",
@@ -224,8 +225,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
     if (user.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
     }
-
-    // Banking api Switch for 
+ 
     let apiSwitchApiOption = user[0]?.payInApi?.apiName;
     switch (apiSwitchApiOption) {
         case "neyopayPayIn":
