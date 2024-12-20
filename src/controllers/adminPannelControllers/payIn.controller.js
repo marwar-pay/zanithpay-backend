@@ -11,21 +11,21 @@ import { Mutex } from "async-mutex";
 import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
 import razorpay from "../../utils/RazorPay.js";
+import { Parser } from 'json2csv';
 import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.js";
+import oldQrGenerationModel from "../../models/oldQrGeneration.model.js";
 
 const transactionMutex = new Mutex();
 const razorPayMutex = new Mutex();
 
-export const allGeneratedPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId } = req.query;
+export const allGeneratedPayment = asyncHandler(async (req, res) => { 
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
-
     const trimmedKeyword = keyword.trim();
     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
         ? new mongoose.Types.ObjectId(String(memberId.trim()))
         : null;
-    const skip = (page - 1) * limit;
 
     let dateFilter = {};
     if (startDate) {
@@ -33,8 +33,8 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
     }
     if (endDate) {
         endDate = new Date(endDate);
-        endDate.setHours(23, 59, 59, 999); // Modify endDate in place
-        dateFilter.$lt = new Date(endDate); // Wrap in new Date() to maintain proper format
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.$lt = new Date(endDate);
     }
 
     let matchFilters = {
@@ -46,8 +46,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             ]
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })
-    };
-
+    }; 
     try {
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const aggregationPipeline = [
@@ -55,9 +54,13 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                 $match: matchFilters
             },
             { $sort: { createdAt: sortDirection } },
-
-            { $skip: skip },
-            { $limit: limit },
+ 
+            ...(exportToCSV != "true"
+                ? [
+                      { $skip: (page - 1) * limit },
+                      { $limit: limit }
+                  ]
+                : []),
 
             {
                 $lookup: {
@@ -94,15 +97,40 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                 }
             }
         ];
+ console.log("matchfilterssss", aggregationPipeline);
+ 
+        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) ;
+ 
+        const totalDocs = exportToCSV === "true" ? payments.length : await qrGenerationModel.countDocuments(matchFilters);
+ 
+        if (exportToCSV === "true") {
+            const fields = [
+                "_id",
+                "trxId",
+                "amount",
+                "name",
+                "callBackStatus",
+                "qrData",
+                "refId",
+                "createdAt",
+                "userInfo.userName",
+                "userInfo.fullName",
+                "userInfo.memberId"
+            ];
+            const json2csvParser = new Parser({ fields });
+            const csv = json2csvParser.parse(payments);
 
-        let payments = await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
+            res.header('Content-Type', 'text/csv');
+            res.attachment('payments.csv');
+            console.log("inside export if");
 
-        const totalDocs = await qrGenerationModel.countDocuments(matchFilters);
-
+            return res.status(200).send(csv);
+        }
+ 
         if (!payments || payments.length === 0) {
             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
         }
-
+ 
         res.status(200).json(new ApiResponse(200, payments, totalDocs));
     } catch (err) {
         res.status(500).json({
@@ -213,8 +241,8 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 
 export const generatePayment = asyncHandler(async (req, res) => {
     const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
-    const tempTransaction = await qrGenerationModel.findOne({trxId})
-    if(tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
+    const tempTransaction = await qrGenerationModel.findOne({ trxId })
+    if (tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
     let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
         $unwind: {
             path: "$payInApi",
@@ -225,7 +253,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
     if (user.length === 0) {
         return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
     }
- 
+
     let apiSwitchApiOption = user[0]?.payInApi?.apiName;
     switch (apiSwitchApiOption) {
         case "neyopayPayIn":
@@ -317,33 +345,28 @@ export const generatePayment = asyncHandler(async (req, res) => {
                     amount,
                     trxId,
                 });
-
+ 
                 const rzOptions = {
-                    "amount": amount * 100,
-                    "currency": "INR",
-                    "accept_partial": false,
-                    "first_min_partial_amount": 100,
-                    "expire_by": 1733838891267,
-                    "reference_id": trxId,
-                    "description": "Payment for policy no #23456",
-                    "customer": {
-                        "name": name,
-                        "contact": mobileNumber,
+                    upi_link: true,
+                    amount: Number(amount * 100),
+                    currency: "INR",
+                    accept_partial: false,
+                    first_min_partial_amount: 0,
+                    description: "For XYZ purpose",
+                    customer: {
+                      name: name,
+                    //   email: "gaurav.kumar@example.com",
+                      contact: mobileNumber
                     },
-                    "notify": {
-                        "sms": true,
-                        "email": true
+                    notify: {
+                      sms: true,
+                      email: true
                     },
-                    "reminder_enable": true,
-                    "notes": {
-                        "policy_name": "Jeevan Bima"
-                    },
-                    "callback_url": ``,
-                    // "redirect": false, 
-                    // "callback_url": `${process.env.BASE_URL}apiAdmin/v1/payin/callBack`,
-                    "callback_method": "get"
-                }
-                console.log("options>>>>", rzOptions);
+                    reminder_enable: true,
+                    notes: {
+                      policy_name: "Jeevan Bima"
+                    }
+                  } 
                 const paymentLink = await razorpay.paymentLink.create(rzOptions);
 
                 paymentData.qrData = paymentLink.short_url;
@@ -362,7 +385,7 @@ export const generatePayment = asyncHandler(async (req, res) => {
                 if (error.code === 11000) {
                     return res.status(500).json({ message: "Failed", data: "trx Id duplicate found!" });
                 } else {
-                    return res.status(500).json({ message: "Failed", data: "Internal Server Error!" });
+                    return res.status(500).json({ message: "Failed", data: error.description||"Internal Server Error!" });
                 }
             }
             break;
@@ -718,7 +741,7 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
             }
 
             const userChargeApply = chargeTypePayIn === "Flat" ? chargeAmountPayIn : (chargeAmountPayIn / 100) * payerAmount;
-            
+
             const finalAmountAdd = payerAmount - userChargeApply;
 
             const payinDataStore = {
@@ -762,11 +785,11 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
                 payerVA: reqPaymentObj.entity.vpa,
                 TxnInitDate: reqPaymentLinkObj.entity.created_at,
                 TxnCompletionDate: reqPaymentLinkObj.entity.updated_at
-            }; 
-            console.log("error logging", upiWalletDataObject, qrGenDoc, payinDataStore,userCallBackURL, userRespSendApi);
-            
+            };
+            console.log("error logging", upiWalletDataObject, qrGenDoc, payinDataStore, userCallBackURL, userRespSendApi);
 
-            await Promise.all([
+
+            await Promise.allSettled([
                 qrGenDoc.save(),
                 upiWalletModel.create(upiWalletDataObject),
                 payInModel.create(payinDataStore),
