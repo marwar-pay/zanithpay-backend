@@ -40,5 +40,6 @@ const oldQrGenerationSchema = new Schema({
         default: "Pending"
     },
 }, { timestamps: true });
-
-export default new model("oldQrGenerationRecode", oldQrGenerationSchema.index({ createdAt: 1 }));
+oldQrGenerationSchema.index({ createdAt: 1 })
+oldQrGenerationSchema.index({ trxId: 1 })
+export default new model("oldQrGenerationRecode", oldQrGenerationSchema);
