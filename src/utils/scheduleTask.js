@@ -190,8 +190,7 @@ function migrateData() {
             const threeHoursAgo = new Date();
             threeHoursAgo.setHours(threeHoursAgo.getHours() - 3)
 
-            const oldData = await qrGenerationModel.find({ createdAt: { $lt: threeHoursAgo } }).sort({ createdAt: 1 }).limit(100);
-            console.log("oldataaaa", oldData);
+            const oldData = await qrGenerationModel.find({ createdAt: { $lt: threeHoursAgo } }).sort({ createdAt: 1 }).limit(5000);
 
             if (oldData.length > 0) {
                 const newData = oldData.map(item => ({
