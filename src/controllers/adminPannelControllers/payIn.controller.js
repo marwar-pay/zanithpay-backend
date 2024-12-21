@@ -16,9 +16,11 @@ import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.
 import oldQrGenerationModel from "../../models/oldQrGeneration.model.js";
 
 const transactionMutex = new Mutex();
+const generatePayinMutex = new Mutex();
 const razorPayMutex = new Mutex();
+const chargeBackMutex = new Mutex();
 
-export const allGeneratedPayment = asyncHandler(async (req, res) => {  
+export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
@@ -46,7 +48,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             ]
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })
-    }; 
+    };
     try {
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const aggregationPipeline = [
@@ -54,12 +56,12 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                 $match: matchFilters
             },
             { $sort: { createdAt: sortDirection } },
- 
+
             ...(exportToCSV != "true"
                 ? [
-                      { $skip: (page - 1) * limit },
-                      { $limit: limit }
-                  ]
+                    { $skip: (page - 1) * limit },
+                    { $limit: limit }
+                ]
                 : []),
 
             {
@@ -96,12 +98,12 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                     "userInfo.memberId": 1
                 }
             }
-        ]; 
- 
-        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) ;
- 
+        ];
+
+        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
+
         const totalDocs = exportToCSV === "true" ? payments.length : await qrGenerationModel.countDocuments(matchFilters);
- 
+
         if (exportToCSV === "true") {
             const fields = [
                 "_id",
@@ -125,11 +127,11 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 
             return res.status(200).send(csv);
         }
- 
+
         if (!payments || payments.length === 0) {
             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
         }
- 
+
         res.status(200).json(new ApiResponse(200, payments, totalDocs));
     } catch (err) {
         res.status(500).json({
@@ -140,7 +142,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
 });
 
 export const allSuccessPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export:exportToCSV } = req.query;
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim();
@@ -156,8 +158,8 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     }
     if (endDate) {
         endDate = new Date(endDate);
-        endDate.setHours(23, 59, 59, 999);  
-        dateFilter.$lt = new Date(endDate);  
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.$lt = new Date(endDate);
     }
 
     let matchFilters = {
@@ -180,9 +182,9 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 
         ...(exportToCSV != "true"
             ? [
-                  { $skip: skip },
-                  { $limit: limit }
-              ]
+                { $skip: skip },
+                { $limit: limit }
+            ]
             : []),
 
         {
@@ -268,170 +270,179 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     }
 });
 
-export const generatePayment = asyncHandler(async (req, res) => {
-    const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
-    const tempTransaction = await qrGenerationModel.findOne({ trxId })
-    if (tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
-    let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
-        $unwind: {
-            path: "$payInApi",
-            preserveNullAndEmptyArrays: true,
+export const generatePayment = async (req, res) => {
+    const release = await generatePayinMutex.acquire()
+    try {
+        const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
+        const tempTransaction = await qrGenerationModel.findOne({ trxId })
+        const tempOldTransaction = await oldQrGenerationModel.findOne({ trxId })
+        if (tempTransaction || tempOldTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
+        let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
+            $unwind: {
+                path: "$payInApi",
+                preserveNullAndEmptyArrays: true,
+            }
+        }])
+
+        if (user.length === 0) {
+            return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
         }
-    }])
 
-    if (user.length === 0) {
-        return res.status(400).json({ message: "Failed", data: "Invalid User or InActive user Please Try again !" })
-    }
+        let apiSwitchApiOption = user[0]?.payInApi?.apiName;
+        switch (apiSwitchApiOption) {
+            case "neyopayPayIn":
+                let url = user[0].payInApi.apiURL
+                let formData = new FormData()
+                formData.append("amount", amount)
+                formData.append("Apikey", "14205")
+                formData.append("url", "https://zanithpay.com")
+                formData.append("transactionId", trxId)
+                formData.append("mobile", mobileNumber)
 
-    let apiSwitchApiOption = user[0]?.payInApi?.apiName;
-    switch (apiSwitchApiOption) {
-        case "neyopayPayIn":
-            let url = user[0].payInApi.apiURL
-            let formData = new FormData()
-            formData.append("amount", amount)
-            formData.append("Apikey", "14205")
-            formData.append("url", "https://zanithpay.com")
-            formData.append("transactionId", trxId)
-            formData.append("mobile", mobileNumber)
+                // store database
+                await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
+                    // Bankking api calling !
+                    let resp = await axios.post(url, formData)
 
-            // store database
-            await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
-                // Bankking api calling !
-                let resp = await axios.post(url, formData)
-
-                let dataApiResponse = {
-                    status_msg: resp?.data?.message,
-                    status: resp?.data?.status == true ? 200 : 400,
-                    qrImage: resp?.data?.Payment_link,
-                    trxID: trxId,
-                }
-
-                if (resp?.data?.status !== true) {
-                    data.callBackStatus = "Failed";
-                    await data.save();
-                    return res.status(400).json({ message: "Failed", data: dataApiResponse })
-                } else {
-                    data.qrData = resp?.data?.Payment_link;
-                    data.refId = resp?.data?.refId;
-                    await data.save();
-                }
-
-                // Send response
-                return res.status(200).json(new ApiResponse(200, dataApiResponse))
-            }).catch((error) => {
-                if (error.code == 11000) {
-                    return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
-                } else {
-                    return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-                }
-            })
-            break;
-        case "impactpeaksoftwareApi":
-            // store database
-            await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
-                // Banking Api
-                let API_URL = `https://impactpeaksoftware.in/portal/api/generateQrAuth?memberid=IMPSAPI837165&txnpwd=8156&name=${name}&mobile=${mobileNumber}&amount=${amount}&txnid=${trxId}`
-                let bank = await axios.get(API_URL);
-
-                let dataApiResponse = {
-                    status_msg: bank?.data?.status_msg,
-                    status: bank?.data?.status_code,
-                    qrImage: bank?.data?.qr_image,
-                    qr: bank?.data?.intent,
-                    trxID: data?.trxId,
-                }
-
-                if (bank?.data?.status_code !== 200) {
-                    data.callBackStatus = "Failed";
-                    await data.save();
-                    return res.status(400).json({ message: "Failed", data: dataApiResponse })
-                } else {
-                    data.qrData = bank?.data?.qr_image;
-                    data.qrIntent = bank?.data?.intent;
-                    data.refId = bank?.data?.refId;
-                    await data.save();
-                }
-
-                // Send response
-                return res.status(200).json(new ApiResponse(200, dataApiResponse))
-            }).catch((error) => {
-                if (error.code == 11000) {
-                    return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
-                } else {
-                    return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-                }
-            })
-            break;
-        case "razorpayPayIn":
-            try {
-                const tempPayment = await qrGenerationModel.findOne({ trxId })
-                if (tempPayment) return res.status(400).json({ message: "Failed", data: "Transaction Id already exists." })
-                const paymentData = await qrGenerationModel.create({
-                    memberId: user[0]?._id,
-                    name,
-                    amount,
-                    trxId,
-                });
- 
-                const rzOptions = {
-                    upi_link: true,
-                    amount: Number(amount * 100),
-                    currency: "INR",
-                    accept_partial: false,
-                    first_min_partial_amount: 0,
-                    description: "For XYZ purpose",
-                    customer: {
-                      name: name,
-                    //   email: "gaurav.kumar@example.com",
-                      contact: mobileNumber
-                    },
-                    notify: {
-                      sms: true,
-                      email: true
-                    },
-                    reminder_enable: true,
-                    notes: {
-                      policy_name: "Jeevan Bima"
+                    let dataApiResponse = {
+                        status_msg: resp?.data?.message,
+                        status: resp?.data?.status == true ? 200 : 400,
+                        qrImage: resp?.data?.Payment_link,
+                        trxID: trxId,
                     }
-                  } 
-                const paymentLink = await razorpay.paymentLink.create(rzOptions);
 
-                paymentData.qrData = paymentLink.short_url;
-                paymentData.refId = paymentLink.id;
-                await paymentData.save();
+                    if (resp?.data?.status !== true) {
+                        data.callBackStatus = "Failed";
+                        await data.save();
+                        return res.status(400).json({ message: "Failed", data: dataApiResponse })
+                    } else {
+                        data.qrData = resp?.data?.Payment_link;
+                        data.refId = resp?.data?.refId;
+                        await data.save();
+                    }
 
-                return res.status(200).json(new ApiResponse(200, {
-                    status_msg: "Payment link generated successfully",
-                    status: 200,
-                    qrImage: paymentLink.short_url,
-                    trxID: trxId,
-                }));
-            } catch (error) {
-                console.error("Error creating Razorpay payment link:", error);
+                    // Send response
+                    return res.status(200).json(new ApiResponse(200, dataApiResponse))
+                }).catch((error) => {
+                    if (error.code == 11000) {
+                        return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
+                    } else {
+                        return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+                    }
+                })
+                break;
+            case "impactpeaksoftwareApi":
+                // store database
+                await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
+                    // Banking Api
+                    let API_URL = `https://impactpeaksoftware.in/portal/api/generateQrAuth?memberid=IMPSAPI837165&txnpwd=8156&name=${name}&mobile=${mobileNumber}&amount=${amount}&txnid=${trxId}`
+                    let bank = await axios.get(API_URL);
 
-                if (error.code === 11000) {
-                    return res.status(500).json({ message: "Failed", data: "trx Id duplicate found!" });
-                } else {
-                    return res.status(500).json({ message: "Failed", data: error.description||"Internal Server Error!" });
+                    let dataApiResponse = {
+                        status_msg: bank?.data?.status_msg,
+                        status: bank?.data?.status_code,
+                        qrImage: bank?.data?.qr_image,
+                        qr: bank?.data?.intent,
+                        trxID: data?.trxId,
+                    }
+
+                    if (bank?.data?.status_code !== 200) {
+                        data.callBackStatus = "Failed";
+                        await data.save();
+                        return res.status(400).json({ message: "Failed", data: dataApiResponse })
+                    } else {
+                        data.qrData = bank?.data?.qr_image;
+                        data.qrIntent = bank?.data?.intent;
+                        data.refId = bank?.data?.refId;
+                        await data.save();
+                    }
+
+                    // Send response
+                    return res.status(200).json(new ApiResponse(200, dataApiResponse))
+                }).catch((error) => {
+                    if (error.code == 11000) {
+                        return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
+                    } else {
+                        return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+                    }
+                })
+                break;
+            case "razorpayPayIn":
+                try {
+                    const tempPayment = await qrGenerationModel.findOne({ trxId })
+                    if (tempPayment) return res.status(400).json({ message: "Failed", data: "Transaction Id already exists." })
+                    const paymentData = await qrGenerationModel.create({
+                        memberId: user[0]?._id,
+                        name,
+                        amount,
+                        trxId,
+                    });
+
+                    const rzOptions = {
+                        upi_link: true,
+                        amount: Number(amount * 100),
+                        currency: "INR",
+                        accept_partial: false,
+                        first_min_partial_amount: 0,
+                        description: "For XYZ purpose",
+                        customer: {
+                            name: name,
+                            //   email: "gaurav.kumar@example.com",
+                            contact: mobileNumber
+                        },
+                        notify: {
+                            sms: true,
+                            email: true
+                        },
+                        reminder_enable: true,
+                        notes: {
+                            policy_name: "Jeevan Bima"
+                        }
+                    }
+                    const paymentLink = await razorpay.paymentLink.create(rzOptions);
+
+                    paymentData.qrData = paymentLink.short_url;
+                    paymentData.refId = paymentLink.id;
+                    await paymentData.save();
+
+                    return res.status(200).json(new ApiResponse(200, {
+                        status_msg: "Payment link generated successfully",
+                        status: 200,
+                        qrImage: paymentLink.short_url,
+                        trxID: trxId,
+                    }));
+                } catch (error) {
+                    console.error("Error creating Razorpay payment link:", error);
+
+                    if (error.code === 11000) {
+                        return res.status(500).json({ message: "Failed", data: "trx Id duplicate found!" });
+                    } else {
+                        return res.status(500).json({ message: "Failed", data: error.description || "Internal Server Error!" });
+                    }
                 }
-            }
-            break;
-        case "ServerMaintenance":
-            let serverResp = {
-                status_msg: "Server Under Maintenance !",
-                status: 400,
-                trxID: trxId,
-            }
-            return res.status(400).json({ message: "Failed", data: serverResp })
-        default:
-            let dataApiResponse = {
-                status_msg: "failed",
-                status: 400,
-                trxID: trxId,
-            }
-            return res.status(400).json({ message: "Failed", data: dataApiResponse })
+                break;
+            case "ServerMaintenance":
+                let serverResp = {
+                    status_msg: "Server Under Maintenance !",
+                    status: 400,
+                    trxID: trxId,
+                }
+                return res.status(400).json({ message: "Failed", data: serverResp })
+            default:
+                let dataApiResponse = {
+                    status_msg: "failed",
+                    status: 400,
+                    trxID: trxId,
+                }
+                return res.status(400).json({ message: "Failed", data: dataApiResponse })
+        }
+    } catch (error) {
+        console.log("error==>", error.message);
+    } finally {
+        release()
     }
-});
+
+};
 
 export const paymentStatusCheck = asyncHandler(async (req, res) => {
     let trxIdGet = req.params.trxId;
@@ -717,15 +728,22 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
 });
 
 export const rezorPayCallback = asyncHandler(async (req, res) => {
+    console.log("req.body>>>>", JSON.stringify(req.body));
     const release = await razorPayMutex.acquire()
     try {
-        const { payment_link: reqPaymentLinkObj, payment: reqPaymentObj } = req.body.payload;
-        const qrGenDoc = await qrGenerationModel.findOne({ refId: reqPaymentLinkObj.entity.id });
 
-        if (!qrGenDoc || qrGenDoc.callBackStatus == "Success" || reqPaymentLinkObj.entity.status !== "paid") return res.status(400).json({ succes: "Failed", message: "Txn Id Not available!" });
         if (req.body.event.includes("payment_link")) {
+            const { payment_link: reqPaymentLinkObj } = req.body.payload;
+            const { payment: reqPaymentObj } = req.body.payload
+            const qrGenDoc = await qrGenerationModel.findOne({ refId: reqPaymentLinkObj.entity.id });
 
-            if (req.body.event === "payment_link.paid") qrGenDoc.callBackStatus = "Success";
+            if (!qrGenDoc || qrGenDoc.callBackStatus == "Success" || reqPaymentLinkObj.entity.status !== "paid") return res.status(400).json({ succes: "Failed", message: "Txn Id Not available!" });
+
+            if (req.body.event === "payment_link.paid") {
+                qrGenDoc.callBackStatus = "Success";
+            }else {
+                qrGenDoc.callBackStatus = "Failed";
+            }
 
             const [userInfo] = await userDB.aggregate([
                 { $match: { _id: qrGenDoc?.memberId } },
@@ -827,7 +845,7 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
             ]);
 
             res.status(200).json(new ApiResponse(200, null, "Successfully"));
-        } else if("payment.failed"){
+        } else if ("payment.failed") {
             qrGenDoc.callBackStatus = "Failed";
             return res.status(400).json({ succes: "Failed", message: "Txn Id Not Avabile!" })
         }
@@ -839,4 +857,15 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
         release()
     }
 
+})
+
+export const chargeBack = asyncHandler(async (req, res) => {
+    const release = await chargeBackMutex.acquire()
+    try {
+
+    } catch (error) {
+
+    } finally {
+        release()
+    }
 })
