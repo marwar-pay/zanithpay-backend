@@ -527,8 +527,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         if (amount < 1) {
             return res.status(400).json({ message: "Failed", data: `Amount must be 1 or more: ${amount}` });
         }
-
-        // Fetch user and related data
+ 
         let user = await userDB.aggregate([
             {
                 $match: {
