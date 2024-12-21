@@ -76,3 +76,30 @@ export function getPaginationArray(page, limit) {
         }
     ]
 }
+
+export const streamCSV = async (res, query) => {
+    const dataStream = new stream.Readable({ objectMode: true });
+    dataStream._read = () => {};  
+   
+    const parser = new Parser();
+    const cursor = payInModel.find(query).cursor();  
+   
+    cursor.on('data', (doc) => {
+      const csv = parser.parse([doc]);  
+      res.write(csv);   
+    });
+  
+    cursor.on('end', () => {
+      res.end();  
+    });
+  
+    cursor.on('error', (err) => {
+      res.status(500).send({ error: err.message });
+    });
+  
+    // Respond as a CSV file
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="payments.csv"');
+    res.status(200);
+    dataStream.push(null);
+  };
