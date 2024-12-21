@@ -91,8 +91,7 @@ function scheduleWayuPayOutCheck() {
         let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(150);
         try {
             GetData.forEach(async (item) => {
-                console.log(item)
-                // await processWaayuPayOutFn(item)
+                await processWaayuPayOutFn(item)
             });
         } catch (error) {
             console.error('Error during payout check:', error.message);
