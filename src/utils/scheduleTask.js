@@ -87,8 +87,8 @@ const transactionMutex = new Mutex();
 // }
 
 function scheduleWayuPayOutCheck() {
-    cron.schedule('*/50 * * * * *', async () => {
-        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(10);
+    cron.schedule('*/58 * * * * *', async () => {
+        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(100);
         try {
             GetData.forEach(async (item) => {
                 await processWaayuPayOutFn(item)
