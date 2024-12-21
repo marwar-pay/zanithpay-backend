@@ -87,11 +87,12 @@ const transactionMutex = new Mutex();
 // }
 
 function scheduleWayuPayOutCheck() {
-    cron.schedule('*/58 * * * * *', async () => {
-        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).limit(100);
+    cron.schedule('*/10 * * * *', async () => {
+        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(150);
         try {
             GetData.forEach(async (item) => {
-                await processWaayuPayOutFn(item)
+                console.log(item)
+                // await processWaayuPayOutFn(item)
             });
         } catch (error) {
             console.error('Error during payout check:', error.message);
@@ -149,7 +150,7 @@ async function processWaayuPayOutFn(item) {
                 beforeAmount: beforeAmountUser,
                 chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
                 afterAmount: beforeAmountUser - finalEwalletDeducted,
-                description: `Successfully Dr. amount: ${finalEwalletDeducted} with ${item?.trxId}`,
+                description: `Successfully Dr. amount: ${finalEwalletDeducted} with :${item?.trxId}`,
                 transactionStatus: "Success",
             };
 
