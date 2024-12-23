@@ -514,7 +514,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         }
 
         const data = switchApi === "neyopayPayIn" ? {
-            status: callBackData?.txnstatus === "Success" ? "200" : "400",
+            status: callBackData?.txnstatus === "Success" ? 200 : 400,
             payerAmount: callBackData?.amount,
             payerName: callBackData?.payerName,
             txnID: callBackData?.partnerTxnId,
@@ -533,7 +533,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             TxnCompletionDate: callBackData?.TxnCompletionDate
         };
 
-        if (data?.status !== "200") {
+        if (data?.status != 200) {
             return res.status(400).json({ message: "Failed", data: "Transaction is pending or not successful" });
         }
 
