@@ -18,7 +18,6 @@ import oldQrGenerationModel from "../../models/oldQrGeneration.model.js";
 const transactionMutex = new Mutex();
 const generatePayinMutex = new Mutex();
 const razorPayMutex = new Mutex();
-const chargeBackMutex = new Mutex();
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
@@ -368,9 +367,7 @@ export const generatePayment = async (req, res) => {
                 })
                 break;
             case "razorpayPayIn":
-                try {
-                    const tempPayment = await qrGenerationModel.findOne({ trxId })
-                    if (tempPayment) return res.status(400).json({ message: "Failed", data: "Transaction Id already exists." })
+                try { 
                     const paymentData = await qrGenerationModel.create({
                         memberId: user[0]?._id,
                         name,
@@ -379,26 +376,50 @@ export const generatePayment = async (req, res) => {
                     });
 
                     const rzOptions = {
-                        upi_link: true,
+                        // upi_link: true,
                         amount: Number(amount * 100),
                         currency: "INR",
                         accept_partial: false,
-                        first_min_partial_amount: 0,
+                        // first_min_partial_amount: 0,
+                        reference_id:trxId,
                         description: "For XYZ purpose",
                         customer: {
-                            name: name,
-                            //   email: "gaurav.kumar@example.com",
-                            contact: mobileNumber
+                          name: name,
+                          email: "gaurav.kumar@example.com",
+                          contact: mobileNumber
                         },
                         notify: {
-                            sms: true,
-                            email: true
+                          sms: true,
+                          email: true
                         },
                         reminder_enable: true,
                         notes: {
-                            policy_name: "Jeevan Bima"
+                          policy_name: "Jeevan Bima"
                         }
-                    }
+                      }
+
+                    // const rzOptions = {
+                    //     upi_link: true,
+                    //     amount: Number(amount * 100),
+                    //     currency: "INR",
+                    //     accept_partial: false,
+                    //     first_min_partial_amount: 0,
+                    //     reference_id:trxId,
+                    //     description: "For XYZ purpose",
+                    //     customer: {
+                    //         name: name,
+                    //         //   email: "gaurav.kumar@example.com",
+                    //         contact: mobileNumber
+                    //     },
+                    //     notify: {
+                    //         sms: true,
+                    //         email: true
+                    //     },
+                    //     reminder_enable: true,
+                    //     notes: {
+                    //         policy_name: "Jeevan Bima"
+                    //     }
+                    // }
                     const paymentLink = await razorpay.paymentLink.create(rzOptions);
 
                     paymentData.qrData = paymentLink.short_url;
@@ -859,13 +880,3 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
 
 })
 
-export const chargeBack = asyncHandler(async (req, res) => {
-    const release = await chargeBackMutex.acquire()
-    try {
-
-    } catch (error) {
-
-    } finally {
-        release()
-    }
-})
