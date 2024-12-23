@@ -87,8 +87,8 @@ const transactionMutex = new Mutex();
 // }
 
 function scheduleWayuPayOutCheck() {
-    cron.schedule('*/10 * * * *', async () => {
-        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(150);
+    cron.schedule('*/30 * * * * *', async () => {
+        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(100);
         try {
             GetData.forEach(async (item) => {
                 await processWaayuPayOutFn(item)
@@ -116,6 +116,7 @@ async function processWaayuPayOutFn(item) {
     const { data } = await axios.post(uatUrl, postAdd, header);
     // let retryCount = 0;
     // const maxRetries = 3;
+    // console.log(data)
 
     // while (retryCount < maxRetries) {
     const session = await userDB.startSession({ readPreference: 'primary', readConcern: { level: "majority" }, writeConcern: { w: "majority" } });
@@ -126,68 +127,58 @@ async function processWaayuPayOutFn(item) {
 
         // Non-transactional operation can be done outside the critical section
         if (data?.status !== 1) {
-            console.log("failed");
-            await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }.opts);
-        } else {
-            console.log("success");
-
+            console.log("failed added Status");
+            await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }, opts);
             // Use Promise.all for parallel execution of independent tasks
-            const [userWalletInfo] = await Promise.all([
-                userDB.findById(item?.memberId, "_id EwalletBalance", { session }, opts)
-            ]);
+            const userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance", { session }, opts)
 
-            const beforeAmountUser = userWalletInfo.EwalletBalance;
+            const beforeAmountUser = userWalletInfo?.EwalletBalance;
             const finalEwalletDeducted = item?.afterChargeAmount;
 
-            userWalletInfo.EwalletBalance -= finalEwalletDeducted;
+            userWalletInfo.EwalletBalance += finalEwalletDeducted;
             await userWalletInfo.save(opts);
 
             const walletModelDataStore = {
                 memberId: userWalletInfo._id,
-                transactionType: "Dr.",
+                transactionType: "Cr.",
                 transactionAmount: item?.amount,
                 beforeAmount: beforeAmountUser,
                 chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
-                afterAmount: beforeAmountUser - finalEwalletDeducted,
-                description: `Successfully Dr. amount: ${finalEwalletDeducted} with :${item?.trxId}`,
+                afterAmount: beforeAmountUser + finalEwalletDeducted,
+                description: `Successfully Cr. amount: ${finalEwalletDeducted} with :${item?.trxId}`,
                 transactionStatus: "Success",
             };
 
-            // Save wallet and payout data in parallel (these don't require the same session)
-            await Promise.all([
-                walletModel.create(walletModelDataStore),
-                payOutModel.create({
-                    memberId: item?.memberId,
-                    amount: item?.amount,
-                    chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
-                    finalAmount: finalEwalletDeducted,
-                    bankRRN: data?.utr,
-                    trxId: data?.clientOrderId,
-                    optxId: data?.orderId,
-                    isSuccess: "Success",
-                })
-            ]);
+            await walletModel.create(walletModelDataStore, opts)
 
+        }
+
+        else if (data?.status === 1) {
             // Final update and commit in transaction
+
             await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Success" }, opts);
 
-            // Commit transaction
-            await session.commitTransaction();
-            return true;
+            await payOutModel.create({
+                memberId: item?.memberId,
+                amount: item?.amount,
+                chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
+                finalAmount: finalEwalletDeducted,
+                bankRRN: data?.utr,
+                trxId: data?.clientOrderId,
+                optxId: data?.orderId,
+                isSuccess: "Success",
+            })
         }
+        else {
+            console.log("Failed and Success Not Both !");
+        }
+        // Commit transaction
+        await session.commitTransaction();
+        return true;
+
     } catch (error) {
         await session.abortTransaction();
-        // console.error(`Transaction failed: ${error.message}`);
-        // if (error.message.includes("expired")) {
-        //     // console.log('Session expired, retrying...');
-        //     retryCount++;
-        // } else if (error.message.includes("Write conflict") && retryCount < maxRetries) {
-        //     retryCount++;
-        //     // console.log(`Retrying transaction... Attempt ${retryCount}`);
-        //     continue; // Retry the transaction
-        // } else {
-        //     break; // If error is not related to retryable issues, break the loop
-        // }
+        return false
     } finally {
         session.endSession();
         release()
@@ -243,7 +234,7 @@ function logsClearFunc() {
 }
 
 export default function scheduleTask() {
-    scheduleWayuPayOutCheck()
+    // scheduleWayuPayOutCheck()
     logsClearFunc()
     migrateData()
 }
