@@ -9,7 +9,13 @@ import { Mutex } from "async-mutex";
 import qrGenerationModel from "../models/qrGeneration.model.js";
 import oldQrGenerationModel from "../models/oldQrGeneration.model.js";
 import mongoose from "mongoose";
+import Log from "../models/Logs.model.js";
+import callBackResponseModel from "../models/callBackResponse.model.js";
+import payInModel from "../models/payIn.model.js";
+import moment from "moment";
 const transactionMutex = new Mutex();
+const logsMutex = new Mutex();
+const loopMutex = new Mutex();
 
 // function scheduleWayuPayOutCheck() {
 //     cron.schedule('*/30 * * * *', async () => {
@@ -233,8 +239,335 @@ function logsClearFunc() {
     });
 }
 
+// function payinScheduleTask() {
+//     cron.schedule('*/10 * * * * *', async () => {
+//         const release = await logsMutex.acquire()
+//         try {
+//             const logsToUpdate = await Log.aggregate([
+//                 {
+//                     $match: {
+//                         "requestBody.status": 200,
+//                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" }
+//                     }
+//                 },
+//                 { $limit: 100 }
+//             ]);
+
+//             for (const log of logsToUpdate) {
+//                 const trxId = log.requestBody.trxId;
+//                 if (!trxId) continue;
+
+//                 // Find QR Generation documents and update their callback status
+//                 const qrDoc = await qrGenerationModel.findOneAndUpdate(
+//                     { trxId, callBackStatus: "Pending" },
+//                     { callBackStatus: "Success" }
+//                 );
+
+//                 if (!qrDoc) continue;
+
+//                 // Prepare callback data from Log's requestBody
+//                 let callBackData = log.requestBody;
+
+//                 if (Object.keys(callBackData).length === 1) {
+//                     const key = Object.keys(callBackData)[0];
+//                     callBackData = JSON.parse(key);
+//                 }
+
+//                 const switchApi = callBackData.partnerTxnId
+//                     ? "neyopayPayIn"
+//                     : callBackData.txnID
+//                         ? "marwarpayInSwitch"
+//                         : null;
+
+//                 if (!switchApi) continue;
+
+//                 const data =
+//                     switchApi === "neyopayPayIn"
+//                         ? {
+//                             status: callBackData?.txnstatus === "Success" ? 200 : 400,
+//                             payerAmount: callBackData?.amount,
+//                             payerName: callBackData?.payerName,
+//                             txnID: callBackData?.partnerTxnId,
+//                             BankRRN: callBackData?.rrn,
+//                             payerVA: callBackData?.payerVA,
+//                             TxnInitDate: callBackData?.TxnInitDate,
+//                             TxnCompletionDate: callBackData?.TxnCompletionDate,
+//                         }
+//                         : {
+//                             status: callBackData?.status,
+//                             payerAmount: callBackData?.payerAmount,
+//                             payerName: callBackData?.payerName,
+//                             txnID: callBackData?.txnID,
+//                             BankRRN: callBackData?.BankRRN,
+//                             payerVA: callBackData?.payerVA,
+//                             TxnInitDate: callBackData?.TxnInitDate,
+//                             TxnCompletionDate: callBackData?.TxnCompletionDate,
+//                         };
+
+//                 if (data.status !== 200) continue;
+
+//                 const userInfoPromise = userDB.aggregate([
+//                     { $match: { _id: qrDoc.memberId } },
+//                     { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } },
+//                     { $unwind: { path: "$package", preserveNullAndEmptyArrays: true } },
+//                     { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } },
+//                     { $unwind: { path: "$packageCharge", preserveNullAndEmptyArrays: true } },
+//                     { $project: { _id: 1, userName: 1, upiWalletBalance: 1, packageCharge: 1 } },
+//                 ]);
+
+//                 const callBackPayinUrlPromise = callBackResponseModel
+//                     .find({ memberId: qrDoc.memberId, isActive: true })
+//                     .select("_id payInCallBackUrl isActive");
+
+//                 const [userInfoResult, callBackPayinUrlResult] = await Promise.allSettled([
+//                     userInfoPromise,
+//                     callBackPayinUrlPromise,
+//                 ]);
+
+//                 const userInfo = userInfoResult.value?.[0];
+//                 const callBackPayinUrl = callBackPayinUrlResult.value?.[0]?.payInCallBackUrl;
+
+//                 if (!userInfo || !callBackPayinUrl) continue;
+
+//                 const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
+//                 const charge = chargeRange.find(
+//                     (range) => range.lowerLimit <= data.payerAmount && range.upperLimit > data.payerAmount
+//                 );
+
+//                 const userChargeApply =
+//                     charge.chargeType === "Flat"
+//                         ? charge.charge
+//                         : (charge.charge / 100) * data.payerAmount;
+//                 const finalAmountAdd = data.payerAmount - userChargeApply;
+
+//                 const [upiWalletUpdateResult, payInCreateResult] = await Promise.allSettled([
+//                     userDB.findByIdAndUpdate(userInfo._id, {
+//                         upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd,
+//                     }),
+//                     payInModel.create({
+//                         memberId: qrDoc.memberId,
+//                         payerName: data.payerName,
+//                         trxId: data.txnID,
+//                         amount: data.payerAmount,
+//                         chargeAmount: userChargeApply,
+//                         finalAmount: finalAmountAdd,
+//                         vpaId: data.payerVA,
+//                         bankRRN: data.BankRRN,
+//                         description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
+//                         trxCompletionDate: data.TxnCompletionDate,
+//                         trxInItDate: data.TxnInitDate,
+//                         isSuccess: data.status === 200 ? "Success" : "Failed",
+//                     }),
+//                 ]);
+
+//                 if (
+//                     upiWalletUpdateResult.status === "rejected" ||
+//                     payInCreateResult.status === "rejected"
+//                 ) {
+//                     console.error("Error updating wallet or creating pay-in record");
+//                     continue;
+//                 }
+
+//                 const userRespSendApi = {
+//                     status: data.status,
+//                     payerAmount: data.payerAmount,
+//                     payerName: data.payerName,
+//                     txnID: data.txnID,
+//                     BankRRN: data.BankRRN,
+//                     payerVA: data.payerVA,
+//                     TxnInitDate: data.TxnInitDate,
+//                     TxnCompletionDate: data.TxnCompletionDate,
+//                 };
+
+//                 await axios.post(callBackPayinUrl, userRespSendApi, {
+//                     headers: {
+//                         Accept: "application/json",
+//                         "Content-Type": "application/json",
+//                     },
+//                 });
+//             }
+//         } catch (error) {
+
+//         } finally {
+//             release()
+//         }
+//     });
+// }
+
+function payinScheduleTask() {
+    cron.schedule('0 * * * * *', async () => {
+        const release = await logsMutex.acquire()
+        try {
+            const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
+            const endOfYesterday = moment().startOf('day').subtract(1, 'milliseconds').toDate();
+            const logs = await Log.aggregate([
+                {
+                    $match: {
+                        createdAt: {
+                            $gte: startOfYesterday,
+                            $lte: endOfYesterday,
+                        },
+                        "requestBody.status": 200,
+                        "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
+                    },
+                },
+                { $sort: { createdAt: -1 } }
+            ]);
+
+            if (!logs.length) return;
+
+            for (const log of logs) {
+                // const loopRelease = await loopMutex.acquire()
+                try {
+                    const trxId = log.requestBody.txnID;
+                    if (!trxId) throw new Error("Missing trxId in log");
+                    let qrDoc
+                    qrDoc = await qrGenerationModel.findOneAndUpdate(
+                        { trxId },
+                        // { trxId, callBackStatus: "Pending" },
+                        { callBackStatus: "Success" }
+                    )
+
+                    if (!qrDoc) {
+                        qrDoc = await oldQrGenerationModel.findOneAndUpdate(
+                            { trxId },
+                            // { trxId, callBackStatus: "Pending" },
+                            { callBackStatus: "Success" }
+                        );
+                    }
+                    console.log("qrDoc>>", qrDoc);
+
+                    if (!qrDoc) throw new Error("QR Generation document not found or already processed");
+
+                    // Extract callback data from log
+                    let callBackData = log.requestBody;
+                    if (Object.keys(callBackData).length === 1) {
+                        const key = Object.keys(callBackData)[0];
+                        callBackData = JSON.parse(key);
+                    }
+
+                    const switchApi = callBackData.partnerTxnId
+                        ? "neyopayPayIn"
+                        : callBackData.txnID
+                            ? "marwarpayInSwitch"
+                            : null;
+
+                    if (!switchApi) throw new Error("Invalid transaction data in log");
+
+                    const data = switchApi === "neyopayPayIn"
+                        ? {
+                            status: callBackData?.txnstatus === "Success" ? 200 : 400,
+                            payerAmount: callBackData?.amount,
+                            payerName: callBackData?.payerName,
+                            txnID: callBackData?.partnerTxnId,
+                            BankRRN: callBackData?.rrn,
+                            payerVA: callBackData?.payerVA,
+                            TxnInitDate: callBackData?.TxnInitDate,
+                            TxnCompletionDate: callBackData?.TxnCompletionDate,
+                        }
+                        : {
+                            status: callBackData?.status,
+                            payerAmount: callBackData?.payerAmount,
+                            payerName: callBackData?.payerName,
+                            txnID: callBackData?.txnID,
+                            BankRRN: callBackData?.BankRRN,
+                            payerVA: callBackData?.payerVA,
+                            TxnInitDate: callBackData?.TxnInitDate,
+                            TxnCompletionDate: callBackData?.TxnCompletionDate,
+                        };
+
+                    if (data.status !== 200) throw new Error("Transaction is pending or not successful");
+
+                    // Fetch user info and callback URL concurrently
+                    const [userInfo] = await userDB.aggregate([
+                        { $match: { _id: qrDoc.memberId } },
+                        { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } },
+                        { $unwind: { path: "$package", preserveNullAndEmptyArrays: true } },
+                        { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } },
+                        { $unwind: { path: "$packageCharge", preserveNullAndEmptyArrays: true } },
+                        { $project: { _id: 1, userName: 1, upiWalletBalance: 1, packageCharge: 1 } },
+                    ])
+                    // callBackResponseModel.findOne({ memberId: qrDoc.memberId, isActive: true }).select("payInCallBackUrl") 
+
+                    // if (!userInfo || !callBackPayinUrl) throw new Error("User info or callback URL missing");
+                    console.log("userinfo>>>", userInfo);
+
+                    if (!userInfo) throw new Error("User info missing");
+
+                    const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
+                    const charge = chargeRange.find(
+                        (range) => range.lowerLimit <= data.payerAmount && range.upperLimit > data.payerAmount
+                    );
+
+                    if (!charge) return;
+
+                    const userChargeApply =
+                        charge.chargeType === "Flat"
+                            ? charge.charge
+                            : (charge.charge / 100) * data.payerAmount;
+                    const finalAmountAdd = data.payerAmount - userChargeApply;
+                    const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
+                    if (tempPayin) throw new Error("Trasaction already created");
+                    const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
+                        $inc: { upiWalletBalance: finalAmountAdd },
+                    })
+                    
+                    const payInCreateResult = await payInModel.create({
+                        memberId: qrDoc.memberId,
+                        payerName: data.payerName,
+                        trxId: data.txnID,
+                        amount: data.payerAmount,
+                        chargeAmount: userChargeApply,
+                        finalAmount: finalAmountAdd,
+                        vpaId: data.payerVA,
+                        bankRRN: data.BankRRN,
+                        description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
+                        trxCompletionDate: data.TxnCompletionDate,
+                        trxInItDate: data.TxnInitDate,
+                        isSuccess: "Success",
+                    })
+
+                    if (!upiWalletUpdateResult || !payInCreateResult) {
+                        throw new Error("Error updating wallet or creating pay-in record");
+                    }
+
+                    // const userRespSendApi = {
+                    //     status: data.status,
+                    //     payerAmount: data.payerAmount,
+                    //     payerName: data.payerName,
+                    //     txnID: data.txnID,
+                    //     BankRRN: data.BankRRN,
+                    //     payerVA: data.payerVA,
+                    //     TxnInitDate: data.TxnInitDate,
+                    //     TxnCompletionDate: data.TxnCompletionDate,
+                    // };
+
+                    // await axios.post(callBackPayinUrl.payInCallBackUrl, userRespSendApi, {
+                    //     headers: {
+                    //         Accept: "application/json",
+                    //         "Content-Type": "application/json",
+                    //     },
+                    // });
+
+                } catch (error) {
+                    console.error(`Error processing log with trxId ${log.requestBody.txnID}:`, error.message);
+                } finally {
+                    // loopRelease()
+                }
+            }
+
+        } catch (error) {
+            console.log("Error in payin schedule task:", error.message);
+        } finally {
+            release()
+        }
+    });
+}
+
+
 export default function scheduleTask() {
     // scheduleWayuPayOutCheck()
     logsClearFunc()
     migrateData()
+    // payinScheduleTask()
 }

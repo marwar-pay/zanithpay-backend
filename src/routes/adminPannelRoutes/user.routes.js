@@ -2,6 +2,7 @@ import express from "express";
 import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser, authTokenReVerify } from "../../controllers/adminPannelControllers/user.controller.js";
 import { celebrate, Joi } from "celebrate";
 import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
+import { testMiddleware } from "../../middlewares/test.middleware.js";
 const router = express.Router();
 
 router.get("/getUsers", userVerify, getUser);
@@ -33,7 +34,7 @@ router.post("/addUser", celebrate({
     })
 }), userVerify, addUser)
 
-router.post("/updateUser/:id", celebrate({
+router.post("/updateUser/:id", [celebrate({
     body: Joi.object({
         memberType: Joi.string().valid("Admin", "Manager", "Users").optional(),
         fullName: Joi.string().optional(),
@@ -56,7 +57,7 @@ router.post("/updateUser/:id", celebrate({
     params: Joi.object({
         id: Joi.string().trim().length(24).required(),
     })
-}), userVerify, userAuthAdmin, updateUser)
+}), userVerify, userAuthAdmin], updateUser) 
 
 router.post("/login", celebrate({
     body: Joi.object({
