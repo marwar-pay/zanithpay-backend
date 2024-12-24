@@ -53,9 +53,9 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
         const totalDocs = await payOutModelGenerate.countDocuments();
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const pipeline = [
-            { $match: matchFilters },  
-            { $sort: { createdAt: sortDirection } },  
- 
+            { $match: matchFilters },
+            { $sort: { createdAt: sortDirection } },
+
             { $skip: skip },
             { $limit: limit },
 
@@ -520,7 +520,7 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 export const generatePayOut = asyncHandler(async (req, res, next) => {
     const release = await genPayoutMutex.acquire();
     const {
-        userName, authToken, mobileNumber, accountHolderName, accountNumber, 
+        userName, authToken, mobileNumber, accountHolderName, accountNumber,
         ifscCode, trxId, amount, bankName
     } = req.body;
 
@@ -572,7 +572,66 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             amount, gatwayCharge: chargeAmount, afterChargeAmount: finalAmountDeduct, trxId
         });
 
-        const apiResponse = await performPayoutApiCall(payOutApi, trxId, amount, String(mobileNumber), accountHolderName, accountNumber, ifscCode, bankName);
+        const apiConfig = {
+            iServerEuApi: {
+                url: payOutApi.apiURL,
+                headers: { 'Content-Type': 'application/json' },
+                data: {
+                    beneName: accountHolderName, beneAccountNo: accountNumber, beneifsc: ifscCode,
+                    benePhoneNo: mobileNumber, clientReferenceNo: trxId, amount, fundTransferType: "IMPS",
+                    latlong: "22.8031731,88.7874172", pincode: 302012, custName: accountHolderName,
+                    custMobNo: mobileNumber, custIpAddress: "110.235.219.55", beneBankName: bankName
+                },
+                res: async (apiResponse) => {
+                    console.log("apiResponse>>>", apiResponse);
+
+                }
+            },
+            MarwarpayApi: {
+                url: payOutApi.apiURL,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                data: {
+                    txnID: trxId, amount, ifsc: ifscCode, account_no: accountNumber,
+                    account_holder_name: accountHolderName, mobile: mobileNumber, response_type: 1
+                }
+            },
+            waayupayPayOutApi: {
+                url: payOutApi.apiURL,
+                headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
+                data: {
+                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5", secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
+                    number: String(mobileNumber), amount: amount.toString(), transferMode: "IMPS",
+                    accountNo: accountNumber, ifscCode, beneficiaryName: accountHolderName,
+                    vpa: "ajaybudaniya1@ybl", clientOrderId: trxId
+                },
+                res: async (apiResponse) => {
+                    console.log("apiResponse>>>", apiResponse);
+                    const { statusCode, status, message, orderId, utr } = apiResponse;
+
+                    if (status === 1) {
+                        let payoutDataStore = {
+                            memberId: user?._id,
+                            amount: amount,
+                            chargeAmount: chargeAmount,
+                            finalAmount: finalAmountDeduct,
+                            bankRRN: utr,
+                            trxId: trxId,
+                            optxId: orderId,
+                            isSuccess: "Success"
+                        }
+                        await payOutModel.create(payoutDataStore);
+                        return { statusCode, status, trxId: orderId, opt_msg: message }
+                    }
+
+                    user.EwalletBalance += finalAmountDeduct;
+                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    return { statusCode, status, trxId: orderId, opt_msg: message }
+
+                }
+            }
+        };
+
+        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig);
 
         if (!apiResponse) {
             payOutModelGen.isSuccess = "Failed";
@@ -580,17 +639,9 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             return res.status(500).json({ message: "Failed", data: { statusCode: 400, txnID: trxId } });
         }
 
-        const { statusCode, status, message, orderId, utr } = apiResponse;
+        const response = await apiConfig[payOutApi.apiName].res(apiResponse)
 
-        if (status === 1) {
-            await payOutModel.updateOne({ trxId }, { isSuccess: "Success", bankRRN: utr });
-            return res.status(200).json({ statusCode, status, trxId: orderId, opt_msg: message });
-        }
-
-        user.EwalletBalance += finalAmountDeduct;
-        await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
-
-        return res.status(200).json({ statusCode, status, trxId: orderId, opt_msg: message });
+        return res.status(200).json(response);
     } catch (error) {
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
@@ -598,45 +649,16 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         release();
     }
 });
- 
-export const performPayoutApiCall = async (payOutApi, trxId, amount, mobileNumber, accountHolderName, accountNumber, ifscCode, bankName) => {
-    const apiConfig = {
-        iServerEuApi: {
-            url: payOutApi.apiURL,
-            headers: { 'Content-Type': 'application/json' },
-            data: {
-                beneName: accountHolderName, beneAccountNo: accountNumber, beneifsc: ifscCode,
-                benePhoneNo: mobileNumber, clientReferenceNo: trxId, amount, fundTransferType: "IMPS",
-                latlong: "22.8031731,88.7874172", pincode: 302012, custName: accountHolderName,
-                custMobNo: mobileNumber, custIpAddress: "110.235.219.55", beneBankName: bankName
-            }
-        },
-        MarwarpayApi: {
-            url: payOutApi.apiURL,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            data: {
-                txnID: trxId, amount, ifsc: ifscCode, account_no: accountNumber,
-                account_holder_name: accountHolderName, mobile: mobileNumber, response_type: 1
-            }
-        },
-        waayupayPayOutApi: {
-            url: payOutApi.apiURL,
-            headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
-            data: {
-                clientId: "adb25735-69c7-4411-a120-5f2e818bdae5", secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
-                number: mobileNumber, amount: amount.toString(), transferMode: "IMPS",
-                accountNo: accountNumber, ifscCode, beneficiaryName: accountHolderName,
-                vpa: "ajaybudaniya1@ybl", clientOrderId: trxId
-            }
-        }
-    };
+
+export const performPayoutApiCall = async (payOutApi, apiConfig) => {
+
 
     const apiDetails = apiConfig[payOutApi.apiName];
     if (!apiDetails) return null;
 
-    try { 
+    try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
-        
+
         return response.data || null;
     } catch (error) {
         console.error(`API Call Error for ${payOutApi.apiName}:`, error.message);
@@ -934,8 +956,8 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
 export const chargeBack = asyncHandler(async (req, res) => {
     const release = await chargeBackMutex.acquire()
     try {
-        
-        
+
+
 
     } catch (error) {
 
