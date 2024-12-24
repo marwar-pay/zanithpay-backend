@@ -37,7 +37,7 @@ export const getAllChargeBack = asyncHandler(async (req, res) => {
             "userInfo.fullName": 1,
             "userInfo.memberId": 1
         }
-    }]).allowDiskUse(true);
+    }, { $sort: { createdAt: -1 } }]).allowDiskUse(true);
 
     if (getchargeBack.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Charge Back Found !" })
