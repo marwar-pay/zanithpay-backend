@@ -636,7 +636,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             statusCode: "400",
                             txnID: trxId
                         }
-                        return res.status(500).json({ message: "Failed", data: respSend })
+                        return { message: "Failed", data: respSend }
 
                     }
 
