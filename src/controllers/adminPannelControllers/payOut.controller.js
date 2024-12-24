@@ -572,7 +572,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             amount, gatwayCharge: chargeAmount, afterChargeAmount: finalAmountDeduct, trxId
         });
 
-        const apiResponse = await performPayoutApiCall(payOutApi, trxId, amount, mobileNumber, accountHolderName, accountNumber, ifscCode, bankName);
+        const apiResponse = await performPayoutApiCall(payOutApi, trxId, amount, String(mobileNumber), accountHolderName, accountNumber, ifscCode, bankName);
 
         if (!apiResponse) {
             payOutModelGen.isSuccess = "Failed";
@@ -634,8 +634,9 @@ export const performPayoutApiCall = async (payOutApi, trxId, amount, mobileNumbe
     const apiDetails = apiConfig[payOutApi.apiName];
     if (!apiDetails) return null;
 
-    try {
-        const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers, timeout: 10000 });
+    try { 
+        const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
+        
         return response.data || null;
     } catch (error) {
         console.error(`API Call Error for ${payOutApi.apiName}:`, error.message);
