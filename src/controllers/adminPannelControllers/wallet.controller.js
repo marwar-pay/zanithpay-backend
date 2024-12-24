@@ -4,6 +4,7 @@ import payInModel from "../../models/payIn.model.js";
 import userDB from "../../models/user.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import { Parser } from 'json2csv';
 import mongoose, { Mongoose } from "mongoose";
 import { getPaginationArray } from "../../utils/helpers.js";
 
@@ -107,7 +108,7 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
 });
 
 export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
-    let { keyword = "", startDate, endDate, page = 1, limit = 25, memberId } = req.query;
+    let { keyword = "", startDate, endDate, page = 1, limit = 25, memberId, export: exportToCSV } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
     const trimmedKeyword = keyword.trim();
@@ -142,8 +143,12 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
         const userQuery = [
             { $match: matchFilters },
             { $sort: { createdAt: sortDirection } },
-            { $skip: skip },
-            { $limit: limit },
+            ...(exportToCSV != "true"
+                ? [
+                    { $skip: skip },
+                    { $limit: limit }
+                ]
+                : []),
             {
                 $lookup: {
                     from: "users",
@@ -177,6 +182,33 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
         ];
 
         let transactions = await eWalletModel.aggregate(userQuery).allowDiskUse(true);
+
+        if (exportToCSV === "true") {
+            const fields = [
+                "_id",
+                    "memberId",
+                    "transactionType",
+                    "transactionAmount",
+                    "beforeAmount",
+                    "chargeAmount",
+                    "afterAmount",
+                    "description",
+                    "transactionStatus",
+                    "createdAt",
+                    "updatedAt",
+                    "userInfo.userName",
+                    "userInfo.fullName",
+                    "userInfo.memberId"
+            ];
+            const json2csvParser = new Parser({ fields });
+            const csv = json2csvParser.parse(transactions);
+
+            res.header('Content-Type', 'text/csv');
+            res.attachment(`transactions-${startDate}-${endDate}.csv`);
+            console.log("inside export if");
+
+            return res.status(200).send(csv);
+        }
 
         if (!transactions || transactions.length === 0) {
             return res.status(200).json({
