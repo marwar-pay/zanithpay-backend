@@ -572,18 +572,73 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             amount, gatwayCharge: chargeAmount, afterChargeAmount: finalAmountDeduct, trxId
         });
 
+        const passKey = "Fv5S9m79z7rUq0LG7NE4VW4GIICNPaZYPnngonlvdkxNU902";
+        const EncKey = "8LWVEmyHYcJZjjB0WW2VQ+YDttzua5BGMnOX66Vi5KE=";
+        let HeaderObj = {
+            client_id: "ZYSEZxHszNlEzMuihWIltIqClSVFqqQeUbPYTfpjKMQiDXKJ",
+            client_secret: "r5kOP0Rdxj4qYjbRFHyUKHetEGTOH1ZaHUgz4p5xqFw3aYxVvGDuFrGcHDKKudFa",
+            epoch: String(Date.now())
+        }
+        let BodyObj = {
+            beneName: accountHolderName,
+            beneAccountNo: accountNumber,
+            beneifsc: ifscCode,
+            benePhoneNo: mobileNumber,
+            clientReferenceNo: trxId,
+            amount,
+            fundTransferType: "IMPS",
+            latlong: "22.8031731,88.7874172",
+            pincode: 302012,
+            custName: accountHolderName,
+            custMobNo: mobileNumber,
+            custIpAddress: "110.235.219.55",
+            beneBankName: bankName
+        }
+        let headerSecrets = await AESUtils.EncryptRequest(HeaderObj, EncKey)
+        let BodyRequestEnc = await AESUtils.EncryptRequest(BodyObj, EncKey)
+
         const apiConfig = {
             iServerEuApi: {
                 url: payOutApi.apiURL,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'header_secrets': headerSecrets,
+                    'pass_key': passKey,
+                    'Content-Type': 'application/json'
+                },
                 data: {
-                    beneName: accountHolderName, beneAccountNo: accountNumber, beneifsc: ifscCode,
-                    benePhoneNo: mobileNumber, clientReferenceNo: trxId, amount, fundTransferType: "IMPS",
-                    latlong: "22.8031731,88.7874172", pincode: 302012, custName: accountHolderName,
-                    custMobNo: mobileNumber, custIpAddress: "110.235.219.55", beneBankName: bankName
+                    RequestData: BodyRequestEnc
                 },
                 res: async (apiResponse) => {
-                    console.log("apiResponse>>>", apiResponse);
+                    try {
+                        let bankServerResp = apiResponse?.ResponseData
+                        // decrypt the data and send to client;
+                        let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, EncKey);
+                        let BankJsonConvt = await JSON.parse(BodyResponceDec);
+
+                        if (BankJsonConvt.subStatus == -1 || 2 || -2) {
+                            payOutModelGen.isSuccess = "Failed";
+                            await payOutModelGen.save();
+                            return { message: BankJsonConvt}
+                        }
+
+                        let userRespPayOut = {
+                            statusCode: BankJsonConvt?.subStatus,
+                            status: BankJsonConvt?.status,
+                            trxId: BankJsonConvt?.clientReferenceNo,
+                            opt_msg: BankJsonConvt?.statusDesc
+                        }
+
+                        return new ApiResponse(200, userRespPayOut)
+                    } catch (error) {
+                        payOutModelGen.isSuccess = "Failed";
+                        await payOutModelGen.save();
+                        let respSend = {
+                            statusCode: "400",
+                            txnID: trxId
+                        }
+                        return res.status(500).json({ message: "Failed", data: respSend })
+
+                    }
 
                 }
             },
