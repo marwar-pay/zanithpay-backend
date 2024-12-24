@@ -130,7 +130,7 @@ async function processWaayuPayOutFn(item) {
             console.log("failed added Status");
             await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }, opts);
             // Use Promise.all for parallel execution of independent tasks
-            const userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance", { session }, opts)
+            const userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance", opts)
 
             const beforeAmountUser = userWalletInfo?.EwalletBalance;
             const finalEwalletDeducted = item?.afterChargeAmount;
