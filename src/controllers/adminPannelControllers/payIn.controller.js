@@ -367,7 +367,7 @@ export const generatePayment = async (req, res) => {
                 })
                 break;
             case "razorpayPayIn":
-                try { 
+                try {
                     const paymentData = await qrGenerationModel.create({
                         memberId: user[0]?._id,
                         name,
@@ -381,22 +381,22 @@ export const generatePayment = async (req, res) => {
                         currency: "INR",
                         accept_partial: false,
                         // first_min_partial_amount: 0,
-                        reference_id:trxId,
+                        reference_id: trxId,
                         description: "For XYZ purpose",
                         customer: {
-                          name: name,
-                          email: "gaurav.kumar@example.com",
-                          contact: mobileNumber
+                            name: name,
+                            email: "gaurav.kumar@example.com",
+                            contact: mobileNumber
                         },
                         notify: {
-                          sms: true,
-                          email: true
+                            sms: true,
+                            email: true
                         },
                         reminder_enable: true,
                         notes: {
-                          policy_name: "Jeevan Bima"
+                            policy_name: "Jeevan Bima"
                         }
-                      }
+                    }
 
                     // const rzOptions = {
                     //     upi_link: true,
@@ -545,7 +545,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         pack.callBackStatus = "Success";
         await pack.save();
 
-        const userInfoPromise = userDB.aggregate([
+        const [userInfo] = await userDB.aggregate([
             { $match: { _id: pack?.memberId } },
             { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } },
             { $unwind: { path: "$package", preserveNullAndEmptyArrays: true } },
@@ -554,12 +554,9 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             { $project: { _id: 1, userName: 1, upiWalletBalance: 1, packageCharge: 1 } }
         ]);
 
-        const callBackPayinUrlPromise = callBackResponseModel.find({ memberId: pack?.memberId, isActive: true }).select("_id payInCallBackUrl isActive");
-
-        const [userInfoResult, callBackPayinUrlResult] = await Promise.allSettled([userInfoPromise, callBackPayinUrlPromise]);
-
-        const userInfo = userInfoResult[0];
-        const callBackPayinUrl = callBackPayinUrlResult[0]?.payInCallBackUrl;
+        const callBackPayinUrlResult = await callBackResponseModel.findOne({ memberId: pack?.memberId, isActive: true }).select("_id payInCallBackUrl isActive"); 
+        
+        const callBackPayinUrl = callBackPayinUrlResult?.payInCallBackUrl;
 
         if (!userInfo || !callBackPayinUrl) {
             return res.status(400).json({ message: "Failed", data: "User info or callback URL missing" });
@@ -762,7 +759,7 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
 
             if (req.body.event === "payment_link.paid") {
                 qrGenDoc.callBackStatus = "Success";
-            }else {
+            } else {
                 qrGenDoc.callBackStatus = "Failed";
             }
 

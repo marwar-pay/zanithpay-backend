@@ -395,7 +395,7 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('*/10 * * * * *', async () => {
+    cron.schedule('0 * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
             const startOfYesterday = moment().startOf('day').subtract(30, 'day').toDate();
@@ -409,12 +409,12 @@ function payinScheduleTask() {
                         },
 
                         "requestBody.status": 200,
-                        // "requestBody.txnID": { $regex: "seabird74186942", $options: "i" },
+                        // "requestBody.txnID": { $regex: "kggjfddfjsjeeheedffsrf44", $options: "i" },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
                     },
                 },
                 { $sort: { createdAt: -1 } },
-                { $limit: 2 }
+                { $limit: 1 }
             ]);
 
             if (!logs.length) return;
@@ -441,8 +441,7 @@ function payinScheduleTask() {
                     console.log("qrDoc>>", qrDoc);
 
                     if (!qrDoc) throw new Error("QR Generation document not found or already processed");
-
-                    // Extract callback data from log
+ 
                     let callBackData = log.requestBody;
                     if (Object.keys(callBackData).length === 1) {
                         const key = Object.keys(callBackData)[0];
@@ -490,18 +489,19 @@ function payinScheduleTask() {
                         { $unwind: { path: "$packageCharge", preserveNullAndEmptyArrays: true } },
                         { $project: { _id: 1, userName: 1, upiWalletBalance: 1, packageCharge: 1 } },
                     ])
-                    // callBackResponseModel.findOne({ memberId: qrDoc.memberId, isActive: true }).select("payInCallBackUrl") 
-
-                    // if (!userInfo || !callBackPayinUrl) throw new Error("User info or callback URL missing");
-                    console.log("userinfo>>>", userInfo);
+                    const callBackPayinUrl = await callBackResponseModel.findOne({ memberId: qrDoc.memberId, isActive: true }).select("payInCallBackUrl") 
+                     
+                    
+                    if (!callBackPayinUrl) throw new Error("Callback URL is missing");
+                     
 
                     if (!userInfo) throw new Error("User info missing");
 
                     const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
                     const charge = chargeRange.find(
                         (range) => range.lowerLimit <= data.payerAmount && range.upperLimit > data.payerAmount
-                    );
-
+                    ); 
+                    
                     if (!charge) return;
 
                     const userChargeApply =
@@ -511,6 +511,7 @@ function payinScheduleTask() {
                     const finalAmountAdd = data.payerAmount - userChargeApply;
                     const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
                     if (tempPayin) throw new Error("Trasaction already created");
+
                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
                         $inc: { upiWalletBalance: finalAmountAdd },
                     })
