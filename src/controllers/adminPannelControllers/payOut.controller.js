@@ -683,6 +683,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             isSuccess: "Success"
                         }
                         await payOutModel.create(payoutDataStore);
+                        payOutModelGen.isSuccess = "Success"
+                        await payOutModelGen.save()
                         return { statusCode, status, trxId: trxId, opt_msg: message }
                     }
 
@@ -718,8 +720,7 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
 
     const apiDetails = apiConfig[payOutApi.apiName];
-    if (!apiDetails) return null;
-    console.log("apidetails.headersssss", apiDetails.headers);
+    if (!apiDetails) return null; 
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
