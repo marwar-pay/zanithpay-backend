@@ -20,6 +20,9 @@ const logSchema = new mongoose.Schema({
     responseBody:{
         type:Object,
         default:{}
+    },
+    description:{
+        type: Array,
     }
 },{
     timestamps:true

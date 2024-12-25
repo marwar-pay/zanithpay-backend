@@ -574,12 +574,12 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
         const passKey = "Fv5S9m79z7rUq0LG7NE4VW4GIICNPaZYPnngonlvdkxNU902";
         const EncKey = "8LWVEmyHYcJZjjB0WW2VQ+YDttzua5BGMnOX66Vi5KE=";
-        let HeaderObj = {
+        const HeaderObj = {
             client_id: "ZYSEZxHszNlEzMuihWIltIqClSVFqqQeUbPYTfpjKMQiDXKJ",
             client_secret: "r5kOP0Rdxj4qYjbRFHyUKHetEGTOH1ZaHUgz4p5xqFw3aYxVvGDuFrGcHDKKudFa",
             epoch: String(Date.now())
         }
-        let BodyObj = {
+        const BodyObj = {
             beneName: accountHolderName,
             beneAccountNo: accountNumber,
             beneifsc: ifscCode,
@@ -594,16 +594,18 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             custIpAddress: "110.235.219.55",
             beneBankName: bankName
         }
-        let headerSecrets = await AESUtils.EncryptRequest(HeaderObj, EncKey)
-        let BodyRequestEnc = await AESUtils.EncryptRequest(BodyObj, EncKey)
+        const headerSecrets = await AESUtils.EncryptRequest(HeaderObj, EncKey)
+        const BodyRequestEnc = await AESUtils.EncryptRequest(BodyObj, EncKey)
 
         const apiConfig = {
             iServerEuApi: {
                 url: payOutApi.apiURL,
                 headers: {
-                    'header_secrets': headerSecrets,
-                    'pass_key': passKey,
-                    'Content-Type': 'application/json'
+                    headers: {
+                        'header_secrets': headerSecrets,
+                        'pass_key': passKey,
+                        'Content-Type': 'application/json'
+                    }
                 },
                 data: {
                     RequestData: BodyRequestEnc
@@ -618,7 +620,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         if (BankJsonConvt.subStatus == -1 || 2 || -2) {
                             payOutModelGen.isSuccess = "Failed";
                             await payOutModelGen.save();
-                            return { message: BankJsonConvt}
+                            return { message: BankJsonConvt }
                         }
 
                         let userRespPayOut = {
@@ -654,10 +656,16 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 url: payOutApi.apiURL,
                 headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
                 data: {
-                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5", secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
-                    number: String(mobileNumber), amount: amount.toString(), transferMode: "IMPS",
-                    accountNo: accountNumber, ifscCode, beneficiaryName: accountHolderName,
-                    vpa: "ajaybudaniya1@ybl", clientOrderId: trxId
+                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5", 
+                    secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
+                    number: String(mobileNumber), 
+                    amount: amount.toString(), 
+                    transferMode: "IMPS",
+                    accountNo: accountNumber, 
+                    ifscCode, 
+                    beneficiaryName: accountHolderName,
+                    vpa: "ajaybudaniya1@ybl", 
+                    clientOrderId: trxId
                 },
                 res: async (apiResponse) => {
                     console.log("apiResponse>>>", apiResponse);
@@ -675,18 +683,19 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             isSuccess: "Success"
                         }
                         await payOutModel.create(payoutDataStore);
-                        return { statusCode, status, trxId: orderId, opt_msg: message }
+                        return { statusCode, status, trxId: trxId, opt_msg: message }
                     }
 
                     user.EwalletBalance += finalAmountDeduct;
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
-                    return { statusCode, status, trxId: orderId, opt_msg: message }
+                    return { statusCode, status, trxId: trxId, opt_msg: message }
 
                 }
             }
         };
 
         const apiResponse = await performPayoutApiCall(payOutApi, apiConfig);
+        console.log("apiResponse>>>", apiResponse);
 
         if (!apiResponse) {
             payOutModelGen.isSuccess = "Failed";
@@ -710,6 +719,7 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
     const apiDetails = apiConfig[payOutApi.apiName];
     if (!apiDetails) return null;
+    console.log("apidetails.headersssss", apiDetails.headers);
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
@@ -717,7 +727,7 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
         return response.data || null;
     } catch (error) {
         console.error(`API Call Error for ${payOutApi.apiName}:`, error.message);
-        return null;
+        return `API Call Error for ${payOutApi.apiName}: ${error.message}`;
     }
 };
 
@@ -755,6 +765,8 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
 export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     // const release = await payoutCallbackMutex.acquire()
     try {
+        console.log("req.body in payoutcallback response", req.body);
+        
         let callBackPayout = req.body;
         let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
@@ -791,7 +803,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
         }
 
-        if (getDocoment && data?.rrn) {
+        if (getDocoment && data?.rrn && getDocoment?.isSuccess === "Pending") {
             getDocoment.isSuccess = "Success"
             await getDocoment.save();
 
@@ -822,10 +834,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 transactionStatus: "Success",
             }
 
-            // userWalletInfo.EwalletBalance -= finalEwalletDeducted
+            userWalletInfo.EwalletBalance -= finalEwalletDeducted
             await userWalletInfo.save();
 
-            // let storeTrx = await walletModel.create(walletModelDataStore)
+            let storeTrx = await walletModel.create(walletModelDataStore)
 
             let payoutDataStore = {
                 memberId: getDocoment?.memberId,

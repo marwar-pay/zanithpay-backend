@@ -376,7 +376,7 @@ export const generatePayment = async (req, res) => {
                     });
 
                     const rzOptions = {
-                        // upi_link: true,
+                        upi_link: true,
                         amount: Number(amount * 100),
                         currency: "INR",
                         accept_partial: false,

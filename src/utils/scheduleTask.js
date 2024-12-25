@@ -395,10 +395,10 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('0 * * * * *', async () => {
+    cron.schedule('*/10 * * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
-            const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
+            const startOfYesterday = moment().startOf('day').subtract(30, 'day').toDate();
             const endOfYesterday = moment().startOf('day').subtract(1, 'milliseconds').toDate();
             const logs = await Log.aggregate([
                 {
@@ -407,17 +407,20 @@ function payinScheduleTask() {
                             $gte: startOfYesterday,
                             $lte: endOfYesterday,
                         },
+
                         "requestBody.status": 200,
+                        // "requestBody.txnID": { $regex: "seabird74186942", $options: "i" },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
                     },
                 },
-                { $sort: { createdAt: -1 } }
+                { $sort: { createdAt: -1 } },
+                { $limit: 2 }
             ]);
 
             if (!logs.length) return;
 
             for (const log of logs) {
-                // const loopRelease = await loopMutex.acquire()
+                const loopRelease = await loopMutex.acquire()
                 try {
                     const trxId = log.requestBody.txnID;
                     if (!trxId) throw new Error("Missing trxId in log");
@@ -511,7 +514,7 @@ function payinScheduleTask() {
                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
                         $inc: { upiWalletBalance: finalAmountAdd },
                     })
-                    
+
                     const payInCreateResult = await payInModel.create({
                         memberId: qrDoc.memberId,
                         payerName: data.payerName,
@@ -549,10 +552,14 @@ function payinScheduleTask() {
                     //     },
                     // });
 
+                    await Log.findByIdAndUpdate(log._id, {
+                        $push: { description: "Log processed for payin and marked success" },
+                    });
+
                 } catch (error) {
                     console.error(`Error processing log with trxId ${log.requestBody.txnID}:`, error.message);
                 } finally {
-                    // loopRelease()
+                    loopRelease()
                 }
             }
 
