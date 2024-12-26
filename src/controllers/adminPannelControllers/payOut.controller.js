@@ -602,7 +602,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 url: payOutApi.apiURL,
                 headers: {
                     'header_secrets': headerSecrets,
-                    'pass_key': process.env.passKey,
+                    'pass_key': process.env.PASS_KEY,
                     'Content-Type': 'application/json'
                 },
                 data: {
