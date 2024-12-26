@@ -395,10 +395,10 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('*/10 * * * * *', async () => {
+    cron.schedule('0,30 * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
-            const startOfYesterday = moment().startOf('day').subtract(30, 'day').toDate();
+            const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
             const endOfYesterday = moment().startOf('day').subtract(1, 'milliseconds').toDate();
             const logs = await Log.aggregate([
                 {
@@ -416,7 +416,7 @@ function payinScheduleTask() {
                     },
                 },
                 { $sort: { createdAt: -1 } },
-                { $limit: 1 }
+                { $limit: 10 }
             ]);
 
             if (!logs.length) return;
@@ -585,5 +585,5 @@ export default function scheduleTask() {
     // scheduleWayuPayOutCheck()
     logsClearFunc()
     migrateData()
-    // payinScheduleTask()
+    payinScheduleTask()
 }
