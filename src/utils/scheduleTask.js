@@ -409,8 +409,7 @@ function payinScheduleTask() {
                             $lte: endOfYesterday,
                         },
 
-                        "requestBody.status": 200,
-                        "requestBody.txnID": { $in: ["seabird74280279", "seabird74280050", "seabird74280293", "seabird74280283", "seabird74280320", "seabird74280327","seabird74280301","seabird74280292","seabird74280260","seabird74280203"] } ,
+                        "requestBody.status": 200, 
                         // "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
                         url:{ $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
