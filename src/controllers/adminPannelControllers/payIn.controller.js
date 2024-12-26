@@ -559,7 +559,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
 
         const callBackPayinUrl = callBackPayinUrlResult?.payInCallBackUrl;
 
-        if (userInfo) {
+        if (!userInfo) {
             return res.status(400).json({ message: "Failed", data: "User info is missing" });
         }
 
