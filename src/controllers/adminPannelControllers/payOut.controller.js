@@ -712,6 +712,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     await walletModel.create(walletModelDataStoreCR)
                     user.EwalletBalance += finalAmountDeduct;
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    payOutModelGen.isSuccess = "Failed"
+                    await await payOutModelGen.save()
                     return { statusCode, status, trxId: trxId, opt_msg: message }
 
                 }
