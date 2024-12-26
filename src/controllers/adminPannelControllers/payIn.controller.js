@@ -601,7 +601,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             TxnInitDate: data.TxnInitDate,
             TxnCompletionDate: data.TxnCompletionDate
         };
-        if (callBackPayinUrl) {
+        if (!callBackPayinUrl) {
             return res.status(400).json({ message: "Failed", data: "Callback URL is missing" });
         }
 
