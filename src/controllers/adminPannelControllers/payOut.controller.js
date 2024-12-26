@@ -663,7 +663,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     clientOrderId: trxId
                 },
                 res: async (apiResponse) => {
-                    const { statusCode, status, message, orderId, utr } = apiResponse;
+                    const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
                     console.log("status>>>>", status);
                     user.EwalletBalance -= finalAmountDeduct;
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
@@ -699,7 +699,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             Message: message,
                             OrderId: orderId,
                             Status: status,
-                            ClientOrderId: orderId,
+                            ClientOrderId: clientOrderId,
                             PaymentMode: "IMPS",
                             Amount: amount,
                             Date: new Date().toString(),
