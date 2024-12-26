@@ -396,7 +396,7 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('*/10 * * * * *', async () => {
+    cron.schedule('0,30 * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
             const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
