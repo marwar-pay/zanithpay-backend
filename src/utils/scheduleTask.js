@@ -13,6 +13,7 @@ import Log from "../models/Logs.model.js";
 import callBackResponseModel from "../models/callBackResponse.model.js";
 import payInModel from "../models/payIn.model.js";
 import moment from "moment";
+import upiWalletModel from "../models/upiWallet.model.js";
 const transactionMutex = new Mutex();
 const logsMutex = new Mutex();
 const loopMutex = new Mutex();
@@ -395,7 +396,7 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('0,30 * * * *', async () => {
+    cron.schedule('*/10 * * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
             const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
@@ -409,6 +410,7 @@ function payinScheduleTask() {
                         },
 
                         "requestBody.status": 200,
+                        "requestBody.txnID": { $in: ["seabird74280279", "seabird74280050", "seabird74280293", "seabird74280283", "seabird74280320", "seabird74280327","seabird74280301","seabird74280292","seabird74280260","seabird74280203"] } ,
                         // "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
                         url:{ $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
@@ -481,8 +483,7 @@ function payinScheduleTask() {
                         };
 
                     if (data.status !== 200) throw new Error("Transaction is pending or not successful");
-
-                    // Fetch user info and callback URL concurrently
+ 
                     const [userInfo] = await userDB.aggregate([
                         { $match: { _id: qrDoc.memberId } },
                         { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } },
@@ -511,6 +512,7 @@ function payinScheduleTask() {
                             ? charge.charge
                             : (charge.charge / 100) * data.payerAmount;
                     const finalAmountAdd = data.payerAmount - userChargeApply;
+                    
                     const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
                     if (tempPayin) {
                         await Log.findByIdAndUpdate(log._id, {
@@ -518,7 +520,16 @@ function payinScheduleTask() {
                         });
                         throw new Error("Trasaction already created");
                     }
-
+                    const upiWalletDataObject = { 
+                        memberId: userInfo?._id, 
+                        transactionType: "Cr.", 
+                        transactionAmount: finalAmountAdd, 
+                        beforeAmount: userInfo?.upiWalletBalance, 
+                        afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd), 
+                        description: `Successfully Cr. amount: ${finalAmountAdd}`, 
+                        transactionStatus: "Success" }
+                    
+                    await upiWalletModel.create(upiWalletDataObject);
                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
                         $inc: { upiWalletBalance: finalAmountAdd },
                     })
@@ -553,6 +564,8 @@ function payinScheduleTask() {
                         TxnCompletionDate: data.TxnCompletionDate,
                     };
                     console.log("callBackPayinUrl.payInCallBackUrl>>>", callBackPayinUrl.payInCallBackUrl, userRespSendApi);
+
+                    
                     
                     await axios.post(callBackPayinUrl.payInCallBackUrl, userRespSendApi, {
                         headers: {
