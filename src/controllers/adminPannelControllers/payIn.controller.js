@@ -578,7 +578,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             finalAmount: finalAmountAdd,
             vpaId: data.payerVA,
             bankRRN: data.BankRRN,
-            description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
+            description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN} trxId: ${data.txnID}`,
             trxCompletionDate: data.TxnCompletionDate,
             trxInItDate: data.TxnInitDate,
             isSuccess: "Success"
