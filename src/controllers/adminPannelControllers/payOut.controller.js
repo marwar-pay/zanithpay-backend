@@ -694,8 +694,18 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         await payOutModel.create(payoutDataStore);
                         payOutModelGen.isSuccess = "Success"
                         await payOutModelGen.save()
-
-
+                        let userCustomCallBackGen = {
+                            StatusCode: statusCode,
+                            Message: message,
+                            OrderId: orderId,
+                            Status: status,
+                            ClientOrderId: orderId,
+                            PaymentMode: "IMPS",
+                            Amount: amount,
+                            Date: new Date().toString(),
+                            UTR: utr,
+                        }
+                        await payoutCallBackResponse({ body: userCustomCallBackGen })
                         return { statusCode, status: 0, trxId: trxId, opt_msg: message }
                     }
 
