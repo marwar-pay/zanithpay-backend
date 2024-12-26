@@ -667,8 +667,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     vpa: "ajaybudaniya1@ybl", 
                     clientOrderId: trxId
                 },
-                res: async (apiResponse) => {
-                    console.log("apiResponse>>>", apiResponse);
+                res: async (apiResponse) => { 
                     const { statusCode, status, message, orderId, utr } = apiResponse;
 
                     if (status === 1) {
@@ -696,8 +695,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             }
         };
 
-        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig);
-        console.log("apiResponse>>>", apiResponse);
+        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig); 
 
         if (!apiResponse) {
             payOutModelGen.isSuccess = "Failed";
