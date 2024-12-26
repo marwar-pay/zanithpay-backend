@@ -575,8 +575,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
         const passKey = "Fv5S9m79z7rUq0LG7NE4VW4GIICNPaZYPnngonlvdkxNU902";
         const EncKey = "8LWVEmyHYcJZjjB0WW2VQ+YDttzua5BGMnOX66Vi5KE=";
         const HeaderObj = {
-            client_id: "ZYSEZxHszNlEzMuihWIltIqClSVFqqQeUbPYTfpjKMQiDXKJ",
-            client_secret: "r5kOP0Rdxj4qYjbRFHyUKHetEGTOH1ZaHUgz4p5xqFw3aYxVvGDuFrGcHDKKudFa",
+            client_id: process.env.CLIENT_ID,
+            client_secret: process.env.CLIENT_SECRET,
             epoch: String(Date.now())
         }
         const BodyObj = {
@@ -594,15 +594,15 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             custIpAddress: "110.235.219.55",
             beneBankName: bankName
         }
-        const headerSecrets = await AESUtils.EncryptRequest(HeaderObj, EncKey)
-        const BodyRequestEnc = await AESUtils.EncryptRequest(BodyObj, EncKey)
+        const headerSecrets = await AESUtils.EncryptRequest(HeaderObj, process.env.ENC_KEY)
+        const BodyRequestEnc = await AESUtils.EncryptRequest(BodyObj, process.env.ENC_KEY)
 
         const apiConfig = {
             iServerEuApi: {
                 url: payOutApi.apiURL,
                 headers: {
                     'header_secrets': headerSecrets,
-                    'pass_key': passKey,
+                    'pass_key': process.env.passKey,
                     'Content-Type': 'application/json'
                 },
                 data: {
@@ -610,9 +610,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 },
                 res: async (apiResponse) => {
                     try {
-                        let bankServerResp = apiResponse?.ResponseData
-                        // decrypt the data and send to client;
-                        let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, EncKey);
+                        let bankServerResp = apiResponse?.ResponseData 
+                        let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, process.env.ENC_KEY);
                         let BankJsonConvt = await JSON.parse(BodyResponceDec);
 
                         if (BankJsonConvt.subStatus == -1 || 2 || -2) {

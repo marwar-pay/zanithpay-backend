@@ -363,7 +363,7 @@ export const generatePayment = async (req, res) => {
                     if (error.code == 11000) {
                         return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
                     } else {
-                        return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+                        return res.status(500).json({ message: "Failed", data: error.message || "Internel Server Error !" })
                     }
                 })
                 break;
@@ -559,8 +559,8 @@ export const callBackResponse = asyncHandler(async (req, res) => {
 
         const callBackPayinUrl = callBackPayinUrlResult?.payInCallBackUrl;
 
-        if (!userInfo || !callBackPayinUrl) {
-            return res.status(400).json({ message: "Failed", data: "User info or callback URL missing" });
+        if (userInfo) {
+            return res.status(400).json({ message: "Failed", data: "User info is missing" });
         }
 
         const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
@@ -569,7 +569,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         const userChargeApply = charge.chargeType === "Flat" ? charge.charge : (charge.charge / 100) * data.payerAmount;
         const finalAmountAdd = data.payerAmount - userChargeApply;
 
-        const [upiWalletUpdateResult, payInCreateResult] = await Promise.allSettled([
+        const [upiWalletUpdateResult, payInCreateResult] = await Promise.all([
             userDB.findByIdAndUpdate(userInfo._id, { upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd }),
             payInModel.create({
                 memberId: pack.memberId,
@@ -583,7 +583,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
                 description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
                 trxCompletionDate: data.TxnCompletionDate,
                 trxInItDate: data.TxnInitDate,
-                isSuccess: data.status === "200" ? "Success" : "Failed"
+                isSuccess: data.status == "200" ? "Success" : "Failed"
             })
         ]);
 
@@ -601,6 +601,9 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             TxnInitDate: data.TxnInitDate,
             TxnCompletionDate: data.TxnCompletionDate
         };
+        if (callBackPayinUrl) {
+            return res.status(400).json({ message: "Failed", data: "Callback URL is missing" });
+        }
 
         await axios.post(callBackPayinUrl, userRespSendApi, {
             headers: {
@@ -612,7 +615,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, null, "Successfully"));
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ success: "Failed", message: "Internal server error!" });
+        return res.status(500).json({ success: "Failed", message: error.message || "Internal server error!" });
     } finally {
         release();
     }
