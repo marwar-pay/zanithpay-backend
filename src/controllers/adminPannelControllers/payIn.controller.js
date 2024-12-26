@@ -276,7 +276,7 @@ export const generatePayment = async (req, res) => {
         const tempTransaction = await qrGenerationModel.findOne({ trxId })
         // const tempOldTransaction = await oldQrGenerationModel.findOne({ trxId })
         // if (tempTransaction || tempOldTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
-            if (tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
+        if (tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
         let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
             $unwind: {
                 path: "$payInApi",
@@ -569,27 +569,38 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         const userChargeApply = charge.chargeType === "Flat" ? charge.charge : (charge.charge / 100) * data.payerAmount;
         const finalAmountAdd = data.payerAmount - userChargeApply;
 
-        const [upiWalletUpdateResult, payInCreateResult] = await Promise.all([
-            userDB.findByIdAndUpdate(userInfo._id, { upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd }),
-            payInModel.create({
-                memberId: pack.memberId,
-                payerName: data.payerName,
-                trxId: data.txnID,
-                amount: data.payerAmount,
-                chargeAmount: userChargeApply,
-                finalAmount: finalAmountAdd,
-                vpaId: data.payerVA,
-                bankRRN: data.BankRRN,
-                description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
-                trxCompletionDate: data.TxnCompletionDate,
-                trxInItDate: data.TxnInitDate,
-                isSuccess:  "Success" 
-            })
-        ]);
+        const payInCreateResult = await payInModel.create({
+            memberId: pack.memberId,
+            payerName: data.payerName,
+            trxId: data.txnID,
+            amount: data.payerAmount,
+            chargeAmount: userChargeApply,
+            finalAmount: finalAmountAdd,
+            vpaId: data.payerVA,
+            bankRRN: data.BankRRN,
+            description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
+            trxCompletionDate: data.TxnCompletionDate,
+            trxInItDate: data.TxnInitDate,
+            isSuccess: "Success"
+        })
+
+        const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, { upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd })
+
 
         if (upiWalletUpdateResult.status === "rejected" || payInCreateResult.status === "rejected") {
             return res.status(500).json({ message: "Failed", data: "Error updating wallet or creating pay-in record" });
         }
+        const upiWalletDataObject = {
+            memberId: userInfo?._id,
+            transactionType: "Cr.",
+            transactionAmount: finalAmountAdd,
+            beforeAmount: userInfo?.upiWalletBalance,
+            afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd),
+            description: `Successfully Cr. amount: ${finalAmountAdd} `,
+            transactionStatus: "Success"
+        }
+
+        await upiWalletModel.create(upiWalletDataObject);
 
         const userRespSendApi = {
             status: data.status,

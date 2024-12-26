@@ -525,7 +525,7 @@ function payinScheduleTask() {
                         transactionAmount: finalAmountAdd, 
                         beforeAmount: userInfo?.upiWalletBalance, 
                         afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd), 
-                        description: `Successfully Cr. amount: ${finalAmountAdd}`, 
+                        description: `Successfully Cr. amount: ${finalAmountAdd} `, 
                         transactionStatus: "Success" }
                     
                     await upiWalletModel.create(upiWalletDataObject);

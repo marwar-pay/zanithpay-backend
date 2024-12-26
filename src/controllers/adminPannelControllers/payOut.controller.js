@@ -726,7 +726,7 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
     const apiDetails = apiConfig[payOutApi.apiName];
     if (!apiDetails) return null;
-console.log("apiDetails>>>", apiDetails);
+    console.log("apiDetails>>>", apiDetails);
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
