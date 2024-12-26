@@ -578,7 +578,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             finalAmount: finalAmountAdd,
             vpaId: data.payerVA,
             bankRRN: data.BankRRN,
-            description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN} trxId: ${data.txnID}`,
+            description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
             trxCompletionDate: data.TxnCompletionDate,
             trxInItDate: data.TxnInitDate,
             isSuccess: "Success"
@@ -596,7 +596,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             transactionAmount: finalAmountAdd,
             beforeAmount: userInfo?.upiWalletBalance,
             afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd),
-            description: `Successfully Cr. amount: ${finalAmountAdd} `,
+            description: `Successfully Cr. amount: ${finalAmountAdd}  trxId: ${data.txnID}`,
             transactionStatus: "Success"
         }
 

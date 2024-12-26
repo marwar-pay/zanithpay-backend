@@ -396,24 +396,34 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('0,30 * * * *', async () => {
+    cron.schedule('*/10 * * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
             const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
             const endOfYesterday = moment().startOf('day').subtract(1, 'milliseconds').toDate();
+            const endOfLastHalfHour = moment().toDate(); // Current time
+            const startOfLastHalfHour = moment().subtract(30, 'minutes').toDate();
             const logs = await Log.aggregate([
                 {
                     $match: {
                         createdAt: {
-                            $gte: startOfYesterday,
-                            $lte: endOfYesterday,
+                            // $gte: startOfYesterday,
+                            // $lte: endOfYesterday,
+                            $gte: startOfLastHalfHour,
+                            $lte: endOfLastHalfHour,
                         },
 
-                        "requestBody.status": 200, 
+                        "requestBody.status": 200,
                         // "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
+                        "requestBody.txnID": {
+                            $in: [
+                                "seabird74592153", "seabird74592045", "seabird74592191",
+                                "seabird74592244"
+                            ],
+                        },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
-                        url:{ $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
-                        description: { $nin: ["Log processed for payin and marked success"] }
+                        url: { $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
+                        // description: { $nin: ["Log processed for payin and marked success"] }
                     },
                 },
                 { $sort: { createdAt: -1 } },
@@ -444,7 +454,7 @@ function payinScheduleTask() {
                     console.log("qrDoc>>", qrDoc);
 
                     if (!qrDoc) throw new Error("QR Generation document not found or already processed");
- 
+
                     let callBackData = log.requestBody;
                     if (Object.keys(callBackData).length === 1) {
                         const key = Object.keys(callBackData)[0];
@@ -482,7 +492,7 @@ function payinScheduleTask() {
                         };
 
                     if (data.status !== 200) throw new Error("Transaction is pending or not successful");
- 
+
                     const [userInfo] = await userDB.aggregate([
                         { $match: { _id: qrDoc.memberId } },
                         { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } },
@@ -491,19 +501,19 @@ function payinScheduleTask() {
                         { $unwind: { path: "$packageCharge", preserveNullAndEmptyArrays: true } },
                         { $project: { _id: 1, userName: 1, upiWalletBalance: 1, packageCharge: 1 } },
                     ])
-                    const callBackPayinUrl = await callBackResponseModel.findOne({ memberId: qrDoc.memberId, isActive: true }).select("payInCallBackUrl") 
-                     
-                    
+                    const callBackPayinUrl = await callBackResponseModel.findOne({ memberId: qrDoc.memberId, isActive: true }).select("payInCallBackUrl")
+
+
                     if (!callBackPayinUrl) throw new Error("Callback URL is missing");
-                     
+
 
                     if (!userInfo) throw new Error("User info missing");
 
                     const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
                     const charge = chargeRange.find(
                         (range) => range.lowerLimit <= data.payerAmount && range.upperLimit > data.payerAmount
-                    ); 
-                    
+                    );
+
                     if (!charge) return;
 
                     const userChargeApply =
@@ -511,24 +521,26 @@ function payinScheduleTask() {
                             ? charge.charge
                             : (charge.charge / 100) * data.payerAmount;
                     const finalAmountAdd = data.payerAmount - userChargeApply;
-                    
+
                     const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
+                    const upiWalletDataObject = {
+                        memberId: userInfo?._id,
+                        transactionType: "Cr.",
+                        transactionAmount: finalAmountAdd,
+                        beforeAmount: userInfo?.upiWalletBalance,
+                        afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd),
+                        description: `Successfully Cr. amount: ${finalAmountAdd}  trxId: ${data.txnID}`,
+                        transactionStatus: "Success"
+                    }
+
+                    await upiWalletModel.create(upiWalletDataObject);
                     if (tempPayin) {
                         await Log.findByIdAndUpdate(log._id, {
                             $push: { description: "Log processed for payin and marked success" },
                         });
                         throw new Error("Trasaction already created");
                     }
-                    const upiWalletDataObject = { 
-                        memberId: userInfo?._id, 
-                        transactionType: "Cr.", 
-                        transactionAmount: finalAmountAdd, 
-                        beforeAmount: userInfo?.upiWalletBalance, 
-                        afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd), 
-                        description: `Successfully Cr. amount: ${finalAmountAdd} `, 
-                        transactionStatus: "Success" }
-                    
-                    await upiWalletModel.create(upiWalletDataObject);
+
                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
                         $inc: { upiWalletBalance: finalAmountAdd },
                     })
@@ -542,7 +554,7 @@ function payinScheduleTask() {
                         finalAmount: finalAmountAdd,
                         vpaId: data.payerVA,
                         bankRRN: data.BankRRN,
-                        description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN} trxId: ${data.txnID}`,
+                        description: `QR Generated Successfully Amount:${data.payerAmount} PayerVa:${data.payerVA} BankRRN:${data.BankRRN}`,
                         trxCompletionDate: data.TxnCompletionDate,
                         trxInItDate: data.TxnInitDate,
                         isSuccess: "Success",
@@ -564,8 +576,8 @@ function payinScheduleTask() {
                     };
                     console.log("callBackPayinUrl.payInCallBackUrl>>>", callBackPayinUrl.payInCallBackUrl, userRespSendApi);
 
-                    
-                    
+
+
                     await axios.post(callBackPayinUrl.payInCallBackUrl, userRespSendApi, {
                         headers: {
                             Accept: "application/json",
@@ -597,5 +609,5 @@ export default function scheduleTask() {
     // scheduleWayuPayOutCheck()
     logsClearFunc()
     migrateData()
-    payinScheduleTask()
+    // payinScheduleTask()
 }
