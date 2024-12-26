@@ -403,13 +403,13 @@ function payinScheduleTask() {
             const logs = await Log.aggregate([
                 {
                     $match: {
-                        // createdAt: {
-                        //     $gte: startOfYesterday,
-                        //     $lte: endOfYesterday,
-                        // },
+                        createdAt: {
+                            $gte: startOfYesterday,
+                            $lte: endOfYesterday,
+                        },
 
                         "requestBody.status": 200,
-                        "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
+                        // "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
                         url:{ $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
                         description: { $nin: ["Log processed for payin and marked success"] }
@@ -512,7 +512,12 @@ function payinScheduleTask() {
                             : (charge.charge / 100) * data.payerAmount;
                     const finalAmountAdd = data.payerAmount - userChargeApply;
                     const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
-                    if (tempPayin) throw new Error("Trasaction already created");
+                    if (tempPayin) {
+                        await Log.findByIdAndUpdate(log._id, {
+                            $push: { description: "Log processed for payin and marked success" },
+                        });
+                        throw new Error("Trasaction already created");
+                    }
 
                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
                         $inc: { upiWalletBalance: finalAmountAdd },
@@ -547,7 +552,8 @@ function payinScheduleTask() {
                         TxnInitDate: data.TxnInitDate,
                         TxnCompletionDate: data.TxnCompletionDate,
                     };
-
+                    console.log("callBackPayinUrl.payInCallBackUrl>>>", callBackPayinUrl.payInCallBackUrl, userRespSendApi);
+                    
                     await axios.post(callBackPayinUrl.payInCallBackUrl, userRespSendApi, {
                         headers: {
                             Accept: "application/json",

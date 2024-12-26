@@ -601,11 +601,9 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             iServerEuApi: {
                 url: payOutApi.apiURL,
                 headers: {
-                    headers: {
-                        'header_secrets': headerSecrets,
-                        'pass_key': passKey,
-                        'Content-Type': 'application/json'
-                    }
+                    'header_secrets': headerSecrets,
+                    'pass_key': passKey,
+                    'Content-Type': 'application/json'
                 },
                 data: {
                     RequestData: BodyRequestEnc
@@ -729,6 +727,7 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
     const apiDetails = apiConfig[payOutApi.apiName];
     if (!apiDetails) return null;
+console.log("apiDetails>>>", apiDetails);
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
