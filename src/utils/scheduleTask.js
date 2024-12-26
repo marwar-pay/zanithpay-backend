@@ -395,7 +395,7 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('0 * * * *', async () => {
+    cron.schedule('*/10 * * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
             const startOfYesterday = moment().startOf('day').subtract(30, 'day').toDate();
@@ -403,14 +403,16 @@ function payinScheduleTask() {
             const logs = await Log.aggregate([
                 {
                     $match: {
-                        createdAt: {
-                            $gte: startOfYesterday,
-                            $lte: endOfYesterday,
-                        },
+                        // createdAt: {
+                        //     $gte: startOfYesterday,
+                        //     $lte: endOfYesterday,
+                        // },
 
                         "requestBody.status": 200,
-                        // "requestBody.txnID": { $regex: "kggjfddfjsjeeheedffsrf44", $options: "i" },
+                        "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
+                        url:{ $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
+                        description: { $nin: ["Log processed for payin and marked success"] }
                     },
                 },
                 { $sort: { createdAt: -1 } },
@@ -535,23 +537,23 @@ function payinScheduleTask() {
                         throw new Error("Error updating wallet or creating pay-in record");
                     }
 
-                    // const userRespSendApi = {
-                    //     status: data.status,
-                    //     payerAmount: data.payerAmount,
-                    //     payerName: data.payerName,
-                    //     txnID: data.txnID,
-                    //     BankRRN: data.BankRRN,
-                    //     payerVA: data.payerVA,
-                    //     TxnInitDate: data.TxnInitDate,
-                    //     TxnCompletionDate: data.TxnCompletionDate,
-                    // };
+                    const userRespSendApi = {
+                        status: data.status,
+                        payerAmount: data.payerAmount,
+                        payerName: data.payerName,
+                        txnID: data.txnID,
+                        BankRRN: data.BankRRN,
+                        payerVA: data.payerVA,
+                        TxnInitDate: data.TxnInitDate,
+                        TxnCompletionDate: data.TxnCompletionDate,
+                    };
 
-                    // await axios.post(callBackPayinUrl.payInCallBackUrl, userRespSendApi, {
-                    //     headers: {
-                    //         Accept: "application/json",
-                    //         "Content-Type": "application/json",
-                    //     },
-                    // });
+                    await axios.post(callBackPayinUrl.payInCallBackUrl, userRespSendApi, {
+                        headers: {
+                            Accept: "application/json",
+                            "Content-Type": "application/json",
+                        },
+                    });
 
                     await Log.findByIdAndUpdate(log._id, {
                         $push: { description: "Log processed for payin and marked success" },

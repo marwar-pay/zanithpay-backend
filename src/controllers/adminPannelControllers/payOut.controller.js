@@ -656,18 +656,18 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 url: payOutApi.apiURL,
                 headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
                 data: {
-                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5", 
+                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
                     secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
-                    number: String(mobileNumber), 
-                    amount: amount.toString(), 
+                    number: String(mobileNumber),
+                    amount: amount.toString(),
                     transferMode: "IMPS",
-                    accountNo: accountNumber, 
-                    ifscCode, 
+                    accountNo: accountNumber,
+                    ifscCode,
                     beneficiaryName: accountHolderName,
-                    vpa: "ajaybudaniya1@ybl", 
+                    vpa: "ajaybudaniya1@ybl",
                     clientOrderId: trxId
                 },
-                res: async (apiResponse) => { 
+                res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr } = apiResponse;
 
                     if (status === 1) {
@@ -684,6 +684,17 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         await payOutModel.create(payoutDataStore);
                         payOutModelGen.isSuccess = "Success"
                         await payOutModelGen.save()
+                        let walletModelDataStoreCR = {
+                            memberId: user?._id,
+                            transactionType: "Cr.",
+                            transactionAmount: amount,
+                            beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                            chargeAmount: chargeAmount,
+                            afterAmount: Number(user?.EwalletBalance),
+                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
+                            transactionStatus: "Success",
+                        }
+                        await walletModel.create(walletModelDataStoreCR)
                         return { statusCode, status, trxId: trxId, opt_msg: message }
                     }
 
@@ -695,7 +706,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             }
         };
 
-        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig); 
+        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig);
 
         if (!apiResponse) {
             payOutModelGen.isSuccess = "Failed";
@@ -716,9 +727,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
 export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
-
     const apiDetails = apiConfig[payOutApi.apiName];
-    if (!apiDetails) return null; 
+    if (!apiDetails) return null;
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
@@ -761,9 +771,9 @@ export const payoutStatusUpdate = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, pack))
 });
 
-export const payoutCallBackResponse = asyncHandler(async (req, res) => { 
+export const payoutCallBackResponse = asyncHandler(async (req, res) => {
 
-    try { 
+    try {
         let callBackPayout = req.body;
         let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
 
@@ -879,7 +889,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     } catch (error) {
         console.log(error)
         res.status(400).json({ message: "Failed", data: "Internal server error !" })
-    }  
+    }
 });
 
 // export const payoutCallBackFunction = asyncHandler(async (req, res) => {
