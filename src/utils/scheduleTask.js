@@ -396,7 +396,7 @@ function logsClearFunc() {
 // }
 
 function payinScheduleTask() {
-    cron.schedule('*/10 * * * * *', async () => {
+    cron.schedule('0,30 * * * *', async () => {
         const release = await logsMutex.acquire()
         try {
             const startOfYesterday = moment().startOf('day').subtract(1, 'day').toDate();
@@ -407,23 +407,23 @@ function payinScheduleTask() {
                 {
                     $match: {
                         createdAt: {
-                            // $gte: startOfYesterday,
-                            // $lte: endOfYesterday,
-                            $gte: startOfLastHalfHour,
-                            $lte: endOfLastHalfHour,
+                            $gte: startOfYesterday,
+                            $lte: endOfYesterday,
+                            // $gte: startOfLastHalfHour,
+                            // $lte: endOfLastHalfHour,
                         },
 
                         "requestBody.status": 200,
                         // "requestBody.txnID": { $regex: "seabird74280342", $options: "i" },
-                        "requestBody.txnID": {
-                            $in: [
-                                "seabird74592153", "seabird74592045", "seabird74592191",
-                                "seabird74592244"
-                            ],
-                        },
+                        // "requestBody.txnID": {
+                        //     $in: [
+                        //         "seabird74592153", "seabird74592045", "seabird74592191",
+                        //         "seabird74592244"
+                        //     ],
+                        // },
                         "responseBody": { $regex: "\"message\":\"Failed\"", $options: "i" },
                         url: { $regex: "/apiAdmin/v1/payin/callBackResponse", $options: "i" },
-                        // description: { $nin: ["Log processed for payin and marked success"] }
+                        description: { $nin: ["Log processed for payin and marked success"] }
                     },
                 },
                 { $sort: { createdAt: -1 } },
@@ -523,6 +523,13 @@ function payinScheduleTask() {
                     const finalAmountAdd = data.payerAmount - userChargeApply;
 
                     const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
+                    
+                    if (tempPayin) {
+                        await Log.findByIdAndUpdate(log._id, {
+                            $push: { description: "Log processed for payin and marked success" },
+                        });
+                        throw new Error("Trasaction already created");
+                    }
                     const upiWalletDataObject = {
                         memberId: userInfo?._id,
                         transactionType: "Cr.",
@@ -534,13 +541,6 @@ function payinScheduleTask() {
                     }
 
                     await upiWalletModel.create(upiWalletDataObject);
-                    if (tempPayin) {
-                        await Log.findByIdAndUpdate(log._id, {
-                            $push: { description: "Log processed for payin and marked success" },
-                        });
-                        throw new Error("Trasaction already created");
-                    }
-
                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, {
                         $inc: { upiWalletBalance: finalAmountAdd },
                     })
