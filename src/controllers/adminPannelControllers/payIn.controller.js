@@ -275,7 +275,8 @@ export const generatePayment = async (req, res) => {
         const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
         const tempTransaction = await qrGenerationModel.findOne({ trxId })
         // const tempOldTransaction = await oldQrGenerationModel.findOne({ trxId })
-        if (tempTransaction || tempOldTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
+        // if (tempTransaction || tempOldTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
+            if (tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
         let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
             $unwind: {
                 path: "$payInApi",
