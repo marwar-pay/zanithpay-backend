@@ -790,7 +790,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
         const response = await apiConfig[payOutApi.apiName].res(apiResponse)
 
-        return res.status(200).json(new ApiResponse(response));
+        return res.status(200).json(new ApiResponse(200, response));
     } catch (error) {
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
