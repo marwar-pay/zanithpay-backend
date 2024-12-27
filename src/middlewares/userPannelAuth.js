@@ -21,8 +21,7 @@ export const userPannelAuth = asyncHandler(async (req, res, next) => {
             req.user = user;
             return next();
         } else {
-            throw new ApiError(404, error?.message || "User Not Right Access !");
-            console.log("tokennnnn", user);
+            throw new ApiError(404, error?.message || "User Not Right Access !"); 
         }
 
 

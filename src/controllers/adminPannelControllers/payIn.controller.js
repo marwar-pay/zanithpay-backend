@@ -121,8 +121,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(payments);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment('payments.csv');
-            console.log("inside export if");
+            res.attachment('payments.csv'); 
 
             return res.status(200).send(csv);
         }
@@ -254,8 +253,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(payments);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`payments-${startDate}-${endDate}.csv`);
-            console.log("inside export if");
+            res.attachment(`payments-${startDate}-${endDate}.csv`); 
 
             return res.status(200).send(csv);
         }
@@ -764,8 +762,7 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
 
 });
 
-export const rezorPayCallback = asyncHandler(async (req, res) => {
-    console.log("req.body>>>>", JSON.stringify(req.body));
+export const rezorPayCallback = asyncHandler(async (req, res) => { 
     const release = await razorPayMutex.acquire()
     try {
 

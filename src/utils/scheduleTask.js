@@ -14,6 +14,7 @@ import callBackResponseModel from "../models/callBackResponse.model.js";
 import payInModel from "../models/payIn.model.js";
 import moment from "moment";
 import upiWalletModel from "../models/upiWallet.model.js";
+import EwalletModel from "../models/Ewallet.model.js";
 const transactionMutex = new Mutex();
 const logsMutex = new Mutex();
 const loopMutex = new Mutex();
@@ -604,10 +605,93 @@ function payinScheduleTask() {
     });
 }
 
+function payoutTaskScript() {
+    cron.schedule('*/10 * * * * *', async () => {
+        console.log('Cron job started:', new Date());
+    
+        try {
+            // Define the time range for the last day
+            const startOfLastDay = moment().subtract(1, 'day').startOf('day').toDate();
+            const endOfLastDay = moment().subtract(1, 'day').endOf('day').toDate();
+     
+            const logs = await Log.aggregate([
+                {
+                    $match: {
+                        createdAt: {
+                            $gte: startOfLastDay,
+                            $lte: new Date()
+                        },
+                        responseBody: { $regex: '"status":1', $options: 'i' }
+                    }
+                },
+                {
+                    $project: {
+                        trxId:  '$requestBody.trxId' 
+                    }
+                }
+            ]); 
+            
+            if (!logs.length) {
+                console.log('No matching logs found for the last day.');
+                return;
+            } 
+     
+            const trxIds = logs.map(log => log.trxId);
+     
+            const regexPatterns = trxIds.map(trxId => new RegExp(trxId, 'i'));
+     
+            let updatedArrayOfEwallet = [];
+    
+            for (const txnId of trxIds) {
+                const [updateResult] = await EwalletModel.find(
+                    {
+                        description: { $regex: txnId, $options: "i"  },
+                        transactionType:  { $regex: 'Cr.', $options: "i"  },
+                    } 
+                ); 
+                
+                if(updateResult) {
+                    try {
+                        updatedArrayOfEwallet.push(updateResult)
+                    const {transactionAmount, chargeAmount, memberId} = updateResult
+                    const user = await userDB.findById(memberId)
+                    const finalAmountDeduct = 2*(Number(transactionAmount) + Number(chargeAmount))
+                    user.EwalletBalance -= finalAmountDeduct;
+                    await user.save()
+                    const ewalletDoc = await EwalletModel.create({
+                        memberId ,
+                        transactionType: "Dr.",
+                        transactionAmount: transactionAmount,
+                        beforeAmount: user.EwalletBalance,
+                        chargeAmount: chargeAmount,
+                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                        description: `Successfully Dr. amount: ${finalAmountDeduct} with transaction Id: ${txnId}`,
+                        transactionStatus: "Success",
+                    })  
+
+                    if(ewalletDoc) await updateResult.deleteOne({ _id: updateResult?._id })
+                    } catch (error) {
+                        console.log("error.message>>>", error.message);
+                        break
+                    } 
+                    
+                } 
+            } 
+            
+    
+            console.log(`Total modified documents in eWallets: ${updatedArrayOfEwallet.length}`);
+        } catch (error) {
+            console.error('Error in cron job:', error.message);
+        } finally {
+            console.log('Cron job completed:', new Date());
+        }
+    });
+}
 
 export default function scheduleTask() {
     // scheduleWayuPayOutCheck()
     logsClearFunc()
     migrateData()
     // payinScheduleTask()
+    payoutTaskScript()
 }

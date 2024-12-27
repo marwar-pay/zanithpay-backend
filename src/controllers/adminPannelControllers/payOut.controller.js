@@ -663,8 +663,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     clientOrderId: trxId
                 },
                 res: async (apiResponse) => {
-                    const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
-                    console.log("status>>>>", status);
+                    const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse; 
                     user.EwalletBalance -= finalAmountDeduct;
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                     let walletModelDataStore = {
@@ -752,8 +751,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
     const apiDetails = apiConfig[payOutApi.apiName];
-    if (!apiDetails) return null;
-    console.log("apiDetails>>>", apiDetails);
+    if (!apiDetails) return null; 
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });

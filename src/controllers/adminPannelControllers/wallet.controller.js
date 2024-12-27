@@ -204,8 +204,7 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(transactions);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`transactions-${startDate}-${endDate}.csv`);
-            console.log("inside export if");
+            res.attachment(`transactions-${startDate}-${endDate}.csv`); 
 
             return res.status(200).send(csv);
         }
