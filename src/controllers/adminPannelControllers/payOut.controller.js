@@ -737,7 +737,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             UTR: utr,
                         }
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
-                        return { statusCode:statusCode||0, status: status||0, trxId: trxId, opt_msg: message || "" }
+                        return { statusCode:statusCode||0, status: status||0, trxId: trxId, opt_msg: message || "null" }
                     }
 
                     let walletModelDataStoreCR = {
@@ -755,7 +755,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                     payOutModelGen.isSuccess = "Failed"
                     await await payOutModelGen.save()
-                    return { statusCode, status, trxId: trxId, opt_msg: message }
+                    return { statusCode:statusCode||0, status: status||0, trxId: trxId, opt_msg: message || "null" }
 
                 }
             }
