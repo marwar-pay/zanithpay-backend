@@ -15,7 +15,7 @@ import { Parser } from "json2csv";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
-const chargeBackMutex = new Mutex();
+const chargeBackMutex = new Mutex(); 
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status, export: exportToCSV } = req.query;
@@ -82,6 +82,23 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 },
             },
             {
+                $lookup: {
+                    from: "payoutrecodes", // Replace with the correct collection name for payoutSuccess
+                    localField: "trxId",
+                    foreignField: "trxId", // Replace with the appropriate field for linking
+                    as: "payoutSuccessData",
+                    pipeline: [
+                        { $project: { chargeAmount: 1, finalAmount: 1 } },
+                    ],
+                },
+            },
+            {
+                $unwind: {
+                    path: "$payoutSuccessData",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
                 $project: {
                     "_id": 1,
                     "trxId": 1,
@@ -91,10 +108,10 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     "ifscCode": 1,
                     "amount": 1,
                     "isSuccess": 1,
-                    "chargeAmount": 1,
-                    "finalAmount": 1,
+                    "payoutSuccessData.chargeAmount": 1,
+                    "payoutSuccessData.finalAmount": 1,
                     "createdAt": 1,
-                    "status": 1, // Include status in the projection
+                    "status": 1,  
                     "userInfo.userName": 1,
                     "userInfo.fullName": 1,
                     "userInfo.memberId": 1,
@@ -118,19 +135,21 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 "ifscCode",
                 "amount",
                 "isSuccess",
-                "chargeAmount",
-                "finalAmount",
+                { value: "payoutSuccessData.chargeAmount", label: "Charge Amount" },
+                { value: "payoutSuccessData.finalAmount", label: "Final Amount" },
                 "createdAt",
-                "status",  
-                "userInfo.userName",
-                "userInfo.fullName",
-                "userInfo.memberId",
+                "status",
+                { value: "userInfo.userName", label: "User Name" },
+                { value: "userInfo.fullName", label: "Full Name" },
+                { value: "userInfo.memberId", label: "Member ID" }
             ];
+
             const json2csvParser = new Parser({ fields });
             const csv = json2csvParser.parse(payment);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`payments-${startDate}-${endDate}.csv`);
+            res.attachment(`payoutPayments-${startDate}-${endDate}.csv`);
+            console.log("inside export if");
 
             return res.status(200).send(csv);
         }
@@ -683,8 +702,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 url: payOutApi.apiURL,
                 headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
                 data: {
-                    clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
-                    secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
+                    clientId: process.env.WAAYU_CLIENT_ID ||"adb25735-69c7-4411-a120-5f2e818bdae5",
+                    secretKey: process.env.WAAYU_SECRET_KEY ||"6af59e5a-7f28-4670-99ae-826232b467be",
                     number: String(mobileNumber),
                     amount: amount.toString(),
                     transferMode: "IMPS",

@@ -121,7 +121,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(payments);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment('payments.csv'); 
+            res.attachment('payments.csv');
 
             return res.status(200).send(csv);
         }
@@ -253,7 +253,7 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(payments);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`payments-${startDate}-${endDate}.csv`); 
+            res.attachment(`payments-${startDate}-${endDate}.csv`);
 
             return res.status(200).send(csv);
         }
@@ -447,6 +447,24 @@ export const generatePayment = async (req, res) => {
                     status: 400,
                     trxID: trxId,
                 }
+                return res.status(400).json({ message: "Failed", data: serverResp })
+            case "iSmartPayPayin":
+                const iSmartPayUrl = process.env.ISMART_PAY_PAYIN_URL
+                const iSmartPayload = {
+                    "currency": "INR",
+                    "amount": amount,
+                    "order_id": trxId,
+                    "email": "wwee@gg.com",
+                    "mobile": mobileNumber,
+                    "name": name,
+                    "redirect_url": "https://your_application.url",
+                    "webhook_url": "https://your_webhook.url",
+                    // "utf": {
+                    //     "customer_id": "97987",
+                    //     "hash_key": "ATRN090HKJHT9TVHVJ"
+                    // }
+                }
+                const iSmartResponse = await axios.post(iSmartPayUrl, iSmartPayload,)
                 return res.status(400).json({ message: "Failed", data: serverResp })
             default:
                 let dataApiResponse = {
@@ -762,7 +780,7 @@ export const testCallBackResponse = asyncHandler(async (req, res) => {
 
 });
 
-export const rezorPayCallback = asyncHandler(async (req, res) => { 
+export const rezorPayCallback = asyncHandler(async (req, res) => {
     const release = await razorPayMutex.acquire()
     try {
 
