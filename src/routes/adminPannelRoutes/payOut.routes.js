@@ -20,7 +20,7 @@ router.post("/generatePayOut", celebrate({
         accountNumber: Joi.string().required(),
         ifscCode: Joi.string().required(),
         bankName: Joi.string().required(),
-        trxId: Joi.string().min(10).max(25).required(),
+        trxId: Joi.string().min(12).max(22).required(),
         amount: Joi.number().required(),
     })
 }), apiValidate, generatePayOut);
