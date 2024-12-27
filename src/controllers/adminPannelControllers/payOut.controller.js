@@ -712,10 +712,10 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                                 trxId: BankJsonConvt?.clientReferenceNo,
                                 opt_msg: BankJsonConvt?.statusDesc
                             }
-                            return { message: Failed, data: respSend }
+                            return { message: "Failed", data: respSend }
                         }
 
-                        console.log(bankServerResp,"first bank resp Test")
+                        console.log(bankServerResp, "first bank resp Test")
 
                         // on Success
                         let payoutDataStore = {
@@ -739,7 +739,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             opt_msg: BankJsonConvt?.statusDesc
                         }
 
-                        console.log(userRespPayOut,"user resp send")
+                        console.log(userRespPayOut, "user resp send")
+                        payoutCallBackResponse({ body: userRespPayOut })
 
                         return new ApiResponse(200, userRespPayOut)
                     } catch (error) {
@@ -854,7 +855,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
             return res.status(500).json({ message: "Failed", data: { statusCode: 400, txnID: trxId } });
         }
 
-        const response = await apiConfig[payOutApi.apiName].res(apiResponse)
+        const response = await apiConfig[payOutApi.apiName]?.res(apiResponse)
 
         return res.status(200).json(new ApiResponse(200, response));
     } catch (error) {
