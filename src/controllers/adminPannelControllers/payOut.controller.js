@@ -15,7 +15,7 @@ import { Parser } from "json2csv";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
-const chargeBackMutex = new Mutex(); 
+const chargeBackMutex = new Mutex();
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status, export: exportToCSV } = req.query;
@@ -111,7 +111,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     "payoutSuccessData.chargeAmount": 1,
                     "payoutSuccessData.finalAmount": 1,
                     "createdAt": 1,
-                    "status": 1,  
+                    "status": 1,
                     "userInfo.userName": 1,
                     "userInfo.fullName": 1,
                     "userInfo.memberId": 1,
@@ -659,19 +659,81 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 },
                 res: async (apiResponse) => {
                     try {
+                        if (apiResponse === "Ip validation Failed") {
+                            payOutModelGen.isSuccess = "Failed";
+                            await payOutModelGen.save();
+                            let faliedResp = {
+                                statusCode: "400",
+                                txnID: trxId
+                            }
+                            return { message: "Failed", data: faliedResp }
+                        }
+
+                        user.EwalletBalance -= finalAmountDeduct;
+                        await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                        let walletModelDataStore = {
+                            memberId: user._id,
+                            transactionType: "Dr.",
+                            transactionAmount: amount,
+                            beforeAmount: Number(user.EwalletBalance),
+                            chargeAmount: chargeAmount,
+                            afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                            description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
+                            transactionStatus: "Success",
+                        }
+
+                        await walletModel.create(walletModelDataStore)
+
                         let bankServerResp = apiResponse?.ResponseData
                         let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, process.env.ENC_KEY);
                         let BankJsonConvt = await JSON.parse(BodyResponceDec);
 
-                        if (BankJsonConvt.subStatus == -1 || 2 || -2) {
-                            payOutModelGen.isSuccess = "Failed";
-                            await payOutModelGen.save();
-                            return { message: BankJsonConvt }
+                        // onFailed
+                        if (BankJsonConvt?.subStatus == -1 || 2 || -2) {
+                            let walletModelDataStoreCR = {
+                                memberId: user?._id,
+                                transactionType: "Cr.",
+                                transactionAmount: amount,
+                                beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                                chargeAmount: chargeAmount,
+                                afterAmount: Number(user?.EwalletBalance),
+                                description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
+                                transactionStatus: "Success",
+                            }
+
+                            await walletModel.create(walletModelDataStoreCR)
+                            user.EwalletBalance += finalAmountDeduct;
+                            await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                            payOutModelGen.isSuccess = "Failed"
+                            await await payOutModelGen.save()
+
+                            let respSend = {
+                                statusCode: BankJsonConvt?.subStatus,
+                                status: BankJsonConvt?.subStatus,
+                                trxId: BankJsonConvt?.clientReferenceNo,
+                                opt_msg: BankJsonConvt?.statusDesc
+                            }
+                            return { message: Failed, data: respSend }
                         }
+
+                        // on Success
+                        let payoutDataStore = {
+                            memberId: user?._id,
+                            amount: amount,
+                            chargeAmount: chargeAmount,
+                            finalAmount: finalAmountDeduct,
+                            bankRRN: BankJsonConvt?.rrn,
+                            trxId: trxId,
+                            optxId: BankJsonConvt?.transactionId,
+                            isSuccess: "Success"
+                        }
+                        await payOutModel.create(payoutDataStore);
+                        payOutModelGen.isSuccess = "Success"
+                        await payOutModelGen.save()
 
                         let userRespPayOut = {
                             statusCode: BankJsonConvt?.subStatus,
-                            status: BankJsonConvt?.status,
+                            status: BankJsonConvt?.subStatus,
                             trxId: BankJsonConvt?.clientReferenceNo,
                             opt_msg: BankJsonConvt?.statusDesc
                         }
@@ -702,8 +764,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                 url: payOutApi.apiURL,
                 headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
                 data: {
-                    clientId: process.env.WAAYU_CLIENT_ID ||"adb25735-69c7-4411-a120-5f2e818bdae5",
-                    secretKey: process.env.WAAYU_SECRET_KEY ||"6af59e5a-7f28-4670-99ae-826232b467be",
+                    clientId: process.env.WAAYU_CLIENT_ID || "adb25735-69c7-4411-a120-5f2e818bdae5",
+                    secretKey: process.env.WAAYU_SECRET_KEY || "6af59e5a-7f28-4670-99ae-826232b467be",
                     number: String(mobileNumber),
                     amount: amount.toString(),
                     transferMode: "IMPS",
@@ -756,7 +818,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             UTR: utr,
                         }
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
-                        return { statusCode:statusCode||0, status: status||0, trxId: trxId, opt_msg: message || "null" }
+                        return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
                     }
 
                     let walletModelDataStoreCR = {
@@ -774,7 +836,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                     payOutModelGen.isSuccess = "Failed"
                     await await payOutModelGen.save()
-                    return { statusCode:statusCode||0, status: status||0, trxId: trxId, opt_msg: message || "null" }
+                    return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
 
                 }
             }
@@ -807,10 +869,13 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
 
-        return response.data || null;
+        return response?.data || null;
     } catch (error) {
-        console.error(`API Call Error for ${payOutApi.apiName}:`, error.message);
-        return `API Call Error for ${payOutApi.apiName}: ${error.message}`;
+        if (error?.response?.data?.fault?.detail?.errorcode === "steps.accesscontrol.IPDeniedAccess") {
+            return "Ip validation Failed"
+        }
+        console.error(`API Call Error for ${payOutApi?.apiName}:`, error?.message);
+        return `API Call Error for ${payOutApi?.apiName}: ${error?.message}`;
     }
 };
 
