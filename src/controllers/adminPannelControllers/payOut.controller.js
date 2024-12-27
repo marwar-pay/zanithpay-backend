@@ -658,8 +658,10 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     RequestData: BodyRequestEnc
                 },
                 res: async (apiResponse) => {
+                    console.log(apiResponse, "resp")
                     try {
                         if (apiResponse === "Ip validation Failed") {
+                            console.log("api failed")
                             payOutModelGen.isSuccess = "Failed";
                             await payOutModelGen.save();
                             let faliedResp = {
@@ -668,6 +670,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             }
                             return { message: "Failed", data: faliedResp }
                         }
+
                         user.EwalletBalance -= finalAmountDeduct;
                         await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                         let walletModelDataStore = {
@@ -683,12 +686,15 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
                         await walletModel.create(walletModelDataStore)
 
+                        console.log("wallet duducted")
+
                         let bankServerResp = apiResponse?.ResponseData
                         let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, process.env.ENC_KEY);
                         let BankJsonConvt = await JSON.parse(BodyResponceDec);
 
                         // onFailed
-                        if (BankJsonConvt?.subStatus == -1 || 2 || -2) {
+                        if (BankJsonConvt?.subStatus === -1 || 2 || -2) {
+                            console.log("insdie the subStatus = -1-2,2")
                             let walletModelDataStoreCR = {
                                 memberId: user?._id,
                                 transactionType: "Cr.",
@@ -744,6 +750,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
                         return new ApiResponse(200, userRespPayOut)
                     } catch (error) {
+                        console.log("server error section in error section")
                         console.log(error)
                         payOutModelGen.isSuccess = "Failed";
                         await payOutModelGen.save();
@@ -823,7 +830,13 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             UTR: utr,
                         }
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
-                        return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
+                        let userREspSend = {
+                            statusCode: statusCode || 0,
+                            status: status || 0,
+                            trxId: trxId || 0,
+                            opt_msg: message || "null"
+                        }
+                        return new ApiResponse(200, userREspSend)
                     }
 
                     let walletModelDataStoreCR = {
@@ -841,7 +854,14 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                     payOutModelGen.isSuccess = "Failed"
                     await await payOutModelGen.save()
-                    return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
+                    let userREspSend2 = {
+                        statusCode: statusCode || 0,
+                        status: status || 0,
+                        trxId: trxId || 0,
+                        opt_msg: message || "null"
+                    }
+                    return { message: "Failed", data: userREspSend2 }
+                    // return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
 
                 }
             }
@@ -857,7 +877,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
         const response = await apiConfig[payOutApi.apiName]?.res(apiResponse)
 
-        return res.status(200).json(new ApiResponse(200, response));
+        return res.status(200).json(response);
     } catch (error) {
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
