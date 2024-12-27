@@ -671,6 +671,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             return { message: "Failed", data: faliedResp }
                         }
 
+                        // deducted
                         user.EwalletBalance -= finalAmountDeduct;
                         await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                         let walletModelDataStore = {
@@ -692,9 +693,38 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                         let BodyResponceDec = await AESUtils.decryptRequest(bankServerResp, process.env.ENC_KEY);
                         let BankJsonConvt = await JSON.parse(BodyResponceDec);
 
-                        // onFailed
-                        if (BankJsonConvt?.subStatus === -1 || 2 || -2) {
-                            console.log("insdie the subStatus = -1-2,2")
+                        // if Success  
+                        console.log("Success", bankServerResp?.subStatus, BankJsonConvt, "bank su status end")
+                        if (BankJsonConvt?.subStatus === 0) {
+                            console.log("Inside the Bank substatus 0 or Ssccess", BankJsonConvt.subStatus, typeof BankJsonConvt?.subStatus)
+                            // on Success
+                            let payoutDataStore = {
+                                memberId: user?._id,
+                                amount: amount,
+                                chargeAmount: chargeAmount,
+                                finalAmount: finalAmountDeduct,
+                                bankRRN: BankJsonConvt?.rrn,
+                                trxId: trxId,
+                                optxId: BankJsonConvt?.transactionId,
+                                isSuccess: "Success"
+                            }
+                            await payOutModel.create(payoutDataStore);
+                            payOutModelGen.isSuccess = "Success"
+                            await payOutModelGen.save()
+
+                            let userRespPayOut = {
+                                statusCode: 1,
+                                status: 1,
+                                trxId: BankJsonConvt?.clientReferenceNo,
+                                opt_msg: BankJsonConvt?.statusDesc
+                            }
+
+                            console.log(userRespPayOut, "user resp send", userRespPayOut)
+                            payoutCallBackResponse({ body: userRespPayOut })
+
+                            return new ApiResponse(200, userRespPayOut)
+                        } else {
+                            console.log("insdie the subStatus = -1-2,2 ", bankServerResp)
                             let walletModelDataStoreCR = {
                                 memberId: user?._id,
                                 transactionType: "Cr.",
@@ -720,35 +750,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             }
                             return { message: "Failed", data: respSend }
                         }
-
-                        console.log(bankServerResp, "first bank resp Test")
-
-                        // on Success
-                        let payoutDataStore = {
-                            memberId: user?._id,
-                            amount: amount,
-                            chargeAmount: chargeAmount,
-                            finalAmount: finalAmountDeduct,
-                            bankRRN: BankJsonConvt?.rrn,
-                            trxId: trxId,
-                            optxId: BankJsonConvt?.transactionId,
-                            isSuccess: "Success"
-                        }
-                        await payOutModel.create(payoutDataStore);
-                        payOutModelGen.isSuccess = "Success"
-                        await payOutModelGen.save()
-
-                        let userRespPayOut = {
-                            statusCode: BankJsonConvt?.subStatus,
-                            status: BankJsonConvt?.subStatus,
-                            trxId: BankJsonConvt?.clientReferenceNo,
-                            opt_msg: BankJsonConvt?.statusDesc
-                        }
-
-                        console.log(userRespPayOut, "user resp send")
-                        payoutCallBackResponse({ body: userRespPayOut })
-
-                        return new ApiResponse(200, userRespPayOut)
+                        console.log("Final console", BankJsonConvt)
                     } catch (error) {
                         console.log("server error section in error section")
                         console.log(error)
