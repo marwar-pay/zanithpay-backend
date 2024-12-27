@@ -668,7 +668,6 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             }
                             return { message: "Failed", data: faliedResp }
                         }
-
                         user.EwalletBalance -= finalAmountDeduct;
                         await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                         let walletModelDataStore = {
@@ -716,6 +715,8 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             return { message: Failed, data: respSend }
                         }
 
+                        console.log(bankServerResp,"first bank resp Test")
+
                         // on Success
                         let payoutDataStore = {
                             memberId: user?._id,
@@ -738,8 +739,11 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             opt_msg: BankJsonConvt?.statusDesc
                         }
 
+                        console.log(userRespPayOut,"user resp send")
+
                         return new ApiResponse(200, userRespPayOut)
                     } catch (error) {
+                        console.log(error)
                         payOutModelGen.isSuccess = "Failed";
                         await payOutModelGen.save();
                         let respSend = {
