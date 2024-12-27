@@ -11,13 +11,14 @@ import { Mutex } from "async-mutex";
 import { ApiError } from "../../utils/ApiError.js";
 import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
+import { Parser } from "json2csv";
 
 const genPayoutMutex = new Mutex();
 const payoutCallbackMutex = new Mutex();
 const chargeBackMutex = new Mutex();
 
 export const allPayOutPayment = asyncHandler(async (req, res) => {
-    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status } = req.query;
+    let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status, export: exportToCSV } = req.query;
     page = Number(page) || 1;
     limit = Number(limit) || 25;
     const skip = (page - 1) * limit;
@@ -56,8 +57,12 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             { $match: matchFilters },
             { $sort: { createdAt: sortDirection } },
 
-            { $skip: skip },
-            { $limit: limit },
+            ...(exportToCSV != "true"
+                ? [
+                    { $skip: skip },
+                    { $limit: limit }
+                ]
+                : []),
 
             {
                 $lookup: {
@@ -101,6 +106,33 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
+        }
+
+        if (exportToCSV === "true") {
+            const fields = [
+                "_id",
+                "trxId",
+                "accountHolderName",
+                "optxId",
+                "accountNumber",
+                "ifscCode",
+                "amount",
+                "isSuccess",
+                "chargeAmount",
+                "finalAmount",
+                "createdAt",
+                "status",  
+                "userInfo.userName",
+                "userInfo.fullName",
+                "userInfo.memberId",
+            ];
+            const json2csvParser = new Parser({ fields });
+            const csv = json2csvParser.parse(payment);
+
+            res.header('Content-Type', 'text/csv');
+            res.attachment(`payments-${startDate}-${endDate}.csv`);
+
+            return res.status(200).send(csv);
         }
 
         const response = {
@@ -827,12 +859,12 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 optxid: data?.optxid,
                 amount: data?.amount,
                 rrn: data?.rrn
-            } 
+            }
             await axios.post(payOutUserCallBackURL, shareObjData, config)
             if (res) {
                 return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
             }
-            return 
+            return
         }
 
         if (getDocoment && data?.rrn && getDocoment?.isSuccess === "Pending") {
