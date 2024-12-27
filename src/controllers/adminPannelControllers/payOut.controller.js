@@ -737,7 +737,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                             UTR: utr,
                         }
                         await payoutCallBackResponse({ body: userCustomCallBackGen })
-                        return { statusCode:0, status: 0, trxId: trxId, opt_msg: message || "" }
+                        return { statusCode:statusCode||0, status: status||0, trxId: trxId, opt_msg: message || "" }
                     }
 
                     let walletModelDataStoreCR = {
