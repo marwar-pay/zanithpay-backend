@@ -827,8 +827,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 optxid: data?.optxid,
                 amount: data?.amount,
                 rrn: data?.rrn
-            }
-            console.log("url callbacksssss", payOutUserCallBackURL, shareObjData, config);
+            } 
             await axios.post(payOutUserCallBackURL, shareObjData, config)
             if (res) {
                 return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
