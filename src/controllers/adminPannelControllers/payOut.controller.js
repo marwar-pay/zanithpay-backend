@@ -663,7 +663,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     clientOrderId: trxId
                 },
                 res: async (apiResponse) => {
-                    const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse; 
+                    const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
                     user.EwalletBalance -= finalAmountDeduct;
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                     let walletModelDataStore = {
@@ -751,7 +751,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
     const apiDetails = apiConfig[payOutApi.apiName];
-    if (!apiDetails) return null; 
+    if (!apiDetails) return null;
 
     try {
         const response = await axios.post(apiDetails.url, apiDetails.data, { headers: apiDetails.headers });
@@ -828,9 +828,12 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 amount: data?.amount,
                 rrn: data?.rrn
             }
-
+            console.log("url callbacksssss", payOutUserCallBackURL, shareObjData, config);
             await axios.post(payOutUserCallBackURL, shareObjData, config)
-            return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
+            if (res) {
+                return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
+            }
+            return 
         }
 
         if (getDocoment && data?.rrn && getDocoment?.isSuccess === "Pending") {
@@ -904,7 +907,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             }
 
             let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
-            return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
+            if (res) {
+                return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
+            }
+            return
 
         } else {
             res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
