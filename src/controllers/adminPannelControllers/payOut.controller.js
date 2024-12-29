@@ -568,7 +568,7 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 //     }
 // });
 
-export const generatePayOut = asyncHandler(async (req, res, next) => {
+export const generatePayOut = asyncHandler(async (req, res) => {
     const release = await genPayoutMutex.acquire();
     const {
         userName, authToken, mobileNumber, accountHolderName, accountNumber,
@@ -983,7 +983,7 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
 
 export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
-    const apiDetails = apiConfig[payOutApi.apiName];
+    const apiDetails = apiConfig[payOutApi?.apiName];
     if (!apiDetails) return null;
 
     try {
@@ -1140,18 +1140,19 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 rrn: data?.rrn
             }
 
-            let dataApi = await axios.post(payOutUserCallBackURL, shareObjData, config)
+            let aa = await axios.post(payOutUserCallBackURL, shareObjData, config)
+
             if (res) {
                 return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
             }
             return
 
         } else {
-            res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
+            return res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
         }
     } catch (error) {
         console.log(error)
-        res.status(400).json({ message: "Failed", data: "Internal server error !" })
+        return res.status(400).json({ message: "Failed", data: "Internal server error !" })
     }
 });
 
