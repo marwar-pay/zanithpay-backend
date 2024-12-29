@@ -866,6 +866,99 @@ export const generatePayOut = asyncHandler(async (req, res, next) => {
                     // return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
 
                 }
+            },
+            waayupayPayOutApiSecond: {
+                url: payOutApi.apiURL,
+                headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
+                data: {
+                    clientId: process.env.WAAYU_CLIENT_ID_TWO || "bb31477b-f71e-4d4c-9dfb-30adb2d20ef3",
+                    secretKey: process.env.WAAYU_SECRET_KEY_TWO || "6f58e8db-747a-4431-b28a-d9bcad57aa31",
+                    number: String(mobileNumber),
+                    amount: amount.toString(),
+                    transferMode: "IMPS",
+                    accountNo: accountNumber,
+                    ifscCode,
+                    beneficiaryName: accountHolderName,
+                    vpa: "ajaybudaniya1@ybl",
+                    clientOrderId: trxId
+                },
+                res: async (apiResponse) => {
+                    const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
+                    user.EwalletBalance -= finalAmountDeduct;
+                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    let walletModelDataStore = {
+                        memberId: user._id,
+                        transactionType: "Dr.",
+                        transactionAmount: amount,
+                        beforeAmount: Number(user.EwalletBalance),
+                        chargeAmount: chargeAmount,
+                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                        description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
+                        transactionStatus: "Success",
+                    }
+
+                    await walletModel.create(walletModelDataStore)
+
+                    if (status == 1) {
+                        let payoutDataStore = {
+                            memberId: user?._id,
+                            amount: amount,
+                            chargeAmount: chargeAmount,
+                            finalAmount: finalAmountDeduct,
+                            bankRRN: utr,
+                            trxId: trxId,
+                            optxId: orderId,
+                            isSuccess: "Success"
+                        }
+                        await payOutModel.create(payoutDataStore);
+                        payOutModelGen.isSuccess = "Success"
+                        await payOutModelGen.save()
+                        let userCustomCallBackGen = {
+                            StatusCode: statusCode,
+                            Message: message,
+                            OrderId: orderId,
+                            Status: status,
+                            ClientOrderId: clientOrderId,
+                            PaymentMode: "IMPS",
+                            Amount: amount,
+                            Date: new Date().toString(),
+                            UTR: utr,
+                        }
+                        await payoutCallBackResponse({ body: userCustomCallBackGen })
+                        let userREspSend = {
+                            statusCode: statusCode || 0,
+                            status: status || 0,
+                            trxId: trxId || 0,
+                            opt_msg: message || "null"
+                        }
+                        return new ApiResponse(200, userREspSend)
+                    }
+
+                    let walletModelDataStoreCR = {
+                        memberId: user?._id,
+                        transactionType: "Cr.",
+                        transactionAmount: amount,
+                        beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                        chargeAmount: chargeAmount,
+                        afterAmount: Number(user?.EwalletBalance),
+                        description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
+                        transactionStatus: "Success",
+                    }
+                    await walletModel.create(walletModelDataStoreCR)
+                    user.EwalletBalance += finalAmountDeduct;
+                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    payOutModelGen.isSuccess = "Failed"
+                    await await payOutModelGen.save()
+                    let userREspSend2 = {
+                        statusCode: statusCode || 0,
+                        status: status || 0,
+                        trxId: trxId || 0,
+                        opt_msg: message || "null"
+                    }
+                    return { message: "Failed", data: userREspSend2 }
+                    // return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
+
+                }
             }
         };
 
