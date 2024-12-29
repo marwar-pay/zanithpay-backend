@@ -974,6 +974,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
         return res.status(200).json(response);
     } catch (error) {
+        console.log(error, "helo inside error")
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
     } finally {
@@ -1051,7 +1052,7 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
             const config = {
                 headers: {
-                    'Accept': 'application/json',
+                    // 'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }
             };
@@ -1063,7 +1064,12 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 amount: data?.amount,
                 rrn: data?.rrn
             }
-            await axios.post(payOutUserCallBackURL, shareObjData, config)
+
+            try {
+                await axios.post(payOutUserCallBackURL, shareObjData, config)
+            } catch (error) {
+                return
+            }
             if (res) {
                 return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
             }
@@ -1127,7 +1133,6 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
             let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
             const config = {
                 headers: {
-                    'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }
             };
@@ -1140,8 +1145,11 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
                 rrn: data?.rrn
             }
 
-            let aa = await axios.post(payOutUserCallBackURL, shareObjData, config)
-
+            try {
+                await axios.post(payOutUserCallBackURL, shareObjData, config)
+            } catch (error) {
+                return
+            }
             if (res) {
                 return res.status(200).json(new ApiResponse(200, null, "Successfully !"))
             }
