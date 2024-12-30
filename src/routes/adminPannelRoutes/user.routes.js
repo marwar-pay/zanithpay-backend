@@ -1,7 +1,7 @@
 import express from "express";
 import { getUser, addUser, registerUser, loginUser, logOut, getSingleUser, updateUser, authTokenReVerify } from "../../controllers/adminPannelControllers/user.controller.js";
 import { celebrate, Joi } from "celebrate";
-import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js";
+import { userVerify, userAuthAdmin } from "../../middlewares/userAuth.js"; 
 const router = express.Router();
 
 router.get("/getUsers", userVerify, getUser);
