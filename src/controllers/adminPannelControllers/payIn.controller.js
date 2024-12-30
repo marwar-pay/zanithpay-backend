@@ -18,6 +18,7 @@ import oldQrGenerationModel from "../../models/oldQrGeneration.model.js";
 const transactionMutex = new Mutex();
 const generatePayinMutex = new Mutex();
 const razorPayMutex = new Mutex();
+const iSmartMutex = new Mutex();
 
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
@@ -395,30 +396,7 @@ export const generatePayment = async (req, res) => {
                         notes: {
                             policy_name: "Jeevan Bima"
                         }
-                    }
-
-                    // const rzOptions = {
-                    //     upi_link: true,
-                    //     amount: Number(amount * 100),
-                    //     currency: "INR",
-                    //     accept_partial: false,
-                    //     first_min_partial_amount: 0,
-                    //     reference_id:trxId,
-                    //     description: "For XYZ purpose",
-                    //     customer: {
-                    //         name: name,
-                    //         //   email: "gaurav.kumar@example.com",
-                    //         contact: mobileNumber
-                    //     },
-                    //     notify: {
-                    //         sms: true,
-                    //         email: true
-                    //     },
-                    //     reminder_enable: true,
-                    //     notes: {
-                    //         policy_name: "Jeevan Bima"
-                    //     }
-                    // }
+                    } 
                     const paymentLink = await razorpay.paymentLink.create(rzOptions);
 
                     paymentData.qrData = paymentLink.short_url;
@@ -428,6 +406,7 @@ export const generatePayment = async (req, res) => {
                     return res.status(200).json(new ApiResponse(200, {
                         status_msg: "Payment link generated successfully",
                         status: 200,
+                        qrIntent:paymentLink.short_url,
                         qrImage: paymentLink.short_url,
                         trxID: trxId,
                     }));
@@ -449,23 +428,70 @@ export const generatePayment = async (req, res) => {
                 }
                 return res.status(400).json({ message: "Failed", data: serverResp })
             case "iSmartPayPayin":
-                const iSmartPayUrl = process.env.ISMART_PAY_PAYIN_URL
-                const iSmartPayload = {
-                    "currency": "INR",
-                    "amount": amount,
-                    "order_id": trxId,
-                    "email": "wwee@gg.com",
-                    "mobile": mobileNumber,
-                    "name": name,
-                    "redirect_url": "https://your_application.url",
-                    "webhook_url": "https://your_webhook.url",
-                    // "utf": {
-                    //     "customer_id": "97987",
-                    //     "hash_key": "ATRN090HKJHT9TVHVJ"
+                try {
+                    const paymentData = await qrGenerationModel.create({
+                        memberId: user[0]?._id,
+                        name,
+                        amount,
+                        trxId,
+                    });
+                    const iSmartPayUrl = process.env.ISMART_PAY_PAYIN_URL
+                    // const iSmartPayload = {
+                    //     "currency": "INR",
+                    //     "amount": amount,
+                    //     "order_id": trxId,
+                    //     "email": "wwee@gg.com",
+                    //     "mobile": mobileNumber,
+                    //     "name": name,
+                    //     "redirect_url": "https://www.google.com/",
+                    //     "webhook_url": " https://2958-182-69-106-224.ngrok-free.app/apiAdmin/v1/payin/iSmartPayWebhook",
+                    //     // "utf": {
+                    //     //     "customer_id": "97987",
+                    //     //     "hash_key": "ATRN090HKJHT9TVHVJ"
+                    //     // }
                     // }
+                    const iSmartPayload = {
+                        "currency": "INR",
+                        "amount": amount,
+                        "order_id": trxId,
+                        "email": "ww.j007@ff.in",
+                        "mobile": mobileNumber,
+                        "name": name,
+                        "redirect_url": "https://www.google.com/",
+                        "webhook_url": "https://2958-182-69-106-224.ngrok-free.app/apiAdmin/v1/payin/iSmartPayWebhook",
+                        "pay_type": "UPI",
+                        "vpa": "abc@icici"
+                    }
+                        // "utf":{
+                        //     "customer_id":"97987",
+                        //     "hash_key":"ATRN090HKJHT9TVHVJ"
+                        // }
+                    const iSmartHeader = {
+                        headers: {
+                            'mid': process.env.ISMART_PAY_MID,
+                            'key': process.env.ISMART_PAY_ID
+                        }
+                    }
+                    const iSmartResponse = await axios.post(iSmartPayUrl, iSmartPayload, iSmartHeader)
+
+                    if (iSmartResponse?.data?.status) {
+                        paymentData.qrData = iSmartResponse?.data?.payment_url;
+                        paymentData.refId = iSmartResponse?.data?.transaction_id;
+                        await paymentData.save();
+                        return res.status(200).json(new ApiResponse(200, {
+                            status_msg: "Payment link generated successfully",
+                            status: 200,
+                            qrImage: iSmartResponse?.data?.payment_url,
+                            trxID: trxId,
+                        }));
+                    } else {
+                        return res.status(400).json({ message: "Failed", data: iSmartResponse?.data?.errors })
+                    }
+                } catch (error) {
+                    return res.status(400).json({ message: "Failed", data: serverResp })
                 }
-                const iSmartResponse = await axios.post(iSmartPayUrl, iSmartPayload,)
-                return res.status(400).json({ message: "Failed", data: serverResp })
+
+
             default:
                 let dataApiResponse = {
                     status_msg: "failed",
@@ -909,5 +935,122 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
         release()
     }
 
+}) 
+
+export const iSmartPayCallback = asyncHandler(async (req, res) => {
+    const release = await iSmartMutex.acquire()
+    const {status, status_code, currency, amount, bank_id, order_id, transaction_id} = req.body
+    try {
+        console.log("reqbody in ismart callback..", req.body);
+        const qrGenDoc = await qrGenerationModel.findOne({ refId: order_id });
+        if (!qrGenDoc || qrGenDoc.callBackStatus == "Success" || reqPaymentLinkObj.entity.status !== "paid") return res.status(400).json({ succes: "Failed", message: "Txn Id Not available!" });
+        if (status) {
+            qrGenDoc.callBackStatus = "Success"; 
+
+            const [userInfo] = await userDB.aggregate([
+                { $match: { _id: qrGenDoc?.memberId } },
+                { $lookup: { from: "packages", localField: "package", foreignField: "_id", as: "package" } },
+                { $unwind: { path: "$package", preserveNullAndEmptyArrays: true } },
+                { $lookup: { from: "payinpackages", localField: "package.packagePayInCharge", foreignField: "_id", as: "packageCharge" } },
+                { $unwind: { path: "$packageCharge", preserveNullAndEmptyArrays: true } },
+                {
+                    $project: {
+                        _id: 1,
+                        userName: 1,
+                        memberId: 1,
+                        fullName: 1,
+                        trxPassword: 1,
+                        upiWalletBalance: 1,
+                        createdAt: 1,
+                        "packageCharge._id": 1,
+                        "packageCharge.payInPackageName": 1,
+                        "packageCharge.payInChargeRange": 1,
+                        "packageCharge.isActive": 1
+                    }
+                }
+            ]);
+
+            if (!userInfo) return;
+
+            const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
+            const payerAmount = qrGenDoc.amount;
+            let chargeTypePayIn, chargeAmountPayIn;
+
+            for (const value of chargeRange) {
+                if (value.lowerLimit <= payerAmount && value.upperLimit > payerAmount) {
+                    chargeTypePayIn = value.chargeType;
+                    chargeAmountPayIn = value.charge;
+                    break;
+                }
+            }
+
+            const userChargeApply = chargeTypePayIn === "Flat" ? chargeAmountPayIn : (chargeAmountPayIn / 100) * payerAmount;
+
+            const finalAmountAdd = payerAmount - userChargeApply;
+
+            const payinDataStore = {
+                memberId: qrGenDoc?.memberId,
+                payerName: qrGenDoc?.name,
+                trxId: qrGenDoc?.trxId,
+                amount: payerAmount,
+                chargeAmount: userChargeApply,
+                finalAmount: finalAmountAdd,
+                vpaId: "",
+                bankRRN: bank_id,
+                description: `Qr Generated Successfully Amount:${payerAmount} PayerVa:${""} BankRRN:${bank_id}`,
+                trxCompletionDate: "",
+                trxInItDate: "",
+                isSuccess: "Success"
+            };
+
+            const upiWalletDataObject = {
+                memberId: userInfo._id,
+                transactionType: "Cr.",
+                transactionAmount: finalAmountAdd,
+                beforeAmount: userInfo.upiWalletBalance,
+                afterAmount: userInfo.upiWalletBalance + finalAmountAdd,
+                description: `Successfully Cr. amount: ${finalAmountAdd} with transaction Id: ${qrGenDoc?.trxId}`,
+                transactionStatus: "Success"
+            };
+
+            const callBackPayinUrls = await callBackResponseModel.find({
+                memberId: userInfo._id,
+                isActive: true
+            }).select("payInCallBackUrl");
+
+            const userCallBackURL = callBackPayinUrls[0]?.payInCallBackUrl;
+
+            const userRespSendApi = {
+                status: reqPaymentLinkObj.entity.status,
+                payerAmount,
+                payerName: qrGenDoc?.name,
+                txnID: qrGenDoc?.trxId,
+                BankRRN: bank_id,
+                payerVA: "",
+                TxnInitDate: "",
+                TxnCompletionDate: ""
+            };
+            console.log("error logging", upiWalletDataObject, qrGenDoc, payinDataStore, userCallBackURL, userRespSendApi);
+
+
+            await Promise.all([
+                qrGenDoc.save(),
+                upiWalletModel.create(upiWalletDataObject),
+                payInModel.create(payinDataStore),
+                userDB.findByIdAndUpdate(userInfo._id, { upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd }),
+                axios.post(userCallBackURL, userRespSendApi, {
+                    headers: {
+                        Accept: "application/json",
+                        "Content-Type": "application/json"
+                    }
+                })
+            ]);
+        }
+        
+    } catch (error) {
+        return res.status(400).json({ succes: "Failed", message: error.message || "Txn Id Not Avabile!" })
+    } finally{
+        release()
+    }
 })
 
