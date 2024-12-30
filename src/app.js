@@ -25,7 +25,6 @@ import { ApiError } from "./utils/ApiError.js";
 import ErrorMiddleware from "./middlewares/ErrorMiddleware.js";
 import scheduleTask from "./utils/scheduleTask.js";
 import Log from "./models/Logs.model.js";
-import { testMiddleware } from "./middlewares/test.middleware.js";
 
 const app = express();
 
