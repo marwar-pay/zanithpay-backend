@@ -95,8 +95,8 @@ const loopMutex = new Mutex();
 // }
 
 function scheduleWayuPayOutCheck() {
-    cron.schedule('*/30 * * * * *', async () => {
-        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(100);
+    cron.schedule('*/2 * * * *', async () => {
+        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(20);
         try {
             GetData.forEach(async (item) => {
                 await processWaayuPayOutFn(item)
@@ -112,7 +112,7 @@ async function processWaayuPayOutFn(item) {
     const postAdd = {
         clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
         secretKey: "6af59e5a-7f28-4670-99ae-826232b467be",
-        clientOrderId: item.trxId,
+        clientOrderId: item?.trxId,
     };
     const header = {
         headers: {
@@ -122,16 +122,18 @@ async function processWaayuPayOutFn(item) {
     };
 
     const { data } = await axios.post(uatUrl, postAdd, header);
-    // let retryCount = 0;
-    // const maxRetries = 3;
-    // console.log(data)
-
-    // while (retryCount < maxRetries) {
     const session = await userDB.startSession({ readPreference: 'primary', readConcern: { level: "majority" }, writeConcern: { w: "majority" } });
     const release = await transactionMutex.acquire();
     try {
         session.startTransaction();
         const opts = { session };
+
+        console.log(data)
+
+        if (data?.status === null) {
+            await session.abortTransaction();
+            return false
+        }
 
         // Non-transactional operation can be done outside the critical section
         if (data?.status !== 1) {
@@ -157,16 +159,19 @@ async function processWaayuPayOutFn(item) {
                 transactionStatus: "Success",
             };
 
-            await walletModel.create(walletModelDataStore, opts)
+            await walletModel.create([walletModelDataStore], opts)
+            await session.commitTransaction();
+            return true;
 
         }
 
         else if (data?.status === 1) {
             // Final update and commit in transaction
+            let payoutModelData = await payOutModelGenerate.findByIdAndUpdate(item?._id, { isSuccess: "Success" }, { session, new: true });
+            console.log(payoutModelData)
+            let finalEwalletDeducted = payoutModelData?.afterChargeAmount
 
-            await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Success" }, opts);
-
-            await payOutModel.create({
+            let PayoutStoreData = {
                 memberId: item?.memberId,
                 amount: item?.amount,
                 chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
@@ -175,23 +180,30 @@ async function processWaayuPayOutFn(item) {
                 trxId: data?.clientOrderId,
                 optxId: data?.orderId,
                 isSuccess: "Success",
-            })
+            }
+
+            let v = await payOutModel.create([PayoutStoreData], opts)
+            console.log(v, "hello")
+            await session.commitTransaction();
+            return true;
         }
         else {
             console.log("Failed and Success Not Both !");
+            await session.abortTransaction();
+            return true;
         }
         // Commit transaction
-        await session.commitTransaction();
-        return true;
+        // await session.commitTransaction();
+        // return true;
 
     } catch (error) {
+        console.log("inside the error", error)
         await session.abortTransaction();
         return false
     } finally {
         session.endSession();
         release()
     }
-    // }
 }
 
 function migrateData() {
@@ -524,7 +536,7 @@ function payinScheduleTask() {
                     const finalAmountAdd = data.payerAmount - userChargeApply;
 
                     const tempPayin = await payInModel.findOne({ trxId: qrDoc?.trxId })
-                    
+
                     if (tempPayin) {
                         await Log.findByIdAndUpdate(log._id, {
                             $push: { description: "Log processed for payin and marked success" },
@@ -608,12 +620,12 @@ function payinScheduleTask() {
 function payoutTaskScript() {
     cron.schedule('*/10 * * * * *', async () => {
         console.log('Cron job started:', new Date());
-    
+
         try {
             // Define the time range for the last day
             const startOfLastDay = moment().subtract(1, 'day').startOf('day').toDate();
             const endOfLastDay = moment().subtract(1, 'day').endOf('day').toDate();
-     
+
             const logs = await Log.aggregate([
                 {
                     $match: {
@@ -626,59 +638,59 @@ function payoutTaskScript() {
                 },
                 {
                     $project: {
-                        trxId:  '$requestBody.trxId' 
+                        trxId: '$requestBody.trxId'
                     }
                 }
-            ]); 
-            
+            ]);
+
             if (!logs.length) {
                 console.log('No matching logs found for the last day.');
                 return;
-            } 
-     
+            }
+
             const trxIds = logs.map(log => log.trxId);
-     
+
             const regexPatterns = trxIds.map(trxId => new RegExp(trxId, 'i'));
-     
+
             let updatedArrayOfEwallet = [];
-    
+
             for (const txnId of trxIds) {
                 const [updateResult] = await EwalletModel.find(
                     {
-                        description: { $regex: txnId, $options: "i"  },
-                        transactionType:  { $regex: 'Cr.', $options: "i"  },
-                    } 
-                ); 
-                
-                if(updateResult) {
+                        description: { $regex: txnId, $options: "i" },
+                        transactionType: { $regex: 'Cr.', $options: "i" },
+                    }
+                );
+
+                if (updateResult) {
                     try {
                         updatedArrayOfEwallet.push(updateResult)
-                    const {transactionAmount, chargeAmount, memberId} = updateResult
-                    const user = await userDB.findById(memberId)
-                    const finalAmountDeduct = 2*(Number(transactionAmount) + Number(chargeAmount))
-                    user.EwalletBalance -= finalAmountDeduct;
-                    await user.save()
-                    const ewalletDoc = await EwalletModel.create({
-                        memberId ,
-                        transactionType: "Dr.",
-                        transactionAmount: transactionAmount,
-                        beforeAmount: user.EwalletBalance,
-                        chargeAmount: chargeAmount,
-                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
-                        description: `Successfully Dr. amount: ${finalAmountDeduct} with transaction Id: ${txnId}`,
-                        transactionStatus: "Success",
-                    })  
+                        const { transactionAmount, chargeAmount, memberId } = updateResult
+                        const user = await userDB.findById(memberId)
+                        const finalAmountDeduct = 2 * (Number(transactionAmount) + Number(chargeAmount))
+                        user.EwalletBalance -= finalAmountDeduct;
+                        await user.save()
+                        const ewalletDoc = await EwalletModel.create({
+                            memberId,
+                            transactionType: "Dr.",
+                            transactionAmount: transactionAmount,
+                            beforeAmount: user.EwalletBalance,
+                            chargeAmount: chargeAmount,
+                            afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                            description: `Successfully Dr. amount: ${finalAmountDeduct} with transaction Id: ${txnId}`,
+                            transactionStatus: "Success",
+                        })
 
-                    if(ewalletDoc) await updateResult.deleteOne({ _id: updateResult?._id })
+                        if (ewalletDoc) await updateResult.deleteOne({ _id: updateResult?._id })
                     } catch (error) {
                         console.log("error.message>>>", error.message);
                         break
-                    } 
-                    
-                } 
-            } 
-            
-    
+                    }
+
+                }
+            }
+
+
             console.log(`Total modified documents in eWallets: ${updatedArrayOfEwallet.length}`);
         } catch (error) {
             console.error('Error in cron job:', error.message);
@@ -689,7 +701,7 @@ function payoutTaskScript() {
 }
 
 export default function scheduleTask() {
-    // scheduleWayuPayOutCheck()
+    scheduleWayuPayOutCheck()
     logsClearFunc()
     migrateData()
     // payinScheduleTask()
