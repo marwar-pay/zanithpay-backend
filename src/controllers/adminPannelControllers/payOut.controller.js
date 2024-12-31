@@ -149,8 +149,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(payment);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`payoutPayments-${startDate}-${endDate}.csv`);
-            console.log("inside export if");
+            res.attachment(`payoutPayments-${startDate}-${endDate}.csv`); 
 
             return res.status(200).send(csv);
         }
