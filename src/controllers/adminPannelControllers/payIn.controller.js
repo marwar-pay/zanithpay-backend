@@ -269,7 +269,6 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
 });
 
 export const generatePayment = async (req, res) => {
-    const release = await generatePayinMutex.acquire()
     try {
         const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
         // const tempTransaction = await qrGenerationModel.findOne({ trxId })
@@ -290,45 +289,51 @@ export const generatePayment = async (req, res) => {
         let apiSwitchApiOption = user[0]?.payInApi?.apiName;
         switch (apiSwitchApiOption) {
             case "neyopayPayIn":
-                let url = user[0].payInApi.apiURL
-                let formData = new FormData()
-                formData.append("amount", amount)
-                formData.append("Apikey", "14205")
-                formData.append("url", "https://zanithpay.com")
-                formData.append("transactionId", trxId)
-                formData.append("mobile", mobileNumber)
+                let Reesponse = {
+                    status_msg: "failed",
+                    status: 400,
+                    trxID: trxId,
+                }
+                return res.status(400).json({ message: "Failed", data: Reesponse })
+                // let url = user[0].payInApi.apiURL
+                // let formData = new FormData()
+                // formData.append("amount", amount)
+                // formData.append("Apikey", "14205")
+                // formData.append("url", "https://zanithpay.com")
+                // formData.append("transactionId", trxId)
+                // formData.append("mobile", mobileNumber)
 
-                // store database
-                await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
-                    // Bankking api calling !
-                    let resp = await axios.post(url, formData)
+                // // store database
+                // await qrGenerationModel.create({ memberId: user[0]?._id, name, amount, trxId }).then(async (data) => {
+                //     // Bankking api calling !
+                //     let resp = await axios.post(url, formData)
 
-                    let dataApiResponse = {
-                        status_msg: resp?.data?.message,
-                        status: resp?.data?.status == true ? 200 : 400,
-                        qrImage: resp?.data?.Payment_link,
-                        trxID: trxId,
-                    }
+                //     let dataApiResponse = {
+                //         status_msg: resp?.data?.message,
+                //         status: resp?.data?.status == true ? 200 : 400,
+                //         qrImage: resp?.data?.Payment_link,
+                //         trxID: trxId,
+                //     }
 
-                    if (resp?.data?.status !== true) {
-                        data.callBackStatus = "Failed";
-                        await data.save();
-                        return res.status(400).json({ message: "Failed", data: dataApiResponse })
-                    } else {
-                        data.qrData = resp?.data?.Payment_link;
-                        data.refId = resp?.data?.refId;
-                        await data.save();
-                    }
+                //     if (resp?.data?.status !== true) {
+                //         data.callBackStatus = "Failed";
+                //         await data.save();
+                //         return res.status(400).json({ message: "Failed", data: dataApiResponse })
+                //     } else {
+                //         data.qrData = resp?.data?.Payment_link;
+                //         data.refId = resp?.data?.refId;
+                //         await data.save();
+                //     }
 
-                    // Send response
-                    return res.status(200).json(new ApiResponse(200, dataApiResponse))
-                }).catch((error) => {
-                    if (error.code == 11000) {
-                        return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
-                    } else {
-                        return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
-                    }
-                })
+                //     // Send response
+                //     return res.status(200).json(new ApiResponse(200, dataApiResponse))
+                // }).catch((error) => {
+                //     if (error.code == 11000) {
+                //         return res.status(500).json({ message: "Failed", data: "trx Id duplicate Find !" })
+                //     } else {
+                //         return res.status(500).json({ message: "Failed", data: "Internel Server Error !" })
+                //     }
+                // })
                 break;
             case "impactpeaksoftwareApi":
                 // store database
@@ -490,8 +495,6 @@ export const generatePayment = async (req, res) => {
                 } catch (error) {
                     return res.status(400).json({ message: "Failed", data: serverResp })
                 }
-
-
             default:
                 let dataApiResponse = {
                     status_msg: "failed",
@@ -502,8 +505,7 @@ export const generatePayment = async (req, res) => {
         }
     } catch (error) {
         console.log("error==>", error.message);
-    } finally {
-        release()
+        return res.status(400).json({ message: "Failed", data: "Server Side Problem !" })
     }
 
 };
