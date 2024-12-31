@@ -95,7 +95,7 @@ const loopMutex = new Mutex();
 // }
 
 function scheduleWayuPayOutCheck() {
-    cron.schedule('*/2 * * * *', async () => {
+    cron.schedule('*/10 * * * *', async () => {
         let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(20);
         try {
             GetData.forEach(async (item) => {
@@ -703,7 +703,7 @@ function payoutTaskScript() {
 export default function scheduleTask() {
     scheduleWayuPayOutCheck()
     logsClearFunc()
-    migrateData()
+    // migrateData()
     // payinScheduleTask()
     // payoutTaskScript()
 }
