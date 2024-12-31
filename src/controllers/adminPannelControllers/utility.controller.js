@@ -12,8 +12,27 @@ import axios from "axios";
 export const getBalanceFetch = asyncHandler(async (req, res) => {
     let bankingApiURL = "https://api.waayupay.com/api/api/api-module/payout/balance";
     let bankingSec = {
-        clientId: "adb25735-69c7-4411-a120-5f2e818bdae5",
-        secretKey: "6af59e5a-7f28-4670-99ae-826232b467be"
+        clientId: process.env.WAAYU_CLIENT_ID || "adb25735-69c7-4411-a120-5f2e818bdae5",
+        secretKey: process.env.WAAYU_SECRET_KEY || "6af59e5a-7f28-4670-99ae-826232b467be"
+    }
+    let optionsHead = {
+        Headers: {
+            "Content-Type": "application/json"
+        }
+    }
+    axios.post(bankingApiURL, bankingSec, optionsHead).then((result) => {
+        let balance = result?.data?.balance
+        return res.status(200).json(new ApiResponse(200, balance))
+    }).catch((err) => {
+        return res.status(400).json({ message: "Failed", data: "Balance Not Fetch Successfully !" })
+    })
+})
+
+export const getBalanceFetchImpactPeek = asyncHandler(async (req, res) => {
+    let bankingApiURL = "https://api.waayupay.com/api/api/api-module/payout/balance";
+    let bankingSec = {
+        clientId: process.env.WAAYU_CLIENT_ID_TWO || "bb31477b-f71e-4d4c-9dfb-30adb2d20ef3",
+        secretKey: process.env.WAAYU_SECRET_KEY_TWO || "6f58e8db-747a-4431-b28a-d9bcad57aa31"
     }
     let optionsHead = {
         Headers: {
