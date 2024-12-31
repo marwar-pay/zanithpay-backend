@@ -272,9 +272,9 @@ export const generatePayment = async (req, res) => {
     const release = await generatePayinMutex.acquire()
     try {
         const { userName, authToken, name, amount, trxId, mobileNumber } = req.body
-        const tempTransaction = await qrGenerationModel.findOne({ trxId })
-        const tempOldTransaction = await oldQrGenerationModel.findOne({ trxId })
-        if (tempTransaction || tempOldTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
+        // const tempTransaction = await qrGenerationModel.findOne({ trxId })
+        // const tempOldTransaction = await oldQrGenerationModel.findOne({ trxId })
+        // if (tempTransaction || tempOldTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
         // if (tempTransaction) return res.status(400).json({ message: "Failed", data: "Transaction Id alrteady exists !" })
         let user = await userDB.aggregate([{ $match: { $and: [{ userName: userName }, { trxAuthToken: authToken }, { isActive: true }] } }, { $lookup: { from: "payinswitches", localField: "payInApi", foreignField: "_id", as: "payInApi" } }, {
             $unwind: {
@@ -396,7 +396,7 @@ export const generatePayment = async (req, res) => {
                         notes: {
                             policy_name: "Jeevan Bima"
                         }
-                    } 
+                    }
                     const paymentLink = await razorpay.paymentLink.create(rzOptions);
 
                     paymentData.qrData = paymentLink.short_url;
@@ -406,7 +406,7 @@ export const generatePayment = async (req, res) => {
                     return res.status(200).json(new ApiResponse(200, {
                         status_msg: "Payment link generated successfully",
                         status: 200,
-                        qrIntent:paymentLink.short_url,
+                        qrIntent: paymentLink.short_url,
                         qrImage: paymentLink.short_url,
                         trxID: trxId,
                     }));
@@ -462,10 +462,10 @@ export const generatePayment = async (req, res) => {
                         "pay_type": "UPI",
                         "vpa": "abc@icici"
                     }
-                        // "utf":{
-                        //     "customer_id":"97987",
-                        //     "hash_key":"ATRN090HKJHT9TVHVJ"
-                        // }
+                    // "utf":{
+                    //     "customer_id":"97987",
+                    //     "hash_key":"ATRN090HKJHT9TVHVJ"
+                    // }
                     const iSmartHeader = {
                         headers: {
                             'mid': process.env.ISMART_PAY_MID,
@@ -935,17 +935,17 @@ export const rezorPayCallback = asyncHandler(async (req, res) => {
         release()
     }
 
-}) 
+})
 
 export const iSmartPayCallback = asyncHandler(async (req, res) => {
     const release = await iSmartMutex.acquire()
-    const {status, status_code, currency, amount, bank_id, order_id, transaction_id} = req.body
+    const { status, status_code, currency, amount, bank_id, order_id, transaction_id } = req.body
     try {
         console.log("reqbody in ismart callback..", req.body);
         const qrGenDoc = await qrGenerationModel.findOne({ refId: order_id });
         if (!qrGenDoc || qrGenDoc.callBackStatus == "Success" || reqPaymentLinkObj.entity.status !== "paid") return res.status(400).json({ succes: "Failed", message: "Txn Id Not available!" });
         if (status) {
-            qrGenDoc.callBackStatus = "Success"; 
+            qrGenDoc.callBackStatus = "Success";
 
             const [userInfo] = await userDB.aggregate([
                 { $match: { _id: qrGenDoc?.memberId } },
@@ -1046,10 +1046,10 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
                 })
             ]);
         }
-        
+
     } catch (error) {
         return res.status(400).json({ succes: "Failed", message: error.message || "Txn Id Not Avabile!" })
-    } finally{
+    } finally {
         release()
     }
 })
