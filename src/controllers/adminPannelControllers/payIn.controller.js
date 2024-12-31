@@ -20,6 +20,126 @@ const generatePayinMutex = new Mutex();
 const razorPayMutex = new Mutex();
 const iSmartMutex = new Mutex();
 
+// export const allGeneratedPayment = asyncHandler(async (req, res) => {
+//     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
+//     page = Number(page) || 1;
+//     limit = Number(limit) || 25;
+//     const trimmedKeyword = keyword.trim();
+//     const trimmedMemberId = memberId && mongoose.Types.ObjectId.isValid(memberId)
+//         ? new mongoose.Types.ObjectId(String(memberId.trim()))
+//         : null;
+
+//     let dateFilter = {};
+//     if (startDate) {
+//         dateFilter.$gte = new Date(startDate);
+//     }
+//     if (endDate) {
+//         endDate = new Date(endDate);
+//         endDate.setHours(23, 59, 59, 999);
+//         dateFilter.$lt = new Date(endDate);
+//     }
+
+//     let matchFilters = {
+//         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+//         ...(trimmedKeyword && {
+//             $or: [
+//                 { trxId: { $regex: trimmedKeyword, $options: "i" } },
+//                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
+//             ]
+//         }),
+//         ...(trimmedMemberId && { memberId: trimmedMemberId })
+//     };
+//     try {
+//         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
+//         const aggregationPipeline = [
+//             {
+//                 $match: matchFilters
+//             },
+//             { $sort: { createdAt: sortDirection } },
+
+//             ...(exportToCSV != "true"
+//                 ? [
+//                     { $skip: (page - 1) * limit },
+//                     { $limit: limit }
+//                 ]
+//                 : []),
+
+//             {
+//                 $lookup: {
+//                     from: "users",
+//                     localField: "memberId",
+//                     foreignField: "_id",
+//                     pipeline: [
+//                         { $project: { userName: 1, fullName: 1, memberId: 1 } }
+//                     ],
+//                     as: "userInfo"
+//                 }
+//             },
+
+//             {
+//                 $unwind: {
+//                     path: "$userInfo",
+//                     preserveNullAndEmptyArrays: false
+//                 }
+//             },
+
+//             {
+//                 $project: {
+//                     "_id": 1,
+//                     "trxId": 1,
+//                     "amount": 1,
+//                     "name": 1,
+//                     "callBackStatus": 1,
+//                     "qrData": 1,
+//                     "refId": 1,
+//                     "createdAt": 1,
+//                     "userInfo.userName": 1,
+//                     "userInfo.fullName": 1,
+//                     "userInfo.memberId": 1
+//                 }
+//             }
+//         ];
+
+//         let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
+
+//         const totalDocs = exportToCSV === "true" ? payments.length : await qrGenerationModel.countDocuments(matchFilters);
+
+//         if (exportToCSV === "true") {
+//             const fields = [
+//                 "_id",
+//                 "trxId",
+//                 "amount",
+//                 "name",
+//                 "callBackStatus",
+//                 "qrData",
+//                 "refId",
+//                 "createdAt",
+//                 "userInfo.userName",
+//                 "userInfo.fullName",
+//                 "userInfo.memberId"
+//             ];
+//             const json2csvParser = new Parser({ fields });
+//             const csv = json2csvParser.parse(payments);
+
+//             res.header('Content-Type', 'text/csv');
+//             res.attachment('payments.csv');
+
+//             return res.status(200).send(csv);
+//         }
+
+//         if (!payments || payments.length === 0) {
+//             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
+//         }
+
+//         res.status(200).json(new ApiResponse(200, payments, totalDocs));
+//     } catch (err) {
+//         res.status(500).json({
+//             message: "Failed",
+//             data: `Internal Server Error: ${err.message}`,
+//         });
+//     }
+// });
+
 export const allGeneratedPayment = asyncHandler(async (req, res) => {
     let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, export: exportToCSV } = req.query;
     page = Number(page) || 1;
@@ -49,8 +169,51 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })
     };
+
     try {
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
+
+        // Compute Success Rate Per Minute
+        const successRatePipeline = [
+            { $match: matchFilters },
+            {
+                $group: {
+                    _id: {
+                        minute: { $minute: "$updatedAt" },
+                        hour: { $hour: "$updatedAt" },
+                        day: { $dayOfMonth: "$updatedAt" },
+                        month: { $month: "$updatedAt" },
+                        year: { $year: "$updatedAt" }
+                    },
+                    successCount: {
+                        $sum: { $cond: [{ $eq: ["$callBackStatus", "Success"] }, 1, 0] }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalMinutes: { $sum: 1 },
+                    totalSuccess: { $sum: "$successCount" }
+                }
+            },
+            {
+                $project: {
+                    successRatePerMinute: {
+                        $cond: [
+                            { $gt: ["$totalMinutes", 0] },
+                            { $divide: ["$totalSuccess", "$totalMinutes"] },
+                            0
+                        ]
+                    }
+                }
+            }
+        ];
+
+        const successRateResult = await qrGenerationModel.aggregate(successRatePipeline).allowDiskUse(true);
+        const successRatePerMinute = successRateResult.length > 0 ? successRateResult[0].successRatePerMinute : 0;
+
+        // Fetch paginated results
         const aggregationPipeline = [
             {
                 $match: matchFilters
@@ -131,7 +294,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
         }
 
-        res.status(200).json(new ApiResponse(200, payments, totalDocs));
+        res.status(200).json(new ApiResponse(200, payments, totalDocs, { successRatePerMinute }));
     } catch (err) {
         res.status(500).json({
             message: "Failed",
