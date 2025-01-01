@@ -797,7 +797,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
                     user.EwalletBalance -= finalAmountDeduct;
-                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    // await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
                         transactionType: "Dr.",
@@ -890,7 +891,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
                     user.EwalletBalance -= finalAmountDeduct;
-                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    // await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
                         transactionType: "Dr.",
