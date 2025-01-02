@@ -149,7 +149,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             const csv = json2csvParser.parse(payment);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`payoutPayments-${startDate}-${endDate}.csv`); 
+            res.attachment(`payoutPayments-${startDate}-${endDate}.csv`);
 
             return res.status(200).send(csv);
         }
@@ -797,7 +797,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
                     user.EwalletBalance -= finalAmountDeduct;
-                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
+                    await userDB.updateOne({ _id: new mongoose.Types.ObjectId(String(user._id)) }, { $set: { EwalletBalance: user.EwalletBalance } });
                     // await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
@@ -877,8 +877,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 url: payOutApi.apiURL,
                 headers: { 'Content-Type': 'application/json', 'Accept': "application/json" },
                 data: {
-                    clientId: process.env.WAAYU_CLIENT_ID_TWO || "bb31477b-f71e-4d4c-9dfb-30adb2d20ef3",
-                    secretKey: process.env.WAAYU_SECRET_KEY_TWO || "6f58e8db-747a-4431-b28a-d9bcad57aa31",
+                    clientId: process.env.WAAYU_CLIENT_ID_TWO,
+                    secretKey: process.env.WAAYU_SECRET_KEY_TWO,
                     number: String(mobileNumber),
                     amount: amount.toString(),
                     transferMode: "IMPS",
@@ -931,7 +931,30 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             Date: new Date().toString(),
                             UTR: utr,
                         }
-                        await payoutCallBackResponse({ body: userCustomCallBackGen })
+                        // await payoutCallBackResponse({ body: userCustomCallBackGen })
+                        let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: payOutModelGen.memberId } }]);
+
+                        let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+                        const config = {
+                            headers: {
+                                // 'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            }
+                        };
+
+                        const shareObjData = {
+                            status: "SUCCESS",
+                            txnid: trxId,
+                            optxid: orderId,
+                            amount: amount,
+                            rrn: utr
+                        }
+
+                        try {
+                            await axios.post(payOutUserCallBackURL, shareObjData, config)
+                        } catch (error) {
+                            return
+                        }
                         let userREspSend = {
                             statusCode: statusCode || 0,
                             status: status || 0,
@@ -1061,7 +1084,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     return { message: "Failed", data: userREspSend2 }
 
                 }
-            }            
+            }
         };
 
         const apiResponse = await performPayoutApiCall(payOutApi, apiConfig);
@@ -1266,10 +1289,10 @@ export const payoutCallBackResponse = asyncHandler(async (req, res) => {
     }
 });
 
-export const iSmartPayCallback = asyncHandler(async (req,res)=>{
+export const iSmartPayCallback = asyncHandler(async (req, res) => {
     const release = await iSmartMutex.acquire()
     try {
-        const {status, status_code, message, transaction_id, amount, bank_id, order_id, purpose, narration, currency, created_on} = req.body
+        const { status, status_code, message, transaction_id, amount, bank_id, order_id, purpose, narration, currency, created_on } = req.body
         let data = { txnid: order_id, optxid: transaction_id, amount: amount, rrn: bank_id, status: status ? "SUCCESS" : status }
 
         // if (req.body.bank_id) {
@@ -1395,7 +1418,7 @@ export const iSmartPayCallback = asyncHandler(async (req,res)=>{
             return res.status(400).json({ message: "Failed", data: "Trx Id and user not Found !" })
         }
     } catch (error) {
-        
+
     } finally {
         release()
     }
