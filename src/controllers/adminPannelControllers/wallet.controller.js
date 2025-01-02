@@ -60,19 +60,20 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
                 preserveNullAndEmptyArrays: false,
             },
         },
-        {
-            $addFields: {
-                createdAt: {
-                    $dateToString: {
-                        format: "%Y-%m-%d %H:%M:%S",
-                        date: {
-                            $add: ["$createdAt", 19800000] // Convert UTC to IST
-                        },
-                        timezone: "Asia/Kolkata"
+        ...(exportToCSV == "true"
+            ? [{
+                $addFields: {
+                    createdAt: {
+                        $dateToString: {
+                            format: "%Y-%m-%d %H:%M:%S",
+                            date: {
+                                $add: ["$createdAt", 0] // Convert UTC to IST
+                            },
+                            timezone: "Asia/Kolkata"
+                        }
                     }
                 }
-            }
-        },
+            }] : []),
         {
             $project: {
                 _id: 1,
@@ -174,19 +175,20 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
                 },
             },
             { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
-            {
-                $addFields: {
-                    createdAt: {
-                        $dateToString: {
-                            format: "%Y-%m-%d %H:%M:%S",
-                            date: {
-                                $add: ["$createdAt", 19800000] // Convert UTC to IST
-                            },
-                            timezone: "Asia/Kolkata"
+            ...(exportToCSV == "true"
+                ? [{
+                    $addFields: {
+                        createdAt: {
+                            $dateToString: {
+                                format: "%Y-%m-%d %H:%M:%S",
+                                date: {
+                                    $add: ["$createdAt", 0] // Convert UTC to IST
+                                },
+                                timezone: "Asia/Kolkata"
+                            }
                         }
                     }
-                }
-            },
+                }] : []),
             {
                 $project: {
                     "_id": 1,
@@ -212,25 +214,25 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
         if (exportToCSV === "true") {
             const fields = [
                 "_id",
-                    "memberId",
-                    "transactionType",
-                    "transactionAmount",
-                    "beforeAmount",
-                    "chargeAmount",
-                    "afterAmount",
-                    "description",
-                    "transactionStatus",
-                    "createdAt",
-                    "updatedAt",
-                    "userInfo.userName",
-                    "userInfo.fullName",
-                    "userInfo.memberId"
+                "memberId",
+                "transactionType",
+                "transactionAmount",
+                "beforeAmount",
+                "chargeAmount",
+                "afterAmount",
+                "description",
+                "transactionStatus",
+                "createdAt",
+                "updatedAt",
+                "userInfo.userName",
+                "userInfo.fullName",
+                "userInfo.memberId"
             ];
             const json2csvParser = new Parser({ fields });
             const csv = json2csvParser.parse(transactions);
 
             res.header('Content-Type', 'text/csv');
-            res.attachment(`transactions-${startDate}-${endDate}.csv`); 
+            res.attachment(`transactions-${startDate}-${endDate}.csv`);
 
             return res.status(200).send(csv);
         }

@@ -99,6 +99,20 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                     preserveNullAndEmptyArrays: true,
                 },
             },
+            ...(exportToCSV == "true"
+                ? [{
+                    $addFields: {
+                        createdAt: {
+                            $dateToString: {
+                                format: "%Y-%m-%d %H:%M:%S",
+                                date: {
+                                    $add: ["$createdAt", 0] // Convert UTC to IST
+                                },
+                                timezone: "Asia/Kolkata"
+                            }
+                        }
+                    }
+                }] : []),
             {
                 $project: {
                     "_id": 1,
@@ -218,6 +232,20 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
                 preserveNullAndEmptyArrays: true,
             },
         },
+        ...(exportToCSV == "true"
+            ? [{
+                $addFields: {
+                    createdAt: {
+                        $dateToString: {
+                            format: "%Y-%m-%d %H:%M:%S",
+                            date: {
+                                $add: ["$createdAt", 0] // Convert UTC to IST
+                            },
+                            timezone: "Asia/Kolkata"
+                        }
+                    }
+                }
+            }] : []),
         {
             $project: {
                 "_id": 1,
@@ -788,7 +816,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         const response = await apiConfig[payOutApi.apiName]?.res(apiResponse)
 
         return res.status(200).json(response);
-    } catch (error) { 
+    } catch (error) {
         console.log(error, "helo inside error")
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
@@ -1113,4 +1141,3 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
         release()
     }
 })
- 
