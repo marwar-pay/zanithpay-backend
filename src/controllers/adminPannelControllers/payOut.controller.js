@@ -916,6 +916,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 },
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
+                    
                     user.EwalletBalance -= finalAmountDeduct;
                     await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
                     // await user.save()
@@ -957,30 +958,31 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             Date: new Date().toString(),
                             UTR: utr,
                         }
-                        await payoutCallBackResponse({ body: userCustomCallBackGen })
-                        // let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: payOutModelGen.memberId } }]);
+                        // await payoutCallBackResponse({ body: userCustomCallBackGen })
+                        let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: payOutModelGen.memberId } }]);
 
-                        // let payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
-                        // const config = {
-                        //     headers: {
-                        //         // 'Accept': 'application/json',
-                        //         'Content-Type': 'application/json'
-                        //     }
-                        // };
+                        const payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
+                        const config = {
+                            headers: {
+                                // 'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            }
+                        };
 
-                        // const shareObjData = {
-                        //     status: "SUCCESS",
-                        //     txnid: trxId,
-                        //     optxid: orderId,
-                        //     amount: amount,
-                        //     rrn: utr
-                        // }
-
-                        // try {
-                        //     await axios.post(payOutUserCallBackURL, shareObjData, config)
-                        // } catch (error) {
-                        //     return
-                        // }
+                        const shareObjData = {
+                            status: "SUCCESS",
+                            txnid: trxId,
+                            optxid: orderId,
+                            amount: amount,
+                            rrn: utr
+                        }
+                        console.log(config, shareObjData, payOutUserCallBackURL);
+                        
+                        try {
+                            await axios.post(payOutUserCallBackURL, shareObjData, config)
+                        } catch (error) {
+                            return
+                        }
                         let userREspSend = {
                             statusCode: statusCode || 0,
                             status: status || 0,
@@ -1113,9 +1115,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             }
         };
 
-        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig);
-
-        if (!apiResponse) {
+        const apiResponse = await performPayoutApiCall(payOutApi, apiConfig); 
+        if (!apiResponse || typeof apiResponse != "object") {
             payOutModelGen.isSuccess = "Failed";
             await payOutModelGen.save();
             return res.status(500).json({ message: "Failed", data: { statusCode: 400, txnID: trxId } });
