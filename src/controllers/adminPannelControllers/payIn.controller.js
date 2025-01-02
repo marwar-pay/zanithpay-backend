@@ -245,7 +245,19 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
                     preserveNullAndEmptyArrays: false
                 }
             },
-
+            {
+                $addFields: {
+                    createdAt: {
+                        $dateToString: {
+                            format: "%Y-%m-%d %H:%M:%S",
+                            date: {
+                                $add: ["$createdAt", 19800000] // Convert UTC to IST
+                            },
+                            timezone: "Asia/Kolkata"
+                        }
+                    }
+                }
+            },
             {
                 $project: {
                     "_id": 1,
@@ -368,8 +380,19 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
                 preserveNullAndEmptyArrays: false
             }
         },
-
-
+        {
+            $addFields: {
+                createdAt: {
+                    $dateToString: {
+                        format: "%Y-%m-%d %H:%M:%S",
+                        date: {
+                            $add: ["$createdAt", 19800000] // Convert UTC to IST
+                        },
+                        timezone: "Asia/Kolkata"
+                    }
+                }
+            }
+        },
         {
             $project: {
                 "_id": 1,

@@ -61,6 +61,19 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
             },
         },
         {
+            $addFields: {
+                createdAt: {
+                    $dateToString: {
+                        format: "%Y-%m-%d %H:%M:%S",
+                        date: {
+                            $add: ["$createdAt", 19800000] // Convert UTC to IST
+                        },
+                        timezone: "Asia/Kolkata"
+                    }
+                }
+            }
+        },
+        {
             $project: {
                 _id: 1,
                 memberId: 1,
@@ -161,6 +174,19 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
                 },
             },
             { $unwind: { path: "$userInfo", preserveNullAndEmptyArrays: true } },
+            {
+                $addFields: {
+                    createdAt: {
+                        $dateToString: {
+                            format: "%Y-%m-%d %H:%M:%S",
+                            date: {
+                                $add: ["$createdAt", 19800000] // Convert UTC to IST
+                            },
+                            timezone: "Asia/Kolkata"
+                        }
+                    }
+                }
+            },
             {
                 $project: {
                     "_id": 1,

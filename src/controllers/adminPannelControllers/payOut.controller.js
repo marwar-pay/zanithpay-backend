@@ -100,6 +100,19 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
                 },
             },
             {
+                $addFields: {
+                    createdAt: {
+                        $dateToString: {
+                            format: "%Y-%m-%d %H:%M:%S",
+                            date: {
+                                $add: ["$createdAt", 19800000] // Convert UTC to IST
+                            },
+                            timezone: "Asia/Kolkata"
+                        }
+                    }
+                }
+            },
+            {
                 $project: {
                     "_id": 1,
                     "trxId": 1,
@@ -217,6 +230,19 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
                 path: "$userInfo",
                 preserveNullAndEmptyArrays: true,
             },
+        },
+        {
+            $addFields: {
+                createdAt: {
+                    $dateToString: {
+                        format: "%Y-%m-%d %H:%M:%S",
+                        date: {
+                            $add: ["$createdAt", 19800000] // Convert UTC to IST
+                        },
+                        timezone: "Asia/Kolkata"
+                    }
+                }
+            }
         },
         {
             $project: {
