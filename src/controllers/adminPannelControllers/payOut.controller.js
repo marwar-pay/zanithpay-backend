@@ -335,6 +335,63 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             amount, gatwayCharge: chargeAmount, afterChargeAmount: finalAmountDeduct, trxId
         });
 
+        // db locking with deducted amount 
+        const session = await userDB.startSession();
+        const transactionOptions = {
+            readConcern: { level: 'local' },
+            writeConcern: { w: 1 },
+            maxTimeMS: 2000
+        };
+        let t1;
+        let t2;
+        let t3;
+        // wallet deducted and store ewallet trx
+        try {
+            session.startTransaction(transactionOptions);
+            const opts = { session };
+
+            // Perform the update within the transaction
+            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", { session })
+            let beforeAmount = userWallet?.EwalletBalance;
+            userWallet.EwalletBalance -= finalAmountDeduct;
+            await userWallet.save({ session })
+            // const result = await userDB.updateOne(
+            //     { _id: user?._id },
+            //     { $inc: { EwalletBalance: - finalAmountDeduct } },
+            //     { session }
+            // );
+            t1 = beforeAmount;
+            t2 = userWallet.EwalletBalance
+
+            // ewallet store 
+            let walletModelDataStore = {
+                memberId: user?._id,
+                transactionType: "Dr.",
+                transactionAmount: amount,
+                beforeAmount: beforeAmount,
+                chargeAmount: chargeAmount,
+                afterAmount: beforeAmount - finalAmountDeduct,
+                description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
+                transactionStatus: "Success",
+            }
+
+            const walletDoc = await walletModel.create([walletModelDataStore], { session })
+            // Commit the transaction
+            await session.commitTransaction();
+            console.log('Transaction committed successfully');
+        } catch (error) {
+            console.log(error)
+            await session.abortTransaction();
+            console.error('Transaction aborted due to error:', error);
+        }
+        finally {
+            session.endSession();
+        }
+
+        if (true) {
+            return res.status(200).json({ finalAmountDeduct, chargeAmount, usableBalance, bef: t1, aft: t2 })
+        }
+
         const HeaderObj = {
             client_id: process.env.CLIENT_ID,
             client_secret: process.env.CLIENT_SECRET,
@@ -602,31 +659,6 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 },
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
-
-                    user.EwalletBalance -= finalAmountDeduct;
-                    const updatedUser = await userDB.findOneAndUpdate(
-                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
-                        { $inc: { EwalletBalance: -finalAmountDeduct } },
-                        { new: true }
-                    );
-                    const beforeAmount = Number(updatedUser.EwalletBalance) + finalAmountDeduct
-                    const afterAmount = Number(updatedUser.EwalletBalance)
-                    // console.log("updateduser>>>>",updatedUser)
-                    // await user.save()
-                    let walletModelDataStore = {
-                        memberId: user._id,
-                        transactionType: "Dr.",
-                        transactionAmount: amount, 
-                        beforeAmount: Number(user.EwalletBalance) ,
-                        // beforeAmount: Number(beforeAmount),
-                        chargeAmount: chargeAmount, 
-                        // afterAmount: Number(afterAmount),
-                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
-                        description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
-                        transactionStatus: "Success",
-                    }
-
-                    const walletDoc = await walletModel.create(walletModelDataStore)
 
                     if (status == 1) {
                         let payoutDataStore = {
