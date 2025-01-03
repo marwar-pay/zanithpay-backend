@@ -614,7 +614,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         memberId: user._id,
                         transactionType: "Dr.",
                         transactionAmount: amount,
-                        beforeAmount: Number(updatedUser.EwalletBalance) + finalAmountDeduct,
+                        beforeAmount: Number(updatedUser.EwalletBalance) + Number(finalAmountDeduct),
                         // beforeAmount: Number(user.EwalletBalance),
                         chargeAmount: chargeAmount,
                         afterAmount: Number(updatedUser.EwalletBalance),
