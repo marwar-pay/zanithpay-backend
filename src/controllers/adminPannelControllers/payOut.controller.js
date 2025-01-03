@@ -605,7 +605,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
                     user.EwalletBalance -= finalAmountDeduct;
                     const updatedUser = await userDB.findOneAndUpdate(
-                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
+                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct },updatedAt: { $lt: new Date(Date.now() - 2000) } },
                         { $inc: { EwalletBalance: -finalAmountDeduct } },
                         { new: true }
                     );
