@@ -617,11 +617,11 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         memberId: user._id,
                         transactionType: "Dr.",
                         transactionAmount: amount,
-                        beforeAmount: 0,
-                        // beforeAmount: Number(beforeAmount),
+                        // beforeAmount: 0,
+                        beforeAmount: Number(beforeAmount),
                         chargeAmount: chargeAmount,
-                        afterAmount: 0,
-                        // afterAmount: Number(afterAmount),
+                        // afterAmount: 0,
+                        afterAmount: Number(afterAmount),
                         description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                         transactionStatus: "Success",
                     }
@@ -691,13 +691,15 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             { $inc: { EwalletBalance: finalAmountDeduct } },
                             { new: true }
                         );
+                        const beforeAmount = Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct)
+                        const afterAmount = Number(updatedUser?.EwalletBalance)
                         let walletModelDataStoreCR = {
                             memberId: user?._id,
                             transactionType: "Cr.",
                             transactionAmount: amount,
-                            beforeAmount: Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct),
+                            beforeAmount: beforeAmount,
                             chargeAmount: chargeAmount,
-                            afterAmount: Number(updatedUser?.EwalletBalance),
+                            afterAmount: afterAmount,
                             description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
                             transactionStatus: "Success",
                         }
