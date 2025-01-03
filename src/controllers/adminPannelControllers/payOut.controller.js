@@ -604,7 +604,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
 
                     user.EwalletBalance -= finalAmountDeduct;
-                    const updatedUser = await userDB.findOneAndUpdate(
+                    await userDB.findOneAndUpdate(
                         { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
                         { $inc: { EwalletBalance: -finalAmountDeduct } },
                         { new: true }
