@@ -607,23 +607,23 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     const updatedUser = await userDB.findOneAndUpdate(
                         { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
                         { $inc: { EwalletBalance: -finalAmountDeduct } },
-                        { new: true }  
-                    ); 
-                    
+                        { new: true }
+                    );
+
                     // console.log("updateduser>>>>",updatedUser)
                     // await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
                         transactionType: "Dr.",
                         transactionAmount: amount,
-                        beforeAmount: updatedUser.EwalletBalance - Number(finalAmountDeduct),
+                        beforeAmount: Number(user.EwalletBalance) + finalAmountDeduct,
                         chargeAmount: chargeAmount,
-                        afterAmount: updatedUser.EwalletBalance,
+                        afterAmount: Number(user.EwalletBalance),
                         description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                         transactionStatus: "Success",
                     }
 
-                    const walletDoc = await walletModel.create(walletModelDataStore) 
+                    const walletDoc = await walletModel.create(walletModelDataStore)
 
                     if (status == 1) {
                         let payoutDataStore = {
@@ -686,7 +686,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         const updatedUser = await userDB.updateOne(
                             { _id: user?._Id },
                             { $inc: { EwalletBalance: finalAmountDeduct } },
-                            {new:true}
+                            { new: true }
                         );
                         let walletModelDataStoreCR = {
                             memberId: user?._id,
@@ -699,7 +699,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             transactionStatus: "Success",
                         }
                         await walletModel.create(walletModelDataStoreCR)
-                        
+
                         payOutModelGen.isSuccess = "Failed"
                         await await payOutModelGen.save()
                         let userREspSend2 = {
