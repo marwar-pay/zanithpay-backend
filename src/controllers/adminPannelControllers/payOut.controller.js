@@ -295,7 +295,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         const [user] = await userDB.aggregate([
             {
                 $match: {
-                    $and: [{ userName }, { trxAuthToken: authToken }, { isActive: true }]
+                    $and: [{ userName }, { trxAuthToken: authToken }, { isActive: true },{updatedAt: { $lt: new Date(Date.now() - 2000) } }]
                 }
             },
             { $lookup: { from: "payoutswitches", localField: "payOutApi", foreignField: "_id", as: "payOutApi" } },
@@ -308,7 +308,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         ]);
 
         if (!user) {
-            return res.status(401).json({ message: "Failed", data: "Invalid Credentials or User Inactive!" });
+            return res.status(401).json({ message: "Failed", data: "Invalid Credentials or User Inactive or User cooldown period!" });
         }
 
         const { payOutApi, packageCharge, EwalletBalance, minWalletBalance } = user;
@@ -605,7 +605,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
                     user.EwalletBalance -= finalAmountDeduct;
                     const updatedUser = await userDB.findOneAndUpdate(
-                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct },updatedAt: { $lt: new Date(Date.now() - 2000) } },
+                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct }},
                         { $inc: { EwalletBalance: -finalAmountDeduct } },
                         { new: true }
                     );
