@@ -604,18 +604,21 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
 
                     user.EwalletBalance -= finalAmountDeduct;
-                    await userDB.updateOne(
+                    const updatedUser = await userDB.updateOne(
                         { _id: user?._Id },
-                        { $inc: { EwalletBalance: -finalAmountDeduct } }
+                        { $inc: { EwalletBalance: -finalAmountDeduct } },
+                        { new: true }
                     );
                     // await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
                         transactionType: "Dr.",
                         transactionAmount: amount,
-                        beforeAmount: Number(user.EwalletBalance),
+                        beforeAmount: Number(updatedUser.EwalletBalance) + finalAmountDeduct,
+                        // beforeAmount: Number(user.EwalletBalance),
                         chargeAmount: chargeAmount,
-                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                        afterAmount: Number(updatedUser.EwalletBalance),
+                        // afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
                         description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                         transactionStatus: "Success",
                     }
@@ -678,33 +681,36 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             opt_msg: message || "null"
                         }
                         return new ApiResponse(200, userREspSend)
+                    } else {
+                        user.EwalletBalance += finalAmountDeduct;
+                        const updatedUser = await userDB.updateOne(
+                            { _id: user?._Id },
+                            { $inc: { EwalletBalance: finalAmountDeduct } },
+                            {new:true}
+                        );
+                        let walletModelDataStoreCR = {
+                            memberId: user?._id,
+                            transactionType: "Cr.",
+                            transactionAmount: amount,
+                            beforeAmount: Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct),
+                            chargeAmount: chargeAmount,
+                            afterAmount: Number(updatedUser?.EwalletBalance),
+                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
+                            transactionStatus: "Success",
+                        }
+                        await walletModel.create(walletModelDataStoreCR)
+                        
+                        payOutModelGen.isSuccess = "Failed"
+                        await await payOutModelGen.save()
+                        let userREspSend2 = {
+                            statusCode: statusCode || 0,
+                            status: status || 0,
+                            trxId: trxId || 0,
+                            opt_msg: message || "null"
+                        }
+                        return { message: "Failed", data: userREspSend2 }
                     }
 
-                    let walletModelDataStoreCR = {
-                        memberId: user?._id,
-                        transactionType: "Cr.",
-                        transactionAmount: amount,
-                        beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
-                        chargeAmount: chargeAmount,
-                        afterAmount: Number(user?.EwalletBalance),
-                        description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
-                        transactionStatus: "Success",
-                    }
-                    await walletModel.create(walletModelDataStoreCR)
-                    user.EwalletBalance += finalAmountDeduct;
-                    await userDB.updateOne(
-                        { _id: user?._Id },
-                        { $inc: { EwalletBalance: finalAmountDeduct } }
-                    );
-                    payOutModelGen.isSuccess = "Failed"
-                    await await payOutModelGen.save()
-                    let userREspSend2 = {
-                        statusCode: statusCode || 0,
-                        status: status || 0,
-                        trxId: trxId || 0,
-                        opt_msg: message || "null"
-                    }
-                    return { message: "Failed", data: userREspSend2 }
                     // return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
 
                 }
