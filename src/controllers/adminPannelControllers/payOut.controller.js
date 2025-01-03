@@ -686,11 +686,13 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         return new ApiResponse(200, userREspSend)
                     } else {
                         user.EwalletBalance += finalAmountDeduct;
-                        const updatedUser = await userDB.updateOne(
-                            { _id: user?._Id },
-                            { $inc: { EwalletBalance: finalAmountDeduct } },
-                            { new: true }
-                        );
+                        // const updatedUser = await userDB.updateOne(
+                        //     { _id: user?._Id },
+                        //     { $inc: { EwalletBalance: finalAmountDeduct } },
+                        //     { new: true }
+                        // );
+                        updatedUser.EwalletBalance += finalAmountDeduct
+                        await updatedUser.save() 
                         const beforeAmount = Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct)
                         const afterAmount = Number(updatedUser?.EwalletBalance)
                         let walletModelDataStoreCR = {
