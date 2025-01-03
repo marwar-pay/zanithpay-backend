@@ -604,21 +604,22 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
 
                     user.EwalletBalance -= finalAmountDeduct;
-                    await userDB.findOneAndUpdate(
+                    const updatedUser = await userDB.findOneAndUpdate(
                         { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
                         { $inc: { EwalletBalance: -finalAmountDeduct } },
                         { new: true }
                     );
-
+                    const beforeAmount = Number(updatedUser.EwalletBalance) + finalAmountDeduct
+                    const afterAmount = Number(updatedUser.EwalletBalance)
                     // console.log("updateduser>>>>",updatedUser)
                     // await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
                         transactionType: "Dr.",
                         transactionAmount: amount,
-                        beforeAmount: Number(user.EwalletBalance) + finalAmountDeduct,
+                        beforeAmount: Number(beforeAmount),
                         chargeAmount: chargeAmount,
-                        afterAmount: Number(user.EwalletBalance),
+                        afterAmount: Number(afterAmount),
                         description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                         transactionStatus: "Success",
                     }
