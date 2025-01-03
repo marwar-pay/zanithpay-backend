@@ -699,9 +699,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             memberId: user?._id,
                             transactionType: "Cr.",
                             transactionAmount: amount,
-                            beforeAmount: user.EwalletBalance,
+                            beforeAmount: beforeAmount,
                             chargeAmount: chargeAmount,
-                            afterAmount: user.EwalletBalance + finalAmountDeduct,
+                            afterAmount: afterAmount,
                             description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
                             transactionStatus: "Success",
                         }
