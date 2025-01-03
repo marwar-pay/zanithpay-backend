@@ -604,26 +604,26 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
 
                     user.EwalletBalance -= finalAmountDeduct;
-                    const updatedUser = await userDB.updateOne(
-                        { _id: user?._Id },
+                    const updatedUser = await userDB.findOneAndUpdate(
+                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
                         { $inc: { EwalletBalance: -finalAmountDeduct } },
-                        { new: true }
-                    );
+                        { new: true }  
+                    ); 
+                    
+                    // console.log("updateduser>>>>",updatedUser)
                     // await user.save()
                     let walletModelDataStore = {
                         memberId: user._id,
                         transactionType: "Dr.",
                         transactionAmount: amount,
-                        beforeAmount: Number(updatedUser.EwalletBalance) + Number(finalAmountDeduct),
-                        // beforeAmount: Number(user.EwalletBalance),
+                        beforeAmount: updatedUser.EwalletBalance - Number(finalAmountDeduct),
                         chargeAmount: chargeAmount,
-                        afterAmount: Number(updatedUser.EwalletBalance),
-                        // afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                        afterAmount: updatedUser.EwalletBalance,
                         description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                         transactionStatus: "Success",
                     }
 
-                    await walletModel.create(walletModelDataStore)
+                    const walletDoc = await walletModel.create(walletModelDataStore) 
 
                     if (status == 1) {
                         let payoutDataStore = {
