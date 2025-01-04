@@ -2220,26 +2220,27 @@ async function beforeAmountUpdate(item) {
     //     readConcern: { level: "majority" },
     //     writeConcern: { w: "majority" }
     // });
+    const session = await userDB.startSession();
     const release = await transactionMutex.acquire();
 
     try {
-        // await session.startTransaction();
+        await session.startTransaction();
         const { data } = await axios.post(uatUrl, postAdd, header);
-        // const opts = { session };
+        const opts = { session };
 
         // console.log(data);
 
         if (!data?.status) {
-            // await session.abortTransaction();
+            await session.abortTransaction();
             console.log("status not available", data);
             
             return false;
         }
 
-        const user = await userDB.findById(item?.memberId);
-        // const user = await userDB.findById(item?.memberId, null, opts);
-        // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
-        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId });
+        // const user = await userDB.findById(item?.memberId);
+        const user = await userDB.findById(item?.memberId, null, opts);
+        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
+        // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId });
         console.log("payoutModelgenedd", payOutModelGen);
 
         const { gatwayCharge, amount } = payOutModelGen;
@@ -2250,8 +2251,8 @@ async function beforeAmountUpdate(item) {
         const updatedUser = await userDB.findOneAndUpdate(
             { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
             { $set: { EwalletBalance: user.EwalletBalance } },
-            { new: true }
-            // { ...opts, new: true }
+            // { new: true }
+            { ...opts, new: true }
         );
 
         const walletDoc = await walletModel.findOneAndUpdate(
@@ -2266,15 +2267,15 @@ async function beforeAmountUpdate(item) {
         if (data.status == 1) {
             payOutModelGen.isSuccess = "Success";
             await payOutModelGen.save();
-            // await session.commitTransaction();
+            await session.commitTransaction();
             return true;
         } else {
             user.EwalletBalance += finalAmountDeduct;
             const updatedUser = await userDB.findOneAndUpdate(
                 { _id: user._id },
                 { $set: { EwalletBalance: user.EwalletBalance } },
-                { new: true }
-                // { ...opts, new: true }
+                // { new: true }
+                { ...opts, new: true }
             );
             await user.save();
 
@@ -2284,8 +2285,8 @@ async function beforeAmountUpdate(item) {
                     beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
                     afterAmount: Number(user.EwalletBalance)
                 },
-                // { ...opts, new: true }
-                {  new: true }
+                { ...opts, new: true }
+                // {  new: true }
             );
             console.log("walletDoc>>>", walletDocUpd);
 
@@ -2294,10 +2295,10 @@ async function beforeAmountUpdate(item) {
         }
     } catch (error) {
         console.log("inside the error", error);
-        // await session.abortTransaction();
+        await session.abortTransaction();
         return false;
     } finally {
-        // await session.endSession();
+        await session.endSession();
         release();
     }
 }
