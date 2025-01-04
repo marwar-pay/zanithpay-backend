@@ -700,7 +700,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         }
                         finally {
                             walletAddsession.endSession();
-                            release
+                            release()
                         }
 
                         payOutModelGen.isSuccess = "Failed"
