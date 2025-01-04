@@ -2228,30 +2228,25 @@ async function beforeAmountUpdate(item) {
         const { data } = await axios.post(uatUrl, postAdd, header);
         const opts = { session };
 
-        // console.log(data);
-
         if (!data?.status) {
             await session.abortTransaction();
             console.log("status not available", data);
-            
             return false;
         }
 
-        // const user = await userDB.findById(item?.memberId);
         const user = await userDB.findById(item?.memberId, null, opts);
         const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
-        // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId });
-        console.log("payoutModelgenedd", payOutModelGen);
+        console.log("payoutModelGen:", payOutModelGen);
 
         const { gatwayCharge, amount } = payOutModelGen;
-        const chargeAmount = gatwayCharge
+        const chargeAmount = gatwayCharge;
         const finalAmountDeduct = amount + chargeAmount;
 
         user.EwalletBalance -= finalAmountDeduct;
+
         const updatedUser = await userDB.findOneAndUpdate(
             { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
             { $set: { EwalletBalance: user.EwalletBalance } },
-            // { new: true }
             { ...opts, new: true }
         );
 
@@ -2261,23 +2256,21 @@ async function beforeAmountUpdate(item) {
                 beforeAmount: Number(user.EwalletBalance),
                 afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct)
             },
-            { new: true }
+            { ...opts, new: true }
         );
 
         if (data.status == 1) {
             payOutModelGen.isSuccess = "Success";
-            await payOutModelGen.save();
+            await payOutModelGen.save(); // No session needed
             await session.commitTransaction();
             return true;
         } else {
             user.EwalletBalance += finalAmountDeduct;
-            const updatedUser = await userDB.findOneAndUpdate(
+            await userDB.findOneAndUpdate(
                 { _id: user._id },
                 { $set: { EwalletBalance: user.EwalletBalance } },
-                // { new: true }
                 { ...opts, new: true }
             );
-            await user.save();
 
             const walletDocUpd = await walletModel.findOneAndUpdate(
                 { description: { $regex: item?.trxId, $options: 'i' } },
@@ -2286,13 +2279,15 @@ async function beforeAmountUpdate(item) {
                     afterAmount: Number(user.EwalletBalance)
                 },
                 { ...opts, new: true }
-                // {  new: true }
             );
             console.log("walletDoc>>>", walletDocUpd);
 
             payOutModelGen.isSuccess = "Failed";
-            await payOutModelGen.save();
+            await payOutModelGen.save(); // No session needed
         }
+
+        await session.commitTransaction();
+        
     } catch (error) {
         console.log("inside the error", error);
         await session.abortTransaction();
