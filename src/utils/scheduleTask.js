@@ -2182,12 +2182,19 @@ async function processWaayuPayOutFn(item) {
 }
 
 function scheduleBeforeAmountUpdate() {
-    cron.schedule('*/10 * * * *', async () => {
-        let GetData = await payOutModelGenerate.find({ isSuccess: "Pending" }).sort({ "createdAt": 1 }).limit(20);
+    cron.schedule('*/10 * * * * *', async () => {
         try {
+            let GetData = await payOutModelGenerate.find({
+                isSuccess: "Pending",
+                createdAt: { $gt: new Date("2025-01-02T16:30:56.403+05:30") },
+                memberId: new mongoose.Types.ObjectId("676691bfc10ccd627297eb94")
+            }).sort({ createdAt: 1 }).limit(1);
             GetData.forEach(async (item) => {
                 await beforeAmountUpdate(item)
             });
+            console.log("getDataaaaaaa", GetData);
+
+
         } catch (error) {
             console.error('Error during payout check:', error.message);
         }
@@ -2208,88 +2215,74 @@ async function beforeAmountUpdate(item) {
         },
     };
 
-    const { data } = await axios.post(uatUrl, postAdd, header);
-    const session = await userDB.startSession({ readPreference: 'primary', readConcern: { level: "majority" }, writeConcern: { w: "majority" } });
+    const session = await userDB.startSession({
+        readPreference: 'primary',
+        readConcern: { level: "majority" },
+        writeConcern: { w: "majority" }
+    });
     const release = await transactionMutex.acquire();
+
     try {
+        const { data } = await axios.post(uatUrl, postAdd, header);
         session.startTransaction();
         const opts = { session };
 
-        console.log(data)
+        console.log(data);
 
-        if (data?.status === null) {
+        if (!data?.status) {
             await session.abortTransaction();
-            return false
+            return false;
         }
 
-        // Non-transactional operation can be done outside the critical section
-        if (data?.status !== 1) {
-            console.log("failed added Status");
-            await payOutModelGenerate.findByIdAndUpdate(item._id, { isSuccess: "Failed" }, opts);
-            // Use Promise.all for parallel execution of independent tasks
-            const userWalletInfo = await userDB.findById(item?.memberId, "_id EwalletBalance", opts)
+        const user = await userDB.findById(item?.memberId, null, opts);
+        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
+        const { chargeAmount, amount } = payOutModelGen;
+        const finalAmountDeduct = amount + chargeAmount;
 
-            const beforeAmountUser = userWalletInfo?.EwalletBalance;
-            const finalEwalletDeducted = item?.afterChargeAmount;
+        user.EwalletBalance -= finalAmountDeduct;
+        const updatedUser = await userDB.findOneAndUpdate(
+            { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
+            { $inc: { EwalletBalance: -finalAmountDeduct } },
+            { ...opts, new: true }
+        );
 
-            userWalletInfo.EwalletBalance += finalEwalletDeducted;
-            await userWalletInfo.save(opts);
+        const walletDoc = await walletModel.findOneAndUpdate(
+            { description: { $regex: item?.trxId, $options: 'i' } },
+            {
+                beforeAmount: Number(user.EwalletBalance),
+                afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct)
+            },
+            { ...opts, new: true }
+        ); 
 
-            const walletModelDataStore = {
-                memberId: userWalletInfo._id,
-                transactionType: "Cr.",
-                transactionAmount: item?.amount,
-                beforeAmount: beforeAmountUser,
-                chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
-                afterAmount: beforeAmountUser + finalEwalletDeducted,
-                description: `Successfully Cr. amount: ${finalEwalletDeducted} with :${item?.trxId}`,
-                transactionStatus: "Success",
-            };
-
-            await walletModel.create([walletModelDataStore], opts)
+        if (data.status == 1) {
+            payOutModelGen.isSuccess = "Success";
+            await payOutModelGen.save({ session });
             await session.commitTransaction();
             return true;
+        } else {
+            user.EwalletBalance += finalAmountDeduct;
+            await user.save({ session });
 
+            const walletDocUpd = await walletModel.findOneAndUpdate(
+                { description: { $regex: item?.trxId, $options: 'i' } },
+                {
+                    beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
+                    afterAmount: Number(user.EwalletBalance)
+                },
+                { ...opts, new: true }
+            );
+
+            payOutModelGen.isSuccess = "Failed";
+            await payOutModelGen.save({ session });
         }
-
-        else if (data?.status === 1) {
-            // Final update and commit in transaction
-            let payoutModelData = await payOutModelGenerate.findByIdAndUpdate(item?._id, { isSuccess: "Success" }, { session, new: true });
-            console.log(payoutModelData)
-            let finalEwalletDeducted = payoutModelData?.afterChargeAmount
-
-            let PayoutStoreData = {
-                memberId: item?.memberId,
-                amount: item?.amount,
-                chargeAmount: item?.gatwayCharge || item?.afterChargeAmount - item?.amount,
-                finalAmount: finalEwalletDeducted,
-                bankRRN: data?.utr,
-                trxId: data?.clientOrderId,
-                optxId: data?.orderId,
-                isSuccess: "Success",
-            }
-
-            let v = await payOutModel.create([PayoutStoreData], opts)
-            console.log(v, "hello")
-            await session.commitTransaction();
-            return true;
-        }
-        else {
-            console.log("Failed and Success Not Both !");
-            await session.abortTransaction();
-            return true;
-        }
-        // Commit transaction
-        // await session.commitTransaction();
-        // return true;
-
     } catch (error) {
-        console.log("inside the error", error)
+        console.log("inside the error", error);
         await session.abortTransaction();
-        return false
+        return false;
     } finally {
-        session.endSession();
-        release()
+        await session.endSession();
+        release();
     }
 }
 
@@ -2799,9 +2792,9 @@ function payoutDeductPackageTaskScript() {
                     {
                         description: { $regex: txnId, $options: "i" },
                     }
-                ); 
+                );
 
-                const payoutRecord = await payOutModel.findOne({ trxId: txnId }) 
+                const payoutRecord = await payOutModel.findOne({ trxId: txnId })
                 if (updateResult && payoutRecord) {
                     try {
                         const [user] = await userDB.aggregate([
@@ -2887,4 +2880,5 @@ export default function scheduleTask() {
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
+    scheduleBeforeAmountUpdate()
 }
