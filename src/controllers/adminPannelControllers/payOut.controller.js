@@ -355,6 +355,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
             // Perform the update within the transaction
             // let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
+            let afterAmount = userWallet?.EwalletBalance
             let beforeAmount = userWallet?.EwalletBalance + finalAmountDeduct;
 
             // userWallet.EwalletBalance -= finalAmountDeduct;
@@ -368,7 +369,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 transactionAmount: amount,
                 beforeAmount: beforeAmount,
                 chargeAmount: chargeAmount,
-                afterAmount: userWallet?.EwalletBalance,
+                afterAmount: afterAmount,
                 description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                 transactionStatus: "Success",
             }
@@ -432,7 +433,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             const walletAddsession = await userDB.startSession();
                             const transactionOptions = {
                                 readConcern: { level: 'local' },
-                                writeConcern: { w: 1 },
+                                writeConcern: { w: 'majority' },
                                 maxTimeMS: 1500
                             };
                             // wallet deducted and store ewallet trx
@@ -440,12 +441,14 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                 walletAddsession.startTransaction(transactionOptions);
                                 const opts = { walletAddsession };
 
-                                // Perform the update within the transaction
-                                let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
-                                let beforeAmount = userWallet?.EwalletBalance;
+                                // update wallet 
+                                let userWallet = await userDB.findByIdAndUpdate(user?._id, { $inc: { EwalletBalance: + finalAmountDeduct } }, {
+                                    returnDocument: 'after',
+                                    walletAddsession
+                                })
 
-                                userWallet.EwalletBalance += finalAmountDeduct;
-                                await userWallet.save(opts)
+                                let afterAmount = userWallet?.EwalletBalance
+                                let beforeAmount = userWallet?.EwalletBalance - finalAmountDeduct;
 
                                 // ewallet store 
                                 let walletModelDataStore = {
@@ -454,7 +457,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                     transactionAmount: amount,
                                     beforeAmount: beforeAmount,
                                     chargeAmount: chargeAmount,
-                                    afterAmount: beforeAmount + finalAmountDeduct,
+                                    afterAmount: afterAmount,
                                     description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                                     transactionStatus: "Success",
                                 }
@@ -656,7 +659,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         const walletAddsession = await userDB.startSession();
                         const transactionOptions = {
                             readConcern: { level: 'linearizable' },
-                            writeConcern: { w: 1 },
+                            writeConcern: { w: 'majority' },
                             readPreference: { mode: 'primary' },
                             maxTimeMS: 1500
                         };
@@ -665,11 +668,14 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             walletAddsession.startTransaction(transactionOptions);
                             const opts = { walletAddsession };
 
-                            // Perform the update within the transaction
-                            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
-                            let beforeAmount = userWallet?.EwalletBalance;
-                            userWallet.EwalletBalance += finalAmountDeduct;
-                            await userWallet.save(opts)
+                            // update wallet 
+                            let userWallet = await userDB.findByIdAndUpdate(user?._id, { $inc: { EwalletBalance: + finalAmountDeduct } }, {
+                                returnDocument: 'after',
+                                walletAddsession
+                            })
+
+                            let afterAmount = userWallet?.EwalletBalance
+                            let beforeAmount = userWallet?.EwalletBalance - finalAmountDeduct;
 
                             // ewallet store 
                             let walletModelDataStore = {
@@ -678,7 +684,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                 transactionAmount: amount,
                                 beforeAmount: beforeAmount,
                                 chargeAmount: chargeAmount,
-                                afterAmount: beforeAmount + finalAmountDeduct,
+                                afterAmount: afterAmount,
                                 description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                                 transactionStatus: "Success",
                             }
@@ -779,6 +785,8 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                 returnDocument: 'after',
                                 walletAddsession
                             })
+
+                            let afterAmount = userWallet?.EwalletBalance
                             let beforeAmount = userWallet?.EwalletBalance - finalAmountDeduct;
 
                             // ewallet store 
@@ -788,7 +796,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                 transactionAmount: amount,
                                 beforeAmount: beforeAmount,
                                 chargeAmount: chargeAmount,
-                                afterAmount: userWallet?.EwalletBalance,
+                                afterAmount: afterAmount,
                                 description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                                 transactionStatus: "Success",
                             }
@@ -879,7 +887,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         const walletAddsession = await userDB.startSession();
                         const transactionOptions = {
                             readConcern: { level: 'linearizable' },
-                            writeConcern: { w: 1 },
+                            writeConcern: { w: 'majority' },
                             readPreference: { mode: 'primary' },
                             maxTimeMS: 1500
                         };
@@ -888,12 +896,14 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             walletAddsession.startTransaction(transactionOptions);
                             const opts = { walletAddsession };
 
-                            // Perform the update within the transaction
-                            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
-                            let beforeAmount = userWallet?.EwalletBalance;
+                            // update wallet 
+                            let userWallet = await userDB.findByIdAndUpdate(user?._id, { $inc: { EwalletBalance: + finalAmountDeduct } }, {
+                                returnDocument: 'after',
+                                walletAddsession
+                            })
 
-                            userWallet.EwalletBalance += finalAmountDeduct;
-                            await userWallet.save(opts)
+                            let afterAmount = userWallet?.EwalletBalance
+                            let beforeAmount = userWallet?.EwalletBalance - finalAmountDeduct;
 
                             // ewallet store 
                             let walletModelDataStore = {
@@ -902,7 +912,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                 transactionAmount: amount,
                                 beforeAmount: beforeAmount,
                                 chargeAmount: chargeAmount,
-                                afterAmount: beforeAmount + finalAmountDeduct,
+                                afterAmount: afterAmount,
                                 description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                                 transactionStatus: "Success",
                             }
@@ -965,10 +975,11 @@ export const performPayoutApiCall = async (payOutApi, apiConfig) => {
 
         return response?.data || null;
     } catch (error) {
+        // console.log(error)
         if (error?.response?.data?.fault?.detail?.errorcode === "steps.accesscontrol.IPDeniedAccess") {
             return "Ip validation Failed"
         }
-        console.error(`API Call Error for ${payOutApi?.apiName}:`, error?.message);
+        // console.error(`API Call Error for ${payOutApi?.apiName}:`, error?.message);
         return `API Call Error for ${payOutApi?.apiName}: ${error?.message}`;
     }
 };
