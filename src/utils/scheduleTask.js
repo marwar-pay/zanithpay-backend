@@ -2284,7 +2284,8 @@ async function beforeAmountUpdate(item) {
                     beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
                     afterAmount: Number(user.EwalletBalance)
                 },
-                { ...opts, new: true }
+                // { ...opts, new: true }
+                {  new: true }
             );
             console.log("walletDoc>>>", walletDocUpd);
 
