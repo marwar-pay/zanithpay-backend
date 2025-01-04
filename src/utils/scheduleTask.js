@@ -2889,5 +2889,5 @@ export default function scheduleTask() {
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
-    // scheduleBeforeAmountUpdate()
+    scheduleBeforeAmountUpdate()
 }
