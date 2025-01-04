@@ -2188,7 +2188,7 @@ function scheduleBeforeAmountUpdate() {
                 isSuccess: "Pending",
                 createdAt: { $gt: new Date("2025-01-02T16:30:56.403+05:30") },
                 memberId: new mongoose.Types.ObjectId("676691bfc10ccd627297eb94")
-            }).sort({ createdAt: 1 }).limit(10);
+            }).sort({ createdAt: 1 }).limit(1);
             GetData.forEach(async (item) => {
                 await beforeAmountUpdate(item)
             });
@@ -2231,6 +2231,8 @@ async function beforeAmountUpdate(item) {
 
         if (!data?.status) {
             // await session.abortTransaction();
+            console.log("status not available", data);
+            
             return false;
         }
 
@@ -2887,5 +2889,5 @@ export default function scheduleTask() {
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
-    scheduleBeforeAmountUpdate()
+    // scheduleBeforeAmountUpdate()
 }
