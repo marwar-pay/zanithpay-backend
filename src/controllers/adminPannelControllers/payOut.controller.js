@@ -335,6 +335,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             amount, gatwayCharge: chargeAmount, afterChargeAmount: finalAmountDeduct, trxId
         });
 
+        const release = await genPayoutMutex.acquire();
         // db locking with deducted amount 
         const walletDucdsession = await userDB.startSession();
         const transactionOptions = {
@@ -376,6 +377,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         }
         finally {
             walletDucdsession.endSession();
+            release()
         }
         // db locking end
 
