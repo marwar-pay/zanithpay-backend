@@ -777,7 +777,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             // update wallet 
                             let userWallet = await userDB.findByIdAndUpdate(user?._id, { $inc: { EwalletBalance: + finalAmountDeduct } }, {
                                 returnDocument: 'after',
-                                walletDucdsession
+                                walletAddsession
                             })
                             let beforeAmount = userWallet?.EwalletBalance - finalAmountDeduct;
 
