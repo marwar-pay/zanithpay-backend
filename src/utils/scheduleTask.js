@@ -2247,7 +2247,7 @@ async function beforeAmountUpdate(item) {
         const updatedUser = await userDB.findOneAndUpdate(
             { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
             { $set: { EwalletBalance: user.EwalletBalance } },
-            { ...opts, new: true }
+            { session, new: true }
         );
 
         const walletDoc = await walletModel.findOneAndUpdate(
@@ -2256,12 +2256,12 @@ async function beforeAmountUpdate(item) {
                 beforeAmount: Number(user.EwalletBalance),
                 afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct)
             },
-            { ...opts, new: true }
+            { session, new: true }
         );
 
         if (data.status == 1) {
             payOutModelGen.isSuccess = "Success";
-            await payOutModelGen.save(); // No session needed
+            await payOutModelGen.save(opts); // No session needed
             await session.commitTransaction();
             return true;
         } else {
@@ -2269,7 +2269,7 @@ async function beforeAmountUpdate(item) {
             await userDB.findOneAndUpdate(
                 { _id: user._id },
                 { $set: { EwalletBalance: user.EwalletBalance } },
-                { ...opts, new: true }
+                { session, new: true }
             );
 
             const walletDocUpd = await walletModel.findOneAndUpdate(
@@ -2278,16 +2278,16 @@ async function beforeAmountUpdate(item) {
                     beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
                     afterAmount: Number(user.EwalletBalance)
                 },
-                { ...opts, new: true }
+                { session, new: true }
             );
             console.log("walletDoc>>>", walletDocUpd);
 
             payOutModelGen.isSuccess = "Failed";
-            await payOutModelGen.save(); // No session needed
+            await payOutModelGen.save(opts); // No session needed
         }
 
         await session.commitTransaction();
-        
+
     } catch (error) {
         console.log("inside the error", error);
         await session.abortTransaction();
