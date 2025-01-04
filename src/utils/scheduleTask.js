@@ -2188,7 +2188,7 @@ function scheduleBeforeAmountUpdate() {
                 isSuccess: "Pending",
                 createdAt: { $gt: new Date("2025-01-02T16:30:56.403+05:30") },
                 memberId: new mongoose.Types.ObjectId("676691bfc10ccd627297eb94")
-            }).sort({ createdAt: 1 }).limit(1);
+            }).sort({ createdAt: 1 }).limit(10);
             GetData.forEach(async (item) => {
                 await beforeAmountUpdate(item)
             });
@@ -2215,35 +2215,41 @@ async function beforeAmountUpdate(item) {
         },
     };
 
-    const session = await userDB.startSession({
-        readPreference: 'primary',
-        readConcern: { level: "majority" },
-        writeConcern: { w: "majority" }
-    });
+    // const session = await userDB.startSession({
+    //     readPreference: 'primary',
+    //     readConcern: { level: "majority" },
+    //     writeConcern: { w: "majority" }
+    // });
     const release = await transactionMutex.acquire();
 
     try {
+        // await session.startTransaction();
         const { data } = await axios.post(uatUrl, postAdd, header);
-        session.startTransaction();
-        const opts = { session };
+        // const opts = { session };
 
-        console.log(data);
+        // console.log(data);
 
         if (!data?.status) {
-            await session.abortTransaction();
+            // await session.abortTransaction();
             return false;
         }
 
-        const user = await userDB.findById(item?.memberId, null, opts);
-        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
-        const { chargeAmount, amount } = payOutModelGen;
+        const user = await userDB.findById(item?.memberId);
+        // const user = await userDB.findById(item?.memberId, null, opts);
+        // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
+        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId });
+        console.log("payoutModelgenedd", payOutModelGen);
+
+        const { gatwayCharge, amount } = payOutModelGen;
+        const chargeAmount = gatwayCharge
         const finalAmountDeduct = amount + chargeAmount;
 
         user.EwalletBalance -= finalAmountDeduct;
         const updatedUser = await userDB.findOneAndUpdate(
             { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
             { $inc: { EwalletBalance: -finalAmountDeduct } },
-            { ...opts, new: true }
+            { new: true }
+            // { ...opts, new: true }
         );
 
         const walletDoc = await walletModel.findOneAndUpdate(
@@ -2252,17 +2258,17 @@ async function beforeAmountUpdate(item) {
                 beforeAmount: Number(user.EwalletBalance),
                 afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct)
             },
-            { ...opts, new: true }
-        ); 
+            { new: true }
+        );
 
         if (data.status == 1) {
             payOutModelGen.isSuccess = "Success";
-            await payOutModelGen.save({ session });
-            await session.commitTransaction();
+            await payOutModelGen.save();
+            // await session.commitTransaction();
             return true;
         } else {
             user.EwalletBalance += finalAmountDeduct;
-            await user.save({ session });
+            await user.save();
 
             const walletDocUpd = await walletModel.findOneAndUpdate(
                 { description: { $regex: item?.trxId, $options: 'i' } },
@@ -2272,16 +2278,17 @@ async function beforeAmountUpdate(item) {
                 },
                 { ...opts, new: true }
             );
+            console.log("walletDoc>>>", walletDocUpd);
 
             payOutModelGen.isSuccess = "Failed";
-            await payOutModelGen.save({ session });
+            await payOutModelGen.save();
         }
     } catch (error) {
         console.log("inside the error", error);
-        await session.abortTransaction();
+        // await session.abortTransaction();
         return false;
     } finally {
-        await session.endSession();
+        // await session.endSession();
         release();
     }
 }
