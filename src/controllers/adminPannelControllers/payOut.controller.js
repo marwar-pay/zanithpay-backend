@@ -338,7 +338,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         const walletDucdsession = await userDB.startSession();
         const transactionOptions = {
             readConcern: { level: 'linearizable' },
-            writeConcern: { w: 1 },
+            writeConcern: { w: 'majority' },
             readPreference: { mode: 'primary' },
             maxTimeMS: 1500
         };
@@ -347,12 +347,19 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             walletDucdsession.startTransaction(transactionOptions);
             const opts = { walletDucdsession };
 
-            // Perform the update within the transaction
-            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
-            let beforeAmount = userWallet?.EwalletBalance;
+            // update wallet 
+            let userWallet = await userDB.findByIdAndUpdate(user?._id, { $inc: { EwalletBalance: - finalAmountDeduct } }, {
+                returnDocument: 'after',
+                walletDucdsession
+            })
 
-            userWallet.EwalletBalance -= finalAmountDeduct;
-            await userWallet.save(opts)
+            // Perform the update within the transaction
+            // let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
+            let beforeAmount = userWallet?.EwalletBalance + finalAmountDeduct;
+
+            // userWallet.EwalletBalance -= finalAmountDeduct;
+            // await userWallet.save(opts)
+
 
             // ewallet store 
             let walletModelDataStore = {
@@ -361,7 +368,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 transactionAmount: amount,
                 beforeAmount: beforeAmount,
                 chargeAmount: chargeAmount,
-                afterAmount: beforeAmount - finalAmountDeduct,
+                afterAmount: userWallet?.EwalletBalance,
                 description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                 transactionStatus: "Success",
             }
@@ -757,21 +764,22 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         const walletAddsession = await userDB.startSession();
                         const transactionOptions = {
                             readConcern: { level: 'linearizable' },
-                            writeConcern: { w: 1 },
+                            writeConcern: { w: 'majority' },
                             readPreference: { mode: 'primary' },
                             maxTimeMS: 1500
                         };
-                        // wallet deducted and store ewallet trx
+                        // wallet added and store ewallet trx
                         try {
                             walletAddsession.startTransaction(transactionOptions);
                             const opts = { walletAddsession };
 
                             // Perform the update within the transaction
-                            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
-                            let beforeAmount = userWallet?.EwalletBalance;
-
-                            userWallet.EwalletBalance += finalAmountDeduct;
-                            await userWallet.save(opts)
+                            // update wallet 
+                            let userWallet = await userDB.findByIdAndUpdate(user?._id, { $inc: { EwalletBalance: + finalAmountDeduct } }, {
+                                returnDocument: 'after',
+                                walletDucdsession
+                            })
+                            let beforeAmount = userWallet?.EwalletBalance - finalAmountDeduct;
 
                             // ewallet store 
                             let walletModelDataStore = {
@@ -780,7 +788,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                                 transactionAmount: amount,
                                 beforeAmount: beforeAmount,
                                 chargeAmount: chargeAmount,
-                                afterAmount: beforeAmount + finalAmountDeduct,
+                                afterAmount: userWallet?.EwalletBalance,
                                 description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
                                 transactionStatus: "Success",
                             }
