@@ -2249,7 +2249,7 @@ async function beforeAmountUpdate(item) {
         user.EwalletBalance -= finalAmountDeduct;
         const updatedUser = await userDB.findOneAndUpdate(
             { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
-            { $inc: { EwalletBalance: -finalAmountDeduct } },
+            { $set: { EwalletBalance: user.EwalletBalance } },
             { new: true }
             // { ...opts, new: true }
         );
@@ -2270,6 +2270,12 @@ async function beforeAmountUpdate(item) {
             return true;
         } else {
             user.EwalletBalance += finalAmountDeduct;
+            const updatedUser = await userDB.findOneAndUpdate(
+                { _id: user._id },
+                { $set: { EwalletBalance: user.EwalletBalance } },
+                { new: true }
+                // { ...opts, new: true }
+            );
             await user.save();
 
             const walletDocUpd = await walletModel.findOneAndUpdate(
