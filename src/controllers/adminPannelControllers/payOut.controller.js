@@ -281,7 +281,7 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
 });
 
 export const generatePayOut = asyncHandler(async (req, res) => {
-    const release = await genPayoutMutex.acquire();
+    // const release = await genPayoutMutex.acquire();
     const {
         userName, authToken, mobileNumber, accountHolderName, accountNumber,
         ifscCode, trxId, amount, bankName
@@ -334,6 +334,54 @@ export const generatePayOut = asyncHandler(async (req, res) => {
             memberId: user._id, mobileNumber, accountHolderName, accountNumber, ifscCode,
             amount, gatwayCharge: chargeAmount, afterChargeAmount: finalAmountDeduct, trxId
         });
+
+        // db locking with deducted amount 
+        const walletDucdsession = await userDB.startSession();
+        const transactionOptions = {
+            readConcern: { level: 'local' },
+            writeConcern: { w: 1 },
+            maxTimeMS: 1500
+        };
+        // wallet deducted and store ewallet trx
+        try {
+            walletDucdsession.startTransaction(transactionOptions);
+            const opts = { walletDucdsession };
+
+            // Perform the update within the transaction
+            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
+            let beforeAmount = userWallet?.EwalletBalance;
+            userWallet.EwalletBalance -= finalAmountDeduct;
+            await userWallet.save(opts)
+
+            // ewallet store 
+            let walletModelDataStore = {
+                memberId: user?._id,
+                transactionType: "Dr.",
+                transactionAmount: amount,
+                beforeAmount: beforeAmount,
+                chargeAmount: chargeAmount,
+                afterAmount: beforeAmount - finalAmountDeduct,
+                description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
+                transactionStatus: "Success",
+            }
+
+            await walletModel.create([walletModelDataStore], opts)
+            // Commit the transaction
+            await walletDucdsession.commitTransaction();
+            // console.log('Transaction committed successfully');
+        } catch (error) {
+            console.log(error)
+            await walletDucdsession.abortTransaction();
+            // console.error('Transaction aborted due to error:', error);
+        }
+        finally {
+            walletDucdsession.endSession();
+        }
+        // db locking end
+
+        // if (true) {
+        //     return res.status(200).json({ finalAmountDeduct, chargeAmount, usableBalance })
+        // }
 
         const HeaderObj = {
             client_id: process.env.CLIENT_ID,
@@ -508,21 +556,6 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 },
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
-                    user.EwalletBalance -= finalAmountDeduct;
-                    await userDB.updateOne({ _id: new mongoose.Types.ObjectId(String(user._id)) }, { $set: { EwalletBalance: user.EwalletBalance } });
-                    // await user.save()
-                    let walletModelDataStore = {
-                        memberId: user._id,
-                        transactionType: "Dr.",
-                        transactionAmount: amount,
-                        beforeAmount: Number(user.EwalletBalance),
-                        chargeAmount: chargeAmount,
-                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
-                        description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
-                        transactionStatus: "Success",
-                    }
-
-                    await walletModel.create(walletModelDataStore)
 
                     if (status == 1) {
                         let payoutDataStore = {
@@ -538,18 +571,16 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         await payOutModel.create(payoutDataStore);
                         payOutModelGen.isSuccess = "Success"
                         await payOutModelGen.save()
-                        let userCustomCallBackGen = {
-                            StatusCode: statusCode,
-                            Message: message,
-                            OrderId: orderId,
-                            Status: status,
-                            ClientOrderId: clientOrderId,
-                            PaymentMode: "IMPS",
-                            Amount: amount,
-                            Date: new Date().toString(),
-                            UTR: utr,
+                        let callBackBody = {
+                            optxid: orderId,
+                            status: "SUCCESS",
+                            txnid: clientOrderId,
+                            amount: amount,
+                            rrn: utr,
                         }
-                        await payoutCallBackResponse({ body: userCustomCallBackGen })
+
+                        customCallBackPayoutUser(user?._id, callBackBody)
+
                         let userREspSend = {
                             statusCode: statusCode || 0,
                             status: status || 0,
@@ -557,32 +588,61 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             opt_msg: message || "null"
                         }
                         return new ApiResponse(200, userREspSend)
-                    }
+                    } else {
+                        // db locking with added amount 
+                        const walletAddsession = await userDB.startSession();
+                        const transactionOptions = {
+                            readConcern: { level: 'local' },
+                            writeConcern: { w: 1 },
+                            maxTimeMS: 1500
+                        };
+                        // wallet deducted and store ewallet trx
+                        try {
+                            walletAddsession.startTransaction(transactionOptions);
+                            const opts = { walletAddsession };
 
-                    let walletModelDataStoreCR = {
-                        memberId: user?._id,
-                        transactionType: "Cr.",
-                        transactionAmount: amount,
-                        beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
-                        chargeAmount: chargeAmount,
-                        afterAmount: Number(user?.EwalletBalance),
-                        description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
-                        transactionStatus: "Success",
-                    }
-                    await walletModel.create(walletModelDataStoreCR)
-                    user.EwalletBalance += finalAmountDeduct;
-                    await userDB.updateOne({ _id: user._id }, { $set: { EwalletBalance: user.EwalletBalance } });
-                    payOutModelGen.isSuccess = "Failed"
-                    await await payOutModelGen.save()
-                    let userREspSend2 = {
-                        statusCode: statusCode || 0,
-                        status: status || 0,
-                        trxId: trxId || 0,
-                        opt_msg: message || "null"
-                    }
-                    return { message: "Failed", data: userREspSend2 }
-                    // return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
+                            // Perform the update within the transaction
+                            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
+                            let beforeAmount = userWallet?.EwalletBalance;
+                            userWallet.EwalletBalance += finalAmountDeduct;
+                            await userWallet.save(opts)
 
+                            // ewallet store 
+                            let walletModelDataStore = {
+                                memberId: user?._id,
+                                transactionType: "Cr.",
+                                transactionAmount: amount,
+                                beforeAmount: beforeAmount,
+                                chargeAmount: chargeAmount,
+                                afterAmount: beforeAmount + finalAmountDeduct,
+                                description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
+                                transactionStatus: "Success",
+                            }
+
+                            await walletModel.create([walletModelDataStore], opts)
+                            // Commit the transaction
+                            await walletAddsession.commitTransaction();
+                            // console.log('Transaction committed successfully');
+                        } catch (error) {
+                            console.log(error)
+                            await walletAddsession.abortTransaction();
+                            // console.error('Transaction aborted due to error:', error);
+                        }
+                        finally {
+                            walletAddsession.endSession();
+                        }
+                        // db locking end
+
+                        payOutModelGen.isSuccess = "Failed"
+                        await await payOutModelGen.save()
+                        let userREspSend2 = {
+                            statusCode: statusCode || 0,
+                            status: status || 0,
+                            trxId: trxId || 0,
+                            opt_msg: message || "null"
+                        }
+                        return { message: "Failed", data: userREspSend2 }
+                    }
                 }
             },
             waayupayPayOutApiSecond: {
@@ -603,31 +663,6 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                 res: async (apiResponse) => {
                     const { statusCode, status, message, orderId, utr, clientOrderId } = apiResponse;
 
-                    user.EwalletBalance -= finalAmountDeduct;
-                    const updatedUser = await userDB.findOneAndUpdate(
-                        { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
-                        { $inc: { EwalletBalance: -finalAmountDeduct } },
-                        { new: true }
-                    );
-                    const beforeAmount = Number(updatedUser.EwalletBalance) + finalAmountDeduct
-                    const afterAmount = Number(updatedUser.EwalletBalance)
-                    // console.log("updateduser>>>>",updatedUser)
-                    // await user.save()
-                    let walletModelDataStore = {
-                        memberId: user._id,
-                        transactionType: "Dr.",
-                        transactionAmount: amount, 
-                        beforeAmount: Number(user.EwalletBalance) ,
-                        // beforeAmount: Number(beforeAmount),
-                        chargeAmount: chargeAmount, 
-                        // afterAmount: Number(afterAmount),
-                        afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
-                        description: `Successfully Dr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
-                        transactionStatus: "Success",
-                    }
-
-                    const walletDoc = await walletModel.create(walletModelDataStore)
-
                     if (status == 1) {
                         let payoutDataStore = {
                             memberId: user?._id,
@@ -642,41 +677,16 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         await payOutModel.create(payoutDataStore);
                         payOutModelGen.isSuccess = "Success"
                         await payOutModelGen.save()
-                        let userCustomCallBackGen = {
-                            StatusCode: statusCode,
-                            Message: message,
-                            OrderId: orderId,
-                            Status: status,
-                            ClientOrderId: clientOrderId,
-                            PaymentMode: "IMPS",
-                            Amount: amount,
-                            Date: new Date().toString(),
-                            UTR: utr,
+                        let callBackBody = {
+                            optxid: orderId,
+                            status: "SUCCESS",
+                            txnid: clientOrderId,
+                            amount: amount,
+                            rrn: utr,
                         }
-                        await payoutCallBackResponse({ body: userCustomCallBackGen })
-                        // let userCallBackResp = callBackResponse.aggregate([{ $match: { memberId: payOutModelGen.memberId } }]);
 
-                        // const payOutUserCallBackURL = userCallBackResp[0]?.payOutCallBackUrl;
-                        // const config = {
-                        //     headers: {
-                        //         // 'Accept': 'application/json',
-                        //         'Content-Type': 'application/json'
-                        //     }
-                        // };
+                        customCallBackPayoutUser(user?._id, callBackBody)
 
-                        // const shareObjData = {
-                        //     status: "SUCCESS",
-                        //     txnid: trxId,
-                        //     optxid: orderId,
-                        //     amount: amount,
-                        //     rrn: utr
-                        // } 
-
-                        // try {
-                        //     await axios.post(payOutUserCallBackURL, shareObjData, config)
-                        // } catch (error) {
-                        //     return
-                        // }
                         let userREspSend = {
                             statusCode: statusCode || 0,
                             status: status || 0,
@@ -685,25 +695,49 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         }
                         return new ApiResponse(200, userREspSend)
                     } else {
-                        user.EwalletBalance += finalAmountDeduct;
-                        const updatedUser = await userDB.updateOne(
-                            { _id: user?._Id },
-                            { $inc: { EwalletBalance: finalAmountDeduct } },
-                            { new: true }
-                        );
-                        const beforeAmount = Number(updatedUser.EwalletBalance) - Number(finalAmountDeduct)
-                        const afterAmount = Number(updatedUser?.EwalletBalance)
-                        let walletModelDataStoreCR = {
-                            memberId: user?._id,
-                            transactionType: "Cr.",
-                            transactionAmount: amount,
-                            beforeAmount: user.EwalletBalance,
-                            chargeAmount: chargeAmount,
-                            afterAmount: user.EwalletBalance + finalAmountDeduct,
-                            description: `Successfully Cr. amount: ${finalAmountDeduct} with trx id: ${trxId}`,
-                            transactionStatus: "Success",
+                        // db locking with added amount 
+                        const walletAddsession = await userDB.startSession();
+                        const transactionOptions = {
+                            readConcern: { level: 'local' },
+                            writeConcern: { w: 1 },
+                            maxTimeMS: 1500
+                        };
+                        // wallet deducted and store ewallet trx
+                        try {
+                            walletAddsession.startTransaction(transactionOptions);
+                            const opts = { walletAddsession };
+
+                            // Perform the update within the transaction
+                            let userWallet = await userDB.findById(user?._id, "_id EwalletBalance", opts)
+                            let beforeAmount = userWallet?.EwalletBalance;
+                            userWallet.EwalletBalance += finalAmountDeduct;
+                            await userWallet.save(opts)
+
+                            // ewallet store 
+                            let walletModelDataStore = {
+                                memberId: user?._id,
+                                transactionType: "Cr.",
+                                transactionAmount: amount,
+                                beforeAmount: beforeAmount,
+                                chargeAmount: chargeAmount,
+                                afterAmount: beforeAmount + finalAmountDeduct,
+                                description: `Successfully Cr. amount: ${Number(finalAmountDeduct)} with transaction Id: ${trxId}`,
+                                transactionStatus: "Success",
+                            }
+
+                            await walletModel.create([walletModelDataStore], opts)
+                            // Commit the transaction
+                            await walletAddsession.commitTransaction();
+                            // console.log('Transaction committed successfully');
+                        } catch (error) {
+                            console.log(error)
+                            await walletAddsession.abortTransaction();
+                            // console.error('Transaction aborted due to error:', error);
                         }
-                        await walletModel.create(walletModelDataStoreCR)
+                        finally {
+                            walletAddsession.endSession();
+                        }
+                        // db locking end
 
                         payOutModelGen.isSuccess = "Failed"
                         await await payOutModelGen.save()
@@ -715,9 +749,6 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         }
                         return { message: "Failed", data: userREspSend2 }
                     }
-
-                    // return { statusCode: statusCode || 0, status: status || 0, trxId: trxId, opt_msg: message || "null" }
-
                 }
             },
             iSmartPayPayoutApi: {
@@ -831,9 +862,10 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         console.log(error, "helo inside error")
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
-    } finally {
-        release();
     }
+    //  finally {
+    //     // release();
+    // }
 });
 
 export const performPayoutApiCall = async (payOutApi, apiConfig) => {
@@ -1152,3 +1184,39 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
         release()
     }
 })
+
+const customCallBackPayoutUser = async (userId, Body) => {
+    let callBackPayout = Body;
+    let data = { txnid: callBackPayout?.txnid, optxid: callBackPayout?.optxid, amount: callBackPayout?.amount, rrn: callBackPayout?.rrn, status: callBackPayout?.status }
+
+    // send callback to user
+    // let userCallBackResp = await callBackResponse.aggregate([{ $match: { memberId: userId } }]);
+    let userCallBackResp = await callBackResponse.findOne({ memberId: userId });
+
+    if (!userCallBackResp) {
+        return false
+    }
+
+    let payOutUserCallBackURL = userCallBackResp?.payOutCallBackUrl;
+    const config = {
+        headers: {
+            // 'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+    };
+
+    let shareObjData = {
+        status: data?.status,
+        txnid: data?.txnid,
+        optxid: data?.optxid,
+        amount: data?.amount,
+        rrn: data?.rrn
+    }
+
+    try {
+        await axios.post(payOutUserCallBackURL, shareObjData, config)
+    } catch (error) {
+        null
+    }
+    return true
+}
