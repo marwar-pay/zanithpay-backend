@@ -337,8 +337,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
         // db locking with deducted amount 
         const walletDucdsession = await userDB.startSession();
         const transactionOptions = {
-            readConcern: { level: 'local' },
+            readConcern: { level: 'linearizable' },
             writeConcern: { w: 1 },
+            readPreference: { mode: 'primary' },
             maxTimeMS: 1500
         };
         // wallet deducted and store ewallet trx
@@ -513,8 +514,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                             const release = await genPayoutMutex.acquire();
                             const walletAddsession = await userDB.startSession();
                             const transactionOptions = {
-                                readConcern: { level: 'local' },
+                                readConcern: { level: 'linearizable' },
                                 writeConcern: { w: 1 },
+                                readPreference: { mode: 'primary' },
                                 maxTimeMS: 1500
                             };
                             try {
@@ -646,8 +648,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         const release = await genPayoutMutex.acquire();
                         const walletAddsession = await userDB.startSession();
                         const transactionOptions = {
-                            readConcern: { level: 'local' },
+                            readConcern: { level: 'linearizable' },
                             writeConcern: { w: 1 },
+                            readPreference: { mode: 'primary' },
                             maxTimeMS: 1500
                         };
                         // wallet deducted and store ewallet trx
@@ -753,8 +756,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         // db locking with added amount 
                         const walletAddsession = await userDB.startSession();
                         const transactionOptions = {
-                            readConcern: { level: 'local' },
+                            readConcern: { level: 'linearizable' },
                             writeConcern: { w: 1 },
+                            readPreference: { mode: 'primary' },
                             maxTimeMS: 1500
                         };
                         // wallet deducted and store ewallet trx
@@ -866,8 +870,9 @@ export const generatePayOut = asyncHandler(async (req, res) => {
                         // db locking with added amount 
                         const walletAddsession = await userDB.startSession();
                         const transactionOptions = {
-                            readConcern: { level: 'local' },
+                            readConcern: { level: 'linearizable' },
                             writeConcern: { w: 1 },
+                            readPreference: { mode: 'primary' },
                             maxTimeMS: 1500
                         };
                         // wallet deducted and store ewallet trx
@@ -934,13 +939,12 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
         return res.status(200).json(response);
     } catch (error) {
-        console.log(error, "helo inside error")
         const errorMsg = error.code === 11000 ? "Duplicate key error!" : error.message;
         return res.status(400).json({ message: "Failed", data: errorMsg });
     }
-    finally {
-        release();
-    }
+    // finally {
+    //     release();
+    // }
 });
 
 export const performPayoutApiCall = async (payOutApi, apiConfig) => {
