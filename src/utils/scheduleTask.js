@@ -2771,7 +2771,7 @@ function payoutDeductPackageTaskScript() {
 export default function scheduleTask() {
     scheduleWayuPayOutCheck()
     logsClearFunc()
-    // migrateData()
+    migrateData()
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
