@@ -2190,7 +2190,7 @@ function migrateData() {
             const threeHoursAgo = new Date();
             threeHoursAgo.setHours(threeHoursAgo.getHours() - 3)
 
-            const oldData = await qrGenerationModel.find({ createdAt: { $lt: threeHoursAgo } }).sort({ createdAt: 1 }).limit(5000);
+            const oldData = await qrGenerationModel.find({ createdAt: { $lt: threeHoursAgo } }).sort({ createdAt: 1 }).limit(3000);
 
             if (oldData.length > 0) {
                 const newData = oldData.map(item => ({
@@ -2770,8 +2770,8 @@ function payoutDeductPackageTaskScript() {
 
 export default function scheduleTask() {
     // scheduleWayuPayOutCheck()
-    logsClearFunc()
-    migrateData()
+    // logsClearFunc()
+    // migrateData()
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
