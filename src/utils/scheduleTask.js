@@ -2188,11 +2188,11 @@ function scheduleBeforeAmountUpdate() {
                 isSuccess: "Pending",
                 createdAt: { $gt: new Date("2025-01-02T16:30:56.403+05:30") },
                 memberId: new mongoose.Types.ObjectId("676691bfc10ccd627297eb94")
-            }).sort({ createdAt: 1 }).limit(100);
+            }).sort({ createdAt: 1 }).limit(1);
             GetData.forEach(async (item) => {
-                const release = await transactionMutex.acquire();
+                // const release = await transactionMutex.acquire();
                 await beforeAmountUpdate(item)
-                release()
+                // release()
             });
 
 
@@ -2216,19 +2216,17 @@ async function beforeAmountUpdate(item) {
         },
     };
 
-
-    // const session = await userDB.startSession({
-    //     readPreference: 'primary',
-    //     readConcern: { level: "majority" },
-    //     writeConcern: { w: "majority" }
-    // });
     const release = await transactionMutex.acquire();
-    const Walletsession = await userDB.startSession();
 
+    const Walletsession = await userDB.startSession({
+        readPreference: 'primary',
+        readConcern: { level: "majority" },
+        writeConcern: { w: "majority" }
+    });
+    await Walletsession.startTransaction();
     try {
-        const { data } = await axios.post(uatUrl, postAdd, header);
-        await Walletsession.startTransaction();
         const opts = { Walletsession };
+        const { data } = await axios.post(uatUrl, postAdd, header);
 
         if (!data?.status) {
             await Walletsession.abortTransaction();
@@ -2302,7 +2300,7 @@ async function beforeAmountUpdate(item) {
         await Walletsession.abortTransaction();
         return false;
     } finally {
-        await session.endSession();
+        await Walletsession.endSession();
         release();
     }
 }
@@ -2895,8 +2893,8 @@ function payoutDeductPackageTaskScript() {
 }
 
 export default function scheduleTask() {
-    scheduleWayuPayOutCheck()
-    logsClearFunc()
+    // scheduleWayuPayOutCheck()
+    // logsClearFunc()
     // migrateData()
     // payinScheduleTask()
     // payoutTaskScript()
