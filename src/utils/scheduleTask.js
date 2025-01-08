@@ -2193,7 +2193,7 @@ function scheduleBeforeAmountUpdate() {
                 const release = await transactionMutex.acquire();
                 await beforeAmountUpdate(item)
                 release()
-            }); 
+            });
 
 
         } catch (error) {
@@ -2215,30 +2215,30 @@ async function beforeAmountUpdate(item) {
             "Content-Type": "application/json",
         },
     };
-    
+
 
     // const session = await userDB.startSession({
     //     readPreference: 'primary',
     //     readConcern: { level: "majority" },
     //     writeConcern: { w: "majority" }
     // });
-    // const release = await transactionMutex.acquire();
-    // const session = await userDB.startSession();
+    const release = await transactionMutex.acquire();
+    const Walletsession = await userDB.startSession();
 
     try {
-        // await session.startTransaction();
         const { data } = await axios.post(uatUrl, postAdd, header);
-        // const opts = { session };
+        await Walletsession.startTransaction();
+        const opts = { Walletsession };
 
         if (!data?.status) {
-            // await session.abortTransaction();
+            await Walletsession.abortTransaction();
             console.log("status not available", data);
             return false;
         }
 
-        const user = await userDB.findById(item?.memberId);
+        const user = await userDB.findById(item?.memberId, opts);
         // const user = await userDB.findById(item?.memberId, null, opts);
-        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId });
+        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
         // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
         console.log("payoutModelGen:", payOutModelGen);
 
@@ -2246,38 +2246,39 @@ async function beforeAmountUpdate(item) {
         const chargeAmount = gatwayCharge;
         const finalAmountDeduct = amount + chargeAmount;
 
+        let beforeAmout = user.EwalletBalance
         user.EwalletBalance -= finalAmountDeduct;
+        user.save(opts)
 
-        const updatedUser = await userDB.findOneAndUpdate(
-            { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
-            { $set: { EwalletBalance: user.EwalletBalance } },
-            { new: true }
-            // { session, new: true }
-        );
+        // const updatedUser = await userDB.findOneAndUpdate(
+        //     { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
+        //     { $set: { EwalletBalance: user.EwalletBalance } },
+        //     { new: true }
+        //     // { session, new: true }
+        // );
 
         const walletDoc = await walletModel.findOneAndUpdate(
             { description: { $regex: item?.trxId, $options: 'i' } },
             {
-                beforeAmount: Number(user.EwalletBalance),
-                afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct)
+                beforeAmount: Number(beforeAmout),
+                afterAmount: Number(beforeAmout) - Number(finalAmountDeduct)
             },
-            { new: true }
-            // { session, new: true }
+            // { new: true }
+            { Walletsession, new: true }
         );
 
         if (data.status == 1) {
             payOutModelGen.isSuccess = "Success";
-            await payOutModelGen.save();  
+            await payOutModelGen.save();
             // await payOutModelGen.save(opts);  
-            // await session.commitTransaction();
+            await Walletsession.commitTransaction();
             return true;
         } else {
             user.EwalletBalance += finalAmountDeduct;
             await userDB.findOneAndUpdate(
                 { _id: user._id },
                 { $set: { EwalletBalance: user.EwalletBalance } },
-                { new: true }
-                // { session, new: true }
+                { Walletsession, new: true }
             );
 
             const walletDocUpd = await walletModel.findOneAndUpdate(
@@ -2286,25 +2287,23 @@ async function beforeAmountUpdate(item) {
                     beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
                     afterAmount: Number(user.EwalletBalance)
                 },
-                { new: true }
-                // { session, new: true }
+                { Walletsession, new: true }
             );
             console.log("walletDoc>>>", walletDocUpd);
 
             payOutModelGen.isSuccess = "Failed";
-            await payOutModelGen.save(); 
+            await payOutModelGen.save(opts);
             // await payOutModelGen.save(opts); 
+            await Walletsession.commitTransaction();
+            return false;
         }
-
-        // await session.commitTransaction();
-
     } catch (error) {
         console.log("inside the error", error);
-        // await session.abortTransaction();
+        await Walletsession.abortTransaction();
         return false;
     } finally {
-        // await session.endSession();
-        // release();
+        await session.endSession();
+        release();
     }
 }
 
