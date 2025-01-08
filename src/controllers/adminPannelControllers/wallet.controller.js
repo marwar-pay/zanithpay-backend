@@ -34,7 +34,7 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
                 { payerName: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
-        ...(user && { memberId: new mongoose.Types.ObjectId(user?._id) })
+        ...(user && { memberId: new mongoose.Types.ObjectId(String(user?._id)) })
     };
     const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
@@ -60,20 +60,6 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
                 preserveNullAndEmptyArrays: false,
             },
         },
-        ...(exportToCSV == "true"
-            ? [{
-                $addFields: {
-                    createdAt: {
-                        $dateToString: {
-                            format: "%Y-%m-%d %H:%M:%S",
-                            date: {
-                                $add: ["$createdAt", 0] // Convert UTC to IST
-                            },
-                            timezone: "Asia/Kolkata"
-                        }
-                    }
-                }
-            }] : []),
         {
             $project: {
                 _id: 1,
