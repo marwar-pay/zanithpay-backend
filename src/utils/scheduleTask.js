@@ -2228,15 +2228,17 @@ async function beforeAmountUpdate(item) {
         const opts = { Walletsession };
         const { data } = await axios.post(uatUrl, postAdd, header);
 
+        // console.log(item)
+
         if (!data?.status) {
             await Walletsession.abortTransaction();
             console.log("status not available", data);
             return false;
         }
 
-        const user = await userDB.findById(item?.memberId, opts);
+        const user = await userDB.findById(item?.memberId, "_id EwalletBalance", opts);
         // const user = await userDB.findById(item?.memberId, null, opts);
-        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
+        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId },null, opts);
         // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
         console.log("payoutModelGen:", payOutModelGen);
 
