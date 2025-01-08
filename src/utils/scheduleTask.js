@@ -2205,8 +2205,8 @@ function scheduleBeforeAmountUpdate() {
 async function beforeAmountUpdate(item) {
     const uatUrl = "https://api.waayupay.com/api/api/api-module/payout/status-check";
     const postAdd = {
-        clientId: "267d9895-ccc1-4134-95dd-1384624d79e1",
-        secretKey: "4286b389-574c-416a-9f02-6dda1c197dd3",
+        clientId: process.env.WAAYU_CLIENT_ID_TWO,
+        secretKey: process.env.WAAYU_SECRET_KEY_TWO,
         clientOrderId: item?.trxId,
     };
     const header = {
