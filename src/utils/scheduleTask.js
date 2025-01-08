@@ -2220,8 +2220,8 @@ async function beforeAmountUpdate(item) {
     //     readConcern: { level: "majority" },
     //     writeConcern: { w: "majority" }
     // });
-    const session = await userDB.startSession();
     const release = await transactionMutex.acquire();
+    const session = await userDB.startSession();
 
     try {
         await session.startTransaction();
