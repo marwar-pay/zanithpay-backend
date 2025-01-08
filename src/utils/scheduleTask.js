@@ -2190,9 +2190,10 @@ function scheduleBeforeAmountUpdate() {
                 memberId: new mongoose.Types.ObjectId("676691bfc10ccd627297eb94")
             }).sort({ createdAt: 1 }).limit(1);
             GetData.forEach(async (item) => {
+                const release = await transactionMutex.acquire();
                 await beforeAmountUpdate(item)
-            });
-            console.log("getDataaaaaaa", GetData);
+                release()
+            }); 
 
 
         } catch (error) {
@@ -2220,22 +2221,24 @@ async function beforeAmountUpdate(item) {
     //     readConcern: { level: "majority" },
     //     writeConcern: { w: "majority" }
     // });
-    const release = await transactionMutex.acquire();
-    const session = await userDB.startSession();
+    // const release = await transactionMutex.acquire();
+    // const session = await userDB.startSession();
 
     try {
-        await session.startTransaction();
+        // await session.startTransaction();
         const { data } = await axios.post(uatUrl, postAdd, header);
-        const opts = { session };
+        // const opts = { session };
 
         if (!data?.status) {
-            await session.abortTransaction();
+            // await session.abortTransaction();
             console.log("status not available", data);
             return false;
         }
 
-        const user = await userDB.findById(item?.memberId, null, opts);
-        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
+        const user = await userDB.findById(item?.memberId);
+        // const user = await userDB.findById(item?.memberId, null, opts);
+        const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId });
+        // const payOutModelGen = await payOutModelGenerate.findOne({ trxId: item?.trxId }, opts);
         console.log("payoutModelGen:", payOutModelGen);
 
         const { gatwayCharge, amount } = payOutModelGen;
@@ -2247,7 +2250,8 @@ async function beforeAmountUpdate(item) {
         const updatedUser = await userDB.findOneAndUpdate(
             { _id: user._id, EwalletBalance: { $gte: finalAmountDeduct } },
             { $set: { EwalletBalance: user.EwalletBalance } },
-            { session, new: true }
+            { new: true }
+            // { session, new: true }
         );
 
         const walletDoc = await walletModel.findOneAndUpdate(
@@ -2256,20 +2260,23 @@ async function beforeAmountUpdate(item) {
                 beforeAmount: Number(user.EwalletBalance),
                 afterAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct)
             },
-            { session, new: true }
+            { new: true }
+            // { session, new: true }
         );
 
         if (data.status == 1) {
             payOutModelGen.isSuccess = "Success";
-            await payOutModelGen.save(opts); // No session needed
-            await session.commitTransaction();
+            await payOutModelGen.save();  
+            // await payOutModelGen.save(opts);  
+            // await session.commitTransaction();
             return true;
         } else {
             user.EwalletBalance += finalAmountDeduct;
             await userDB.findOneAndUpdate(
                 { _id: user._id },
                 { $set: { EwalletBalance: user.EwalletBalance } },
-                { session, new: true }
+                { new: true }
+                // { session, new: true }
             );
 
             const walletDocUpd = await walletModel.findOneAndUpdate(
@@ -2278,23 +2285,25 @@ async function beforeAmountUpdate(item) {
                     beforeAmount: Number(user.EwalletBalance) - Number(finalAmountDeduct),
                     afterAmount: Number(user.EwalletBalance)
                 },
-                { session, new: true }
+                { new: true }
+                // { session, new: true }
             );
             console.log("walletDoc>>>", walletDocUpd);
 
             payOutModelGen.isSuccess = "Failed";
-            await payOutModelGen.save(opts); // No session needed
+            await payOutModelGen.save(); 
+            // await payOutModelGen.save(opts); 
         }
 
-        await session.commitTransaction();
+        // await session.commitTransaction();
 
     } catch (error) {
         console.log("inside the error", error);
-        await session.abortTransaction();
+        // await session.abortTransaction();
         return false;
     } finally {
-        await session.endSession();
-        release();
+        // await session.endSession();
+        // release();
     }
 }
 
