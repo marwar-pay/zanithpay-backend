@@ -651,7 +651,7 @@ export const generatePayment = async (req, res) => {
                         "mobile": mobileNumber,
                         "name": name,
                         "redirect_url": "https://www.google.com/",
-                        "webhook_url": "https://2958-182-69-106-224.ngrok-free.app/apiAdmin/v1/payin/iSmartPayWebhook",
+                        "webhook_url": `${process.env.BASE_URL}apiAdmin/v1/payin/iSmartPayWebhook`,
                         "pay_type": "UPI",
                         "vpa": "abc@icici"
                     }
