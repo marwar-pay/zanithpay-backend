@@ -651,6 +651,7 @@ export const generatePayment = async (req, res) => {
                         "mobile": mobileNumber,
                         "name": name,
                         "redirect_url": "https://www.google.com/",
+                        // "webhook_url": `https://3947-122-176-8-218.ngrok-free.app/apiAdmin/v1/payin/iSmartPayWebhook`,
                         "webhook_url": `${process.env.BASE_URL}apiAdmin/v1/payin/iSmartPayWebhook`,
                         "pay_type": "UPI",
                         "vpa": "abc@icici"
@@ -1132,8 +1133,8 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
     const { status, status_code, currency, amount, bank_id, order_id, transaction_id } = req.body
     try {
         console.log("reqbody in ismart callback..", req.body);
-        const qrGenDoc = await qrGenerationModel.findOne({ refId: order_id });
-        if (!qrGenDoc || qrGenDoc.callBackStatus == "Success" || reqPaymentLinkObj.entity.status !== "paid") return res.status(400).json({ succes: "Failed", message: "Txn Id Not available!" });
+        const qrGenDoc = await qrGenerationModel.findOne({ trxId: order_id });
+        if (!qrGenDoc || qrGenDoc.callBackStatus == "Success") return res.status(400).json({ succes: "Failed", message: "Txn Id Not available!" });
         if (status) {
             qrGenDoc.callBackStatus = "Success";
 
@@ -1161,22 +1162,12 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
             ]);
 
             if (!userInfo) return;
-
+            const payerAmount = amount
             const chargeRange = userInfo.packageCharge?.payInChargeRange || [];
-            const payerAmount = qrGenDoc.amount;
-            let chargeTypePayIn, chargeAmountPayIn;
+            const charge = chargeRange.find(range => range.lowerLimit <= payerAmount && range.upperLimit > payerAmount);
 
-            for (const value of chargeRange) {
-                if (value.lowerLimit <= payerAmount && value.upperLimit > payerAmount) {
-                    chargeTypePayIn = value.chargeType;
-                    chargeAmountPayIn = value.charge;
-                    break;
-                }
-            }
-
-            const userChargeApply = chargeTypePayIn === "Flat" ? chargeAmountPayIn : (chargeAmountPayIn / 100) * payerAmount;
-
-            const finalAmountAdd = payerAmount - userChargeApply;
+            const userChargeApply = charge.chargeType === "Flat" ? charge.charge : (charge.charge / 100) * payerAmount;
+            const finalAmountAdd = payerAmount - userChargeApply; 
 
             const payinDataStore = {
                 memberId: qrGenDoc?.memberId,
@@ -1196,9 +1187,9 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
             const upiWalletDataObject = {
                 memberId: userInfo._id,
                 transactionType: "Cr.",
-                transactionAmount: finalAmountAdd,
+                transactionAmount: Number(finalAmountAdd),
                 beforeAmount: userInfo.upiWalletBalance,
-                afterAmount: userInfo.upiWalletBalance + finalAmountAdd,
+                afterAmount: userInfo.upiWalletBalance + Number(finalAmountAdd),
                 description: `Successfully Cr. amount: ${finalAmountAdd} with transaction Id: ${qrGenDoc?.trxId}`,
                 transactionStatus: "Success"
             };
@@ -1211,7 +1202,7 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
             const userCallBackURL = callBackPayinUrls[0]?.payInCallBackUrl;
 
             const userRespSendApi = {
-                status: reqPaymentLinkObj.entity.status,
+                status: 200,
                 payerAmount,
                 payerName: qrGenDoc?.name,
                 txnID: qrGenDoc?.trxId,
@@ -1219,8 +1210,7 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
                 payerVA: "",
                 TxnInitDate: "",
                 TxnCompletionDate: ""
-            };
-            console.log("error logging", upiWalletDataObject, qrGenDoc, payinDataStore, userCallBackURL, userRespSendApi);
+            }; 
 
 
             await Promise.all([
@@ -1235,9 +1225,13 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
                     }
                 })
             ]);
+        } else {
+            return res.status(400).json({ message: "Failed", data: "Transaction is pending or not successful" });
         }
 
     } catch (error) {
+        console.log("error in ismart pay callback", error.message);
+
         return res.status(400).json({ succes: "Failed", message: error.message || "Txn Id Not Avabile!" })
     } finally {
         release()

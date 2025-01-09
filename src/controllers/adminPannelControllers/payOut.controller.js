@@ -875,7 +875,7 @@ export const generatePayOut = asyncHandler(async (req, res) => {
 
 
                         let userREspSend = {
-                            statusCode: statusCode || 0,
+                            statusCode: status_code || 0,
                             status: status || 0,
                             trxId: trxId || 0,
                             opt_msg: message || "null"
@@ -1186,12 +1186,12 @@ export const iSmartPayCallback = asyncHandler(async (req, res) => {
             try {
                 await axios.post(payOutUserCallBackURL, shareObjData, config)
             } catch (error) {
-                return
+                return true
             }
             if (res) {
                 return res.status(200).json({ message: "Failed", data: `Trx Status Already ${getDocoment?.isSuccess}` })
             }
-            return
+            return true
         }
 
         if (getDocoment && data?.rrn && getDocoment?.isSuccess === "Pending") {
