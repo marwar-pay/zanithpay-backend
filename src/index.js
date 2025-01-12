@@ -1,5 +1,27 @@
 import dotenv from "dotenv";
 import connectionDB from "./db/index.js";
+import cluster from "node:cluster"
+import os from "os"
+const numCpu = os.cpus().length;
+import app from "./app.js";
+
+dotenv.config({
+  path: "./env",
+});
+
+if (cluster.isPrimary) {
+  for (let num = 0; num < numCpu; num++) {
+    cluster.fork()
+  }
+} else {
+  connectionDB().then(() => {
+    app.listen(process.env.SERVER_PORT, () => {
+      console.log(`Server Running At PORT:${process.env.SERVER_PORT}`);
+    })
+  }).catch((error) => {
+    console.log("some issue on database connection", error)
+  })
+}
 
 process.on("uncaughtException", (err) => {
   console.log(err.name, err.message);
@@ -13,18 +35,11 @@ process.on("unhandledRejection", (err) => {
   process.exit(1);
 });
 
-import app from "./app.js";
-
-dotenv.config({
-  path: "./env",
-});
-
-console.log(process.env.MONGODB_URI)
-
-connectionDB().then(() => {
-  app.listen(process.env.SERVER_PORT, () => {
-    console.log(`Server Running At PORT:${process.env.SERVER_PORT}`);
-  })
-}).catch((error) => {
-  console.log("some issue on database connection", error)
-})
+// connectionDB().then(() => {
+//   app.listen(process.env.SERVER_PORT, () => {
+//     console.log(process.pid)
+//     console.log(`Server Running At PORT:${process.env.SERVER_PORT}`);
+//   })
+// }).catch((error) => {
+//   console.log("some issue on database connection", error)
+// })
