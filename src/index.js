@@ -34,12 +34,3 @@ process.on("unhandledRejection", (err) => {
   console.log("unhandledRejection Accured ! Shutting Down Server !");
   process.exit(1);
 });
-
-// connectionDB().then(() => {
-//   app.listen(process.env.SERVER_PORT, () => {
-//     console.log(process.pid)
-//     console.log(`Server Running At PORT:${process.env.SERVER_PORT}`);
-//   })
-// }).catch((error) => {
-//   console.log("some issue on database connection", error)
-// })
