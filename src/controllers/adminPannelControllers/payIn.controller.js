@@ -726,7 +726,7 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const callBackResponse = asyncHandler(async (req, res) => {
-    const release = await transactionMutex.acquire();
+    // const release = await transactionMutex.acquire();
     try {
         let callBackData = req.body;
 
@@ -811,23 +811,44 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             isSuccess: "Success"
         })
 
-        const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, { upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd })
+        // session locking
+        // db locking with deducted amount 
+        // const release = await transactionMutex.acquire();
+        const upiWalletAdd = await userDB.startSession();
+        const transactionOptions = {
+            readConcern: { level: 'linearizable' },
+            writeConcern: { w: 'majority' },
+            readPreference: { mode: 'primary' },
+            maxTimeMS: 1500
+        };
+        try {
+            upiWalletAdd.startTransaction(transactionOptions);
+            const opts = { upiWalletAdd };
+            const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, { $inc: { upiWalletBalance: + finalAmountAdd } }, {
+                returnDocument: 'after',
+                upiWalletAdd
+            })
 
+            const upiWalletDataObject = {
+                memberId: userInfo?._id,
+                transactionType: "Cr.",
+                transactionAmount: finalAmountAdd,
+                beforeAmount: userInfo?.upiWalletBalance,
+                afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd),
+                description: `Successfully Cr. amount: ${finalAmountAdd}  trxId: ${data.txnID}`,
+                transactionStatus: "Success"
+            }
 
-        if (upiWalletUpdateResult.status === "rejected" || payInCreateResult.status === "rejected") {
-            return res.status(500).json({ message: "Failed", data: "Error updating wallet or creating pay-in record" });
+            await upiWalletModel.create([upiWalletDataObject], opts);
+            // Commit the transaction
+            await upiWalletAdd.commitTransaction();
+        } catch (error) {
+            await upiWalletAdd.abortTransaction();
+        } finally {
+            upiWalletAdd.endSession();
+            // release()
         }
-        const upiWalletDataObject = {
-            memberId: userInfo?._id,
-            transactionType: "Cr.",
-            transactionAmount: finalAmountAdd,
-            beforeAmount: userInfo?.upiWalletBalance,
-            afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd),
-            description: `Successfully Cr. amount: ${finalAmountAdd}  trxId: ${data.txnID}`,
-            transactionStatus: "Success"
-        }
-
-        await upiWalletModel.create(upiWalletDataObject);
+        // session locking end
 
         const userRespSendApi = {
             status: data.status,
@@ -843,20 +864,25 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: "Failed", data: "Callback URL is missing" });
         }
 
-        await axios.post(callBackPayinUrl, userRespSendApi, {
-            headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json"
-            }
-        });
+        try {
+            await axios.post(callBackPayinUrl, userRespSendApi, {
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json"
+                }
+            });
+        } catch (error) {
+            null
+        }
 
         return res.status(200).json(new ApiResponse(200, null, "Successfully"));
     } catch (error) {
         console.error(error);
         return res.status(500).json({ success: "Failed", message: error.message || "Internal server error!" });
-    } finally {
-        release();
     }
+    // finally {
+    //     release();
+    // }
 });
 
 export const testCallBackResponse = asyncHandler(async (req, res) => {
