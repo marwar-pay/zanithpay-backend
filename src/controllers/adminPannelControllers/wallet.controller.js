@@ -6,7 +6,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { Parser } from 'json2csv';
 import mongoose, { Mongoose } from "mongoose";
-import { getPaginationArray } from "../../utils/helpers.js";
+// import { getPaginationArray } from "../../utils/helpers.js";
 
 export const getAllTransactionUpi = asyncHandler(async (req, res) => {
     let { keyword = "", startDate, endDate, page = 1, limit = 25, memberId } = req.query;
@@ -79,8 +79,12 @@ export const getAllTransactionUpi = asyncHandler(async (req, res) => {
         },
     ];
 
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
     try {
-        let transactions = await upiWalletModel.aggregate(userQuery).allowDiskUse(true);
+        let transactions = await upiWalletModel.aggregate(userQuery, aggregationOptions).allowDiskUse(true);
 
         if (!transactions || transactions.length === 0) {
             return res.status(200).json({
@@ -195,7 +199,11 @@ export const getAllTransactionEwallet = asyncHandler(async (req, res) => {
             },
         ];
 
-        let transactions = await eWalletModel.aggregate(userQuery).allowDiskUse(true);
+        const aggregationOptions = {
+            readPreference: 'secondaryPreferred'
+        };
+
+        let transactions = await eWalletModel.aggregate(userQuery, aggregationOptions).allowDiskUse(true);
 
         if (exportToCSV === "true") {
             const fields = [

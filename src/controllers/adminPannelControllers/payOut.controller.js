@@ -8,8 +8,8 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { AESUtils } from "../../utils/CryptoEnc.js";
 import { Mutex } from "async-mutex";
-import { ApiError } from "../../utils/ApiError.js";
-import { getPaginationArray } from "../../utils/helpers.js";
+// import { ApiError } from "../../utils/ApiError.js";
+// import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
 import { Parser } from "json2csv";
 
@@ -132,7 +132,11 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
             }
         ];
 
-        const payment = await payOutModelGenerate.aggregate(pipeline).allowDiskUse(true);
+        const aggregationOptions = {
+            readPreference: 'secondaryPreferred'
+        };
+
+        const payment = await payOutModelGenerate.aggregate(pipeline, aggregationOptions).allowDiskUse(true);
 
         if (!payment || payment.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Transaction Available!" });
@@ -265,8 +269,12 @@ export const allPayOutPaymentSuccess = asyncHandler(async (req, res) => {
         },
     ];
 
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
     try {
-        const GetData = await payOutModel.aggregate(pipeline).allowDiskUse(true);
+        const GetData = await payOutModel.aggregate(pipeline, aggregationOptions).allowDiskUse(true);
 
         if (!GetData || GetData.length === 0) {
             return res.status(400).json({ message: "Failed", data: "No Successful Transactions Available!" });

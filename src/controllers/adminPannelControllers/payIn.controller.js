@@ -8,15 +8,15 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
 import { Mutex } from "async-mutex";
-import { getPaginationArray } from "../../utils/helpers.js";
+// import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
 import razorpay from "../../utils/RazorPay.js";
 import { Parser } from 'json2csv';
-import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.js";
+// import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.js";
 import oldQrGenerationModel from "../../models/oldQrGeneration.model.js";
 
 const transactionMutex = new Mutex();
-const generatePayinMutex = new Mutex();
+// const generatePayinMutex = new Mutex();
 const razorPayMutex = new Mutex();
 const iSmartMutex = new Mutex();
 
@@ -210,7 +210,11 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             }
         ];
 
-        const successRateResult = await qrGenerationModel.aggregate(successRatePipeline).allowDiskUse(true);
+        const aggregationOptions = {
+            readPreference: 'secondaryPreferred'
+        };
+
+        const successRateResult = await qrGenerationModel.aggregate(successRatePipeline, aggregationOptions).allowDiskUse(true);
         const successRatePerMinute = successRateResult.length > 0 ? successRateResult[0].successRatePerMinute : 0;
 
         // Fetch paginated results
@@ -276,7 +280,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             }
         ];
 
-        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
+        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline, aggregationOptions).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline, aggregationOptions).allowDiskUse(true);
 
         const totalDocs = exportToCSV === "true" ? payments.length : await qrGenerationModel.countDocuments(matchFilters);
 
@@ -415,8 +419,11 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     ];
 
     try {
+        const aggregationOptions = {
+            readPreference: 'secondaryPreferred'
+        };
 
-        let payments = await payInModel.aggregate(paymentQuery).allowDiskUse(true);
+        let payments = await payInModel.aggregate(paymentQuery, aggregationOptions).allowDiskUse(true);
 
         if (!payments || payments.length === 0) {
             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
