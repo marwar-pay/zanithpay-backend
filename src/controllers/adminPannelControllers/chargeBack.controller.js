@@ -40,6 +40,10 @@ export const getAllChargeBack = asyncHandler(async (req, res) => {
     };
     const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
     let getchargeBack = await chargeBackModel.aggregate([
         { $match: matchFilters },
         { $sort: { createdAt: sortDirection } },
@@ -79,7 +83,7 @@ export const getAllChargeBack = asyncHandler(async (req, res) => {
                         }
                     }
                 }
-            }]:[]),
+            }] : []),
         {
             $project: {
                 "_id": 1,
@@ -94,7 +98,7 @@ export const getAllChargeBack = asyncHandler(async (req, res) => {
                 "userInfo.fullName": 1,
                 "userInfo.memberId": 1
             }
-        }]).allowDiskUse(true);
+        }], aggregationOptions).allowDiskUse(true);
 
     if (getchargeBack.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Charge Back Found !" })
@@ -103,16 +107,16 @@ export const getAllChargeBack = asyncHandler(async (req, res) => {
     if (exportToCSV === "true") {
         const fields = [
             "_id",
-                "trxId",
-                "amount",
-                "vpaId",
-                "bankRRN",
-                "description",
-                "isSuccess",
-                "createdAt",
-                "userInfo.userName",
-                "userInfo.fullName",
-                "userInfo.memberId"
+            "trxId",
+            "amount",
+            "vpaId",
+            "bankRRN",
+            "description",
+            "isSuccess",
+            "createdAt",
+            "userInfo.userName",
+            "userInfo.fullName",
+            "userInfo.memberId"
         ];
         const json2csvParser = new Parser({ fields });
         const csv = json2csvParser.parse(getchargeBack);

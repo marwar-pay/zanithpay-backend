@@ -8,15 +8,15 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import callBackResponseModel from "../../models/callBackResponse.model.js";
 import FormData from "form-data";
 import { Mutex } from "async-mutex";
-import { getPaginationArray } from "../../utils/helpers.js";
+// import { getPaginationArray } from "../../utils/helpers.js";
 import mongoose from "mongoose";
 import razorpay from "../../utils/RazorPay.js";
 import { Parser } from 'json2csv';
-import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.js";
+// import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils.js";
 import oldQrGenerationModel from "../../models/oldQrGeneration.model.js";
 
 const transactionMutex = new Mutex();
-const generatePayinMutex = new Mutex();
+// const generatePayinMutex = new Mutex();
 const razorPayMutex = new Mutex();
 const iSmartMutex = new Mutex();
 
@@ -210,7 +210,11 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             }
         ];
 
-        const successRateResult = await qrGenerationModel.aggregate(successRatePipeline).allowDiskUse(true);
+        const aggregationOptions = {
+            readPreference: 'secondaryPreferred'
+        };
+
+        const successRateResult = await qrGenerationModel.aggregate(successRatePipeline, aggregationOptions).allowDiskUse(true);
         const successRatePerMinute = successRateResult.length > 0 ? successRateResult[0].successRatePerMinute : 0;
 
         // Fetch paginated results
@@ -276,7 +280,7 @@ export const allGeneratedPayment = asyncHandler(async (req, res) => {
             }
         ];
 
-        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline).allowDiskUse(true);
+        let payments = exportToCSV != "true" ? await qrGenerationModel.aggregate(aggregationPipeline, aggregationOptions).allowDiskUse(true) : await oldQrGenerationModel.aggregate(aggregationPipeline, aggregationOptions).allowDiskUse(true);
 
         const totalDocs = exportToCSV === "true" ? payments.length : await qrGenerationModel.countDocuments(matchFilters);
 
@@ -415,8 +419,11 @@ export const allSuccessPayment = asyncHandler(async (req, res) => {
     ];
 
     try {
+        const aggregationOptions = {
+            readPreference: 'secondaryPreferred'
+        };
 
-        let payments = await payInModel.aggregate(paymentQuery).allowDiskUse(true);
+        let payments = await payInModel.aggregate(paymentQuery, aggregationOptions).allowDiskUse(true);
 
         if (!payments || payments.length === 0) {
             return res.status(200).json({ message: "Success", data: "No Transaction Available!" });
@@ -726,7 +733,7 @@ export const paymentStatusUpdate = asyncHandler(async (req, res) => {
 });
 
 export const callBackResponse = asyncHandler(async (req, res) => {
-    const release = await transactionMutex.acquire();
+    // const release = await transactionMutex.acquire();
     try {
         let callBackData = req.body;
 
@@ -811,23 +818,44 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             isSuccess: "Success"
         })
 
-        const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, { upiWalletBalance: userInfo.upiWalletBalance + finalAmountAdd })
+        // session locking
+        // db locking with deducted amount 
+        // const release = await transactionMutex.acquire();
+        const upiWalletAdd = await userDB.startSession();
+        const transactionOptions = {
+            readConcern: { level: 'linearizable' },
+            writeConcern: { w: 'majority' },
+            readPreference: { mode: 'primary' },
+            maxTimeMS: 1500
+        };
+        try {
+            upiWalletAdd.startTransaction(transactionOptions);
+            const opts = { upiWalletAdd };
+            const upiWalletUpdateResult = await userDB.findByIdAndUpdate(userInfo._id, { $inc: { upiWalletBalance: + finalAmountAdd } }, {
+                returnDocument: 'after',
+                upiWalletAdd
+            })
 
+            const upiWalletDataObject = {
+                memberId: upiWalletUpdateResult?._id,
+                transactionType: "Cr.",
+                transactionAmount: finalAmountAdd,
+                beforeAmount: Number(upiWalletUpdateResult?.upiWalletBalance) - Number(finalAmountAdd),
+                afterAmount: upiWalletUpdateResult?.upiWalletBalance,
+                description: `Successfully Cr. amount: ${finalAmountAdd} with trxId: ${data.txnID}`,
+                transactionStatus: "Success"
+            }
 
-        if (upiWalletUpdateResult.status === "rejected" || payInCreateResult.status === "rejected") {
-            return res.status(500).json({ message: "Failed", data: "Error updating wallet or creating pay-in record" });
+            await upiWalletModel.create([upiWalletDataObject], opts);
+            // Commit the transaction
+            await upiWalletAdd.commitTransaction();
+        } catch (error) {
+            await upiWalletAdd.abortTransaction();
+        } finally {
+            upiWalletAdd.endSession();
+            // release()
         }
-        const upiWalletDataObject = {
-            memberId: userInfo?._id,
-            transactionType: "Cr.",
-            transactionAmount: finalAmountAdd,
-            beforeAmount: userInfo?.upiWalletBalance,
-            afterAmount: Number(userInfo?.upiWalletBalance) + Number(finalAmountAdd),
-            description: `Successfully Cr. amount: ${finalAmountAdd}  trxId: ${data.txnID}`,
-            transactionStatus: "Success"
-        }
-
-        await upiWalletModel.create(upiWalletDataObject);
+        // session locking end
 
         const userRespSendApi = {
             status: data.status,
@@ -843,20 +871,25 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: "Failed", data: "Callback URL is missing" });
         }
 
-        await axios.post(callBackPayinUrl, userRespSendApi, {
-            headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json"
-            }
-        });
+        try {
+            await axios.post(callBackPayinUrl, userRespSendApi, {
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                }
+            });
+        } catch (error) {
+            null
+        }
 
-        return res.status(200).json(new ApiResponse(200, null, "Successfully"));
+        return res.status(200).json(new ApiResponse(200, { pid: process.pid }, "Successfully"));
     } catch (error) {
         console.error(error);
         return res.status(500).json({ success: "Failed", message: error.message || "Internal server error!" });
-    } finally {
-        release();
     }
+    // finally {
+    //     release();
+    // }
 });
 
 export const testCallBackResponse = asyncHandler(async (req, res) => {

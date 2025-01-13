@@ -3,11 +3,16 @@ import upiWalletModel from "../../models/upiWallet.model.js"
 import userDB from "../../models/user.model.js"
 import eWalletModel from "../../models/Ewallet.model.js"
 import { asyncHandler } from "../../utils/asyncHandler.js"
-import { ApiError } from "../../utils/ApiError.js"
+// import { ApiError } from "../../utils/ApiError.js"
 
 export const upiWalletTrx = asyncHandler(async (req, res) => {
     let userId = req.user._id
-    let userUpiTrx = await upiWalletModel.find({ memberId: userId });
+
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
+    let userUpiTrx = await upiWalletModel.find({ memberId: userId }, aggregationOptions);
     if (userUpiTrx.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Trx Avabile !" })
     }
@@ -16,7 +21,12 @@ export const upiWalletTrx = asyncHandler(async (req, res) => {
 
 export const eWalletTrx = asyncHandler(async (req, res) => {
     let userId = req.user._id;
-    let userUpiTrx = await eWalletModel.find({ memberId: userId });
+
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
+    let userUpiTrx = await eWalletModel.find({ memberId: userId }, aggregationOptions);
     if (userUpiTrx.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Trx Avabile !" })
     }
@@ -25,7 +35,12 @@ export const eWalletTrx = asyncHandler(async (req, res) => {
 
 export const upiToEwalletTrx = asyncHandler(async (req, res) => {
     let userId = req.user._id;
-    let userUpiTrx = await upiWalletModel.find({ memberId: userId, transactionType: "Dr." });
+
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
+    let userUpiTrx = await upiWalletModel.find({ memberId: userId, transactionType: "Dr." }, aggregationOptions);
     if (userUpiTrx.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Trx Avabile !" })
     }
@@ -34,7 +49,12 @@ export const upiToEwalletTrx = asyncHandler(async (req, res) => {
 
 export const eWalletToPayOutTrx = asyncHandler(async (req, res) => {
     let userId = req.user._id;
-    let userUpiTrx = await eWalletModel.find({ memberId: userId, transactionType: "Dr." });
+
+    const aggregationOptions = {
+        readPreference: 'secondaryPreferred'
+    };
+
+    let userUpiTrx = await eWalletModel.find({ memberId: userId, transactionType: "Dr." }, aggregationOptions);
     if (userUpiTrx.length === 0) {
         return res.status(400).json({ message: "Failed", data: "No Trx Avabile !" })
     }
