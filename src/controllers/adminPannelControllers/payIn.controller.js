@@ -867,7 +867,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
         try {
             await axios.post(callBackPayinUrl, userRespSendApi, {
                 headers: {
-                    Accept: "application/json",
+                    "Accept": "application/json",
                     "Content-Type": "application/json"
                 }
             });
@@ -875,7 +875,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
             null
         }
 
-        return res.status(200).json(new ApiResponse(200, null, "Successfully"));
+        return res.status(200).json(new ApiResponse(200, { pid: process.pid }, "Successfully"));
     } catch (error) {
         console.error(error);
         return res.status(500).json({ success: "Failed", message: error.message || "Internal server error!" });
