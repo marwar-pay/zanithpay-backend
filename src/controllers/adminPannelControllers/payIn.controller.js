@@ -833,7 +833,7 @@ export const callBackResponse = asyncHandler(async (req, res) => {
                 memberId: upiWalletUpdateResult?._id,
                 transactionType: "Cr.",
                 transactionAmount: finalAmountAdd,
-                beforeAmount: Number(userInfo?.upiWalletBalance) - Number(finalAmountAdd),
+                beforeAmount: Number(upiWalletUpdateResult?.upiWalletBalance) - Number(finalAmountAdd),
                 afterAmount: upiWalletUpdateResult?.upiWalletBalance,
                 description: `Successfully Cr. amount: ${finalAmountAdd} with trxId: ${data.txnID}`,
                 transactionStatus: "Success"
