@@ -36,7 +36,7 @@ export const allPayOutTransactionGeneration = asyncHandler(async (req, res) => {
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
 
         const matchFilters = {
-            memberId: trimmedMemberId ? new mongoDBObJ(trimmedMemberId) : undefined,
+            memberId: new mongoDBObJ(userId),
             ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
             ...(trimmedKeyword && {
                 $or: [
