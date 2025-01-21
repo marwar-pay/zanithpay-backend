@@ -50,7 +50,7 @@ export const allPayOutPayment = asyncHandler(async (req, res) => {
     };
 
     try {
-        const totalDocs = await payOutModelGenerate.countDocuments();
+        const totalDocs = await payOutModelGenerate.countDocuments(matchFilters);
         const sortDirection = Object.keys(dateFilter).length > 0 ? 1 : -1;
         const pipeline = [
             { $match: matchFilters },
