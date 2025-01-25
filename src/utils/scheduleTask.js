@@ -26027,7 +26027,7 @@ function payinScheduleTask2() {
                 processedTrxIds.add(trxId);
 
                 const loopRelease = await loopMutex.acquire();
-                const session = await mongoose.startSession();
+                const session = await userDB.startSession();
                 try {
                     session.startTransaction();
 
@@ -26197,6 +26197,8 @@ function payoutDeductDoubleTaskScript() {
         }
     });
 }
+
+
 var scriptRan = false
 function payoutDeductPackageTaskScript() {
     cron.schedule('*/10 * * * * *', async () => {
