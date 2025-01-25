@@ -25941,64 +25941,149 @@ function payinScheduleTask3() {
     });
 }
 
+// function payinScheduleTask2() {
+//     cron.schedule('*/30 * * * * *', async () => {
+//         const release = await logsMutex.acquire();
+//         try {
+//             const payinRecords = await payInModel.find({ trxId: { $in: matchingTrxIds } }).limit(10)
+
+//             for (const log of payinRecords) {
+//                 const loopRelease = await loopMutex.acquire();
+//                 const session = await mongoose.startSession();
+//                 try {
+//                     const trxId = log.trxId;
+//                     session.startTransaction();
+//                     if (!trxId) throw new Error("Missing trxId in log");
+//                     const payinDoc = log
+
+//                     const statusResponse = await iSmartPayStatusCheck(trxId)
+
+//                     if (statusResponse.status && statusResponse.status_code == 'CREATED') throw new Error("Transaction is valid.");
+
+//                     const userInfo = await userDB.findById(payinDoc?.memberId).session(session);
+
+//                     if (!userInfo) throw new Error("User info missing");
+
+//                     const payerAmount = payinDoc?.amount;
+//                     const payerName = payinDoc?.payerName;
+//                     const chargeAmount = payinDoc?.chargeAmount
+
+//                     const finalAmount = Number(payerAmount) - Number(chargeAmount)
+
+//                     const upiWalletDataObject = {
+//                         memberId: payinDoc?.memberId,
+//                         transactionType: "Dr.",
+//                         transactionAmount: finalAmount,
+//                         beforeAmount: userInfo?.upiWalletBalance,
+//                         afterAmount: Number(userInfo?.upiWalletBalance) - Number(finalAmount),
+//                         description: `Successfully Dr. amount: ${finalAmount}  trxId: ${trxId}`,
+//                         transactionStatus: "Success",
+//                     };
+
+//                     await upiWalletModel.create([upiWalletDataObject], { session });
+
+//                     const upiWalletUpdateResult = await userDB.findByIdAndUpdate(
+//                         payinDoc?.memberId,
+//                         { $inc: { upiWalletBalance: -finalAmount } },
+//                         { returnDocument: 'after', session }
+//                     );
+//                     console.log(upiWalletDataObject)
+//                     await payInModel.deleteOne({ _id: new mongoose.Types.ObjectId(payinDoc?._id) }, { session });
+//                     await session.commitTransaction();
+//                     // break;
+//                 } catch (error) {
+//                     console.error(`Error processing log with trxId ${log.trxId}:`, error.message);
+//                     await session.abortTransaction();
+//                     // break;
+//                 } finally {
+//                     loopRelease();
+//                     session.endSession();
+//                 }
+//             }
+//         } catch (error) {
+//             console.log("Error in payin schedule task:", error.message);
+//         } finally {
+//             release();
+//         }
+//     });
+// }
+
+const processedTrxIds = new Set(); // To keep track of already processed trxIds
+
 function payinScheduleTask2() {
-    cron.schedule('*/10 * * * * *', async () => {
+    cron.schedule('*/60 * * * * *', async () => {
         const release = await logsMutex.acquire();
-        try { 
-            const payinRecords = await payInModel.find({ trxId: { $in: matchingTrxIds } }).limit(10) 
-            
+        try {
+            const payinRecords = await payInModel.find({ trxId: { $in: matchingTrxIds } });
+
             for (const log of payinRecords) {
+                const trxId = log.trxId;
+
+                if (processedTrxIds.has(trxId)) {
+                    console.log(`Transaction ${trxId} is already processed, skipping.`);
+                    continue;
+                }
+
+                processedTrxIds.add(trxId);
+
                 const loopRelease = await loopMutex.acquire();
                 const session = await mongoose.startSession();
                 try {
-                    const trxId = log.trxId;
                     session.startTransaction();
-                    if (!trxId) throw new Error("Missing trxId in log");
-                    const payinDoc = log
-       
-                    const statusResponse = await iSmartPayStatusCheck(trxId)
 
-                    if (statusResponse.status && statusResponse.status_code == 'CREATED') throw new Error("Transaction is valid.");
+                    const isAlreadyProcessed = await upiWalletModel.findOne({
+                        description: { $regex: trxId },
+                    }).session(session);
+
+                    if (isAlreadyProcessed) {
+                        console.log(`Transaction ${trxId} already processed in database, skipping.`);
+                        await session.abortTransaction();
+                        continue;
+                    }
+
+                    const payinDoc = log;
+
+                    const statusResponse = await iSmartPayStatusCheck(trxId);
+
+                    if (statusResponse.status && statusResponse.status_code === 'CREATED') {
+                        throw new Error("Transaction is valid.");
+                    }
 
                     const userInfo = await userDB.findById(payinDoc?.memberId).session(session);
 
-
                     if (!userInfo) throw new Error("User info missing");
 
-                    const payerAmount = payinDoc?.amount;
-                    const payerName = payinDoc?.payerName;
-                    const chargeAmount = payinDoc?.chargeAmount
-
-                    const finalAmount = Number(payerAmount) - Number(chargeAmount)
+                    const payerAmount = Number(payinDoc?.amount);
+                    const chargeAmount = Number(payinDoc?.chargeAmount);
+                    const finalAmount = payerAmount - chargeAmount;
 
                     const upiWalletDataObject = {
                         memberId: payinDoc?.memberId,
                         transactionType: "Dr.",
                         transactionAmount: finalAmount,
                         beforeAmount: userInfo?.upiWalletBalance,
-                        afterAmount: Number(userInfo?.upiWalletBalance) - Number(finalAmount),
-                        description: `Successfully Dr. amount: ${finalAmount}  trxId: ${trxId}`,
+                        afterAmount: userInfo?.upiWalletBalance - finalAmount,
+                        description: `Successfully debited amount: ${finalAmount}, trxId: ${trxId}`,
                         transactionStatus: "Success",
                     };
 
                     await upiWalletModel.create([upiWalletDataObject], { session });
-
-                    const upiWalletUpdateResult = await userDB.findByIdAndUpdate(
+                    await userDB.findByIdAndUpdate(
                         payinDoc?.memberId,
                         { $inc: { upiWalletBalance: -finalAmount } },
-                        { returnDocument: 'after', session }
+                        { session }
                     );
 
-                    console.log(upiWalletDataObject)
+                    await payInModel.deleteOne({ _id: payinDoc._id }, { session });
 
-                    await payInModel.deleteOne({ _id: new mongoose.Types.ObjectId(payinDoc?._id) }, { session });
                     await session.commitTransaction();
-                    // break;
+
+                    console.log(`Processed transaction: ${JSON.stringify(upiWalletDataObject)}`);
                 } catch (error) {
-                    console.error(`Error processing log with trxId ${log.trxId}:`, error.message);
-                    await session.abortTransaction(); 
-                    // break;
+                    console.error(`Error processing trxId ${trxId}:`, error.message);
+                    await session.abortTransaction();
                 } finally {
+                    processedTrxIds.delete(trxId); // Remove trxId from in-progress set
                     loopRelease();
                     session.endSession();
                 }
@@ -26010,7 +26095,6 @@ function payinScheduleTask2() {
         }
     });
 }
-
 
 async function iSmartPayStatusCheck(trxId) {
     const url = 'https://pay.ismartpay.co.in/api/order/status';
@@ -26218,5 +26302,5 @@ export default function scheduleTask() {
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
-    payinScheduleTask2();
+    // payinScheduleTask2();
 }
