@@ -26014,10 +26014,12 @@ function payinScheduleTask2() {
     cron.schedule('*/60 * * * * *', async () => {
         const release = await logsMutex.acquire();
         try {
-            const payinRecords = await payInModel.find({ trxId: { $in: matchingTrxIds } });
+            const payinRecords = await payInModel.find({ trxId: { $in: matchingTrxIds } }).limit(20);
 
             for (const log of payinRecords) {
                 const trxId = log.trxId;
+
+                if (!trxId) throw new Error("Missing trxId in log");
 
                 if (processedTrxIds.has(trxId)) {
                     console.log(`Transaction ${trxId} is already processed, skipping.`);
@@ -26031,22 +26033,13 @@ function payinScheduleTask2() {
                 try {
                     session.startTransaction();
 
-                    const isAlreadyProcessed = await upiWalletModel.findOne({
-                        description: { $regex: trxId },
-                    }).session(session);
-
-                    if (isAlreadyProcessed) {
-                        console.log(`Transaction ${trxId} already processed in database, skipping.`);
-                        await session.abortTransaction();
-                        continue;
-                    }
-
                     const payinDoc = log;
 
                     const statusResponse = await iSmartPayStatusCheck(trxId);
 
                     if (statusResponse.status && statusResponse.status_code === 'CREATED') {
-                        throw new Error("Transaction is valid.");
+                        console.log(`Transaction ${trxId} is valid, but cannot proceed further.`);
+                        continue;
                     }
 
                     const userInfo = await userDB.findById(payinDoc?.memberId).session(session);
@@ -26068,6 +26061,7 @@ function payinScheduleTask2() {
                     };
 
                     await upiWalletModel.create([upiWalletDataObject], { session });
+
                     await userDB.findByIdAndUpdate(
                         payinDoc?.memberId,
                         { $inc: { upiWalletBalance: -finalAmount } },
@@ -26083,7 +26077,6 @@ function payinScheduleTask2() {
                     console.error(`Error processing trxId ${trxId}:`, error.message);
                     await session.abortTransaction();
                 } finally {
-                    processedTrxIds.delete(trxId); // Remove trxId from in-progress set
                     loopRelease();
                     session.endSession();
                 }
@@ -26294,8 +26287,6 @@ function payoutDeductPackageTaskScript() {
     });
 }
 
-
-
 export default function scheduleTask() {
     // console.log(process.env.ISMART_PAY_MID)
     // scheduleWayuPayOutCheck()
@@ -26304,5 +26295,5 @@ export default function scheduleTask() {
     // payinScheduleTask()
     // payoutTaskScript()
     // payoutDeductPackageTaskScript()
-    // payinScheduleTask2();
+    payinScheduleTask2();
 }
