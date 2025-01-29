@@ -9,11 +9,11 @@ dotenv.config({
   path: "./env",
 });
 
-if (cluster.isPrimary) {
-  for (let num = 0; num < numCpu; num++) {
-    cluster.fork()
-  }
-} else {
+// if (cluster.isPrimary) {
+  // for (let num = 0; num < numCpu; num++) {
+  //   cluster.fork()
+  // }
+// } else {
   connectionDB().then(() => {
     app.listen(process.env.SERVER_PORT, () => {
       console.log(`Server Running At PORT:${process.env.SERVER_PORT}`);
@@ -21,7 +21,7 @@ if (cluster.isPrimary) {
   }).catch((error) => {
     console.log("some issue on database connection", error)
   })
-}
+// }
 
 process.on("uncaughtException", (err) => {
   console.log(err.name, err.message);
