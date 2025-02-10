@@ -8,7 +8,7 @@ import mongoose from "mongoose"
 // import { ApiError } from "../../utils/ApiError.js"
 
 export const upiWalletTrx = asyncHandler(async (req, res) => {
-    let userId = req.user._id
+    let userId = req.user._id.toString();
     let { page = 1, limit = 25, keyword = "", startDate, endDate, export: exportToCSV } = req.query
 
     page = Number(page) || 1;
@@ -118,7 +118,7 @@ export const upiWalletTrx = asyncHandler(async (req, res) => {
 });
 
 export const eWalletTrx = asyncHandler(async (req, res) => {
-    let userId = req.user?._id || "66f7f48507452bc66e6033a7";
+    let userId = req.user?._id.toString();
 
     let { page = 1, limit = 25, keyword = "", startDate, endDate, export: exportToCSV } = req.query
 
@@ -148,6 +148,7 @@ export const eWalletTrx = asyncHandler(async (req, res) => {
         ...(trimmedKeyword && {
             $or: [
                 { transactionType: { $regex: trimmedKeyword, $options: "i" } },
+                { transactionAmount: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })
@@ -232,7 +233,7 @@ export const eWalletTrx = asyncHandler(async (req, res) => {
 });
 
 export const upiToEwalletTrx = asyncHandler(async (req, res) => {
-    let userId = req.user._id;
+    let userId = req.user._id.toString();
 
     let { page = 1, limit = 25, keyword = "", startDate, endDate, export: exportToCSV } = req.query
 
@@ -336,7 +337,9 @@ export const upiToEwalletTrx = asyncHandler(async (req, res) => {
 
         return res.status(200).send(csv);
     }
-    res.status(200).json(new ApiResponse(200, userUpiTrx));
+    const totalDocs = await upiWalletModel.countDocuments(matchFilters);
+
+    res.status(200).json(new ApiResponse(200, userUpiTrx, totalDocs));
 });
 
 export const eWalletToPayOutTrx = asyncHandler(async (req, res) => {
@@ -370,6 +373,7 @@ export const eWalletToPayOutTrx = asyncHandler(async (req, res) => {
             $or: [
                 { beforeAmount: { $regex: trimmedKeyword, $options: "i" } },
                 { afterAmount: { $regex: trimmedKeyword, $options: "i" } },
+                { transactionAmount: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })

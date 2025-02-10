@@ -10,7 +10,7 @@ import { Parser } from "json2csv"
 const mongoDBObJ = mongoose.Types.ObjectId;
 
 export const allPayInTransactionGeneration = asyncHandler(async (req, res) => {
-    let userId = req.user._id
+    let userId = req.user._id.toString()
     let { page = 1, limit = 25, keyword = "", startDate, endDate, export: exportToCSV } = req.query
 
     const aggregationOptions = {
@@ -42,6 +42,7 @@ export const allPayInTransactionGeneration = asyncHandler(async (req, res) => {
         ...(trimmedKeyword && {
             $or: [
                 { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { name: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })
@@ -136,7 +137,7 @@ export const allPayInTransactionGeneration = asyncHandler(async (req, res) => {
 })
 
 export const allPayInTransactionSuccess = asyncHandler(async (req, res) => {
-    let userId = req.user._id;
+    let userId = req.user._id.toString();
     let { page = 1, limit = 25, keyword = "", startDate, endDate, export: exportToCSV } = req.query
 
     page = Number(page) || 1;
@@ -165,6 +166,7 @@ export const allPayInTransactionSuccess = asyncHandler(async (req, res) => {
         ...(trimmedKeyword && {
             $or: [
                 { trxId: { $regex: trimmedKeyword, $options: "i" } },
+                { name: { $regex: trimmedKeyword, $options: "i" } },
             ]
         }),
         ...(trimmedMemberId && { memberId: trimmedMemberId })

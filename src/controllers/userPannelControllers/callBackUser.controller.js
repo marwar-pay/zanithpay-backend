@@ -21,7 +21,7 @@ export const addCallBackUrl = asyncHandler(async (req, res) => {
 });
 
 export const getCallBackUrl = asyncHandler(async (req, res) => {
-    let userId = req.user._id
+    let userId = req.user._id.toString();
     let callBackUrl = await callBackModel.findOne({ memberId: userId });
     if (!callBackUrl) {
         return res.status(400).json({ message: "Failed", data: "No CallBack Url Found Plese Add !" })

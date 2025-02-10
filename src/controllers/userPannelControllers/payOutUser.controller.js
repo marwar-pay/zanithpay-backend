@@ -11,9 +11,8 @@ const mongoDBObJ = mongoose.Types.ObjectId;
 
 export const allPayOutTransactionGeneration = asyncHandler(async (req, res) => {
     try {
-        let userId = req.user?._id
+        let userId = req.user._id.toString()
         let { page = 1, limit = 25, keyword = "", startDate, endDate, memberId, status, export: exportToCSV } = req.query;
-        console.log("file: payOutUser.controller.js:16 ~ allPayOutTransactionGeneration ~ req.query:", req.query);
         page = Number(page) || 1;
         limit = Number(limit) || 25;
         const skip = (page - 1) * limit;
@@ -41,7 +40,7 @@ export const allPayOutTransactionGeneration = asyncHandler(async (req, res) => {
             ...(trimmedKeyword && {
                 $or: [
                     { trxId: { $regex: trimmedKeyword, $options: "i" } },
-                    { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
+                    // { accountHolderName: { $regex: trimmedKeyword, $options: "i" } }
                 ]
             }),
             ...(trimmedStatus && { isSuccess: { $regex: trimmedStatus, $options: "i" } }),
@@ -151,7 +150,7 @@ export const allPayOutTransactionGeneration = asyncHandler(async (req, res) => {
 })
 
 export const allPayOutTransactionSuccess = asyncHandler(async (req, res) => {
-    let userId = req.user._id;
+    let userId = req.user._id.toString();
     let { page = 1, limit = 25, keyword = "", startDate, endDate, export: exportToCSV } = req.query
 
     page = Number(page) || 1;
